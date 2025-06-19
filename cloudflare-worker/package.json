@@ -1,0 +1,13 @@
+{
+  "name": "update-grid-worker",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250619.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.20.3"
+  }
+}

@@ -1,0 +1,7 @@
+name = "update-grid-worker"
+main = "src/index.ts"
+compatibility_date = "2024-06-19"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["0 0 * * *"] # kör varje dag kl 02:15 svensk tid

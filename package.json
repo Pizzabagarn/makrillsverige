@@ -24,6 +24,7 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250619.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.18",
