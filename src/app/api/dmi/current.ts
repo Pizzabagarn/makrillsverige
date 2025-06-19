@@ -9,11 +9,14 @@ export type CurrentVector = {
   v: number;
   magnitude: number;
   angleDeg: number;
-  timestamp: string; // 🕒 Nytt fält
+  timestamp: string;
 };
 
 export async function fetchCurrentVectors(lat: number, lon: number): Promise<CurrentVector[]> {
-  const res = await fetch(`/api/dmi/current?lat=${lat}&lon=${lon}`);
+  const isServer = typeof window === "undefined";
+  const baseUrl = isServer ? "http://localhost:3000" : "";
+
+  const res = await fetch(`${baseUrl}/api/dmi/current?lat=${lat}&lon=${lon}`);
   const data = await res.json();
 
   const uValues = extractValues(data, "current-u");
