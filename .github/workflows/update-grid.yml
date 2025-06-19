@@ -21,8 +21,8 @@ jobs:
       - name: 📥 Installera beroenden
         run: npm install
 
-      - name: 🧠 Kör generateGrid.ts
-        run: npx ts-node scripts/generateGrid.ts
+      - name: 🧠 Kör generateGrid.ts med ts-node ESM
+        run: node --loader ts-node/esm scripts/generateGrid.ts
 
       - name: 💾 Commit & push om uppdaterad
         run: |
