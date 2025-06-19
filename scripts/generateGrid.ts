@@ -3,8 +3,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 import fs from 'fs/promises';
 import path from 'path';
-import { generateSamplePointsFromWaterMask } from '../src/lib/extractWaterPoints';
-import { fetchCurrentVectors } from '../src/lib/fetchCurrentVectors';
+import { generateSamplePointsFromWaterMask } from '../src/lib/extractWaterPoints.js';
+import { fetchCurrentVectors } from '../src/lib/fetchCurrentVectors.js';
 
 
 async function main() {
