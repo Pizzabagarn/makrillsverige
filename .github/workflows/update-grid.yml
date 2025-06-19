@@ -1,15 +1,35 @@
-name: Kör Vercel Grid Update
+name: Kör generateGrid.ts via GitHub Actions
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # varje dag kl 02:00 svensk tid (midnatt UTC)
-  workflow_dispatch:      # gör det möjligt att köra manuellt från GitHub
+    - cron: '0 0 * * *' # varje dag kl 02:00 svensk tid (midnatt UTC)
+  workflow_dispatch:
 
 jobs:
-  trigger-vercel:
+  update-grid:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📡 Anropa /api/update-grid på Vercel
+      - name: 📦 Klona repo
+        uses: actions/checkout@v3
+
+      - name: 📚 Installera Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: 📥 Installera beroenden
+        run: npm install
+
+      - name: 🧠 Kör generateGrid.ts
+        run: npx ts-node scripts/generateGrid.ts
+
+      - name: 💾 Commit & push om uppdaterad
         run: |
-          curl -X GET https://makrillsweden.vercel.app/api/update-grid
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add public/data/precomputed-grid.json
+          git commit -m "🔁 Auto-uppdaterad grid" || echo "Inga ändringar"
+          git push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
