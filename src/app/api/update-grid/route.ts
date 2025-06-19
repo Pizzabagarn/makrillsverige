@@ -6,6 +6,14 @@ import { generateSamplePointsFromWaterMask } from "@/lib/extractWaterPoints";
 import { fetchCurrentVectors } from "@/lib/fetchCurrentVectors";
 
 export async function POST() {
+  return await updateGrid();
+}
+
+export async function GET() {
+  return await updateGrid();
+}
+
+async function updateGrid() {
   try {
     const geojsonPath = path.join(process.cwd(), "public/data/skandinavien-water.geojson");
     const outputPath = path.join(process.cwd(), "public/data/precomputed-grid.json");
@@ -21,7 +29,7 @@ export async function POST() {
         const vectors = await fetchCurrentVectors(lat, lon);
         const allValid = vectors.every((v) => v.u !== null && v.v !== null);
         if (allValid) validPoints.push({ lat, lon, vectors });
-        await new Promise((r) => setTimeout(r, 150)); // throttling
+        await new Promise((r) => setTimeout(r, 150));
       } catch {}
     }
 
