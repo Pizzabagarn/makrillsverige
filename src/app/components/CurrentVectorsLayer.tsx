@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMap } from "react-leaflet";
+import { useMap, useMapEvent } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-polylinedecorator";
 import { useTimeSlider } from "../context/TimeSliderContext";
@@ -20,11 +20,24 @@ interface GridPoint {
   vectors: CurrentVector[];
 }
 
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default function CurrentVectorsLayer() {
   const map = useMap();
   const { selectedHour } = useTimeSlider();
   const [precomputedData, setPrecomputedData] = useState<GridPoint[]>([]);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(map.getZoom());
 
   // Ladda vektordata från statisk JSON
   useEffect(() => {
@@ -36,6 +49,11 @@ export default function CurrentVectorsLayer() {
       });
   }, []);
 
+  // Uppdatera zoom vid zoom event
+  useMapEvent("zoomend", () => {
+    setZoomLevel(map.getZoom());
+  });
+
   // Rendera pilar
   useEffect(() => {
     if (precomputedData.length === 0) return;
@@ -46,11 +64,23 @@ export default function CurrentVectorsLayer() {
 
     const layerGroup = L.layerGroup();
 
-    precomputedData.forEach((point) => {
-      const vector = point.vectors.find((v) => v.time.startsWith(selectedTime));
-      if (!vector || vector.u == null || vector.v == null) return;
+    // Avståndskrav i km beroende på zoomnivå
+    const minDistKm = zoomLevel < 5 ? 50 : zoomLevel < 6 ? 35 : zoomLevel < 7 ? 25 : zoomLevel < 8 ? 15 : zoomLevel < 9 ? 8 : zoomLevel < 10 ? 4 : 0;
 
+    const renderedPoints: L.LatLng[] = [];
+
+    for (const point of precomputedData) {
       const { lat, lon } = point;
+      const thisPoint = L.latLng(lat, lon);
+
+      const tooClose = renderedPoints.some(p => haversineDistance(p.lat, p.lng, lat, lon) < minDistKm);
+      if (tooClose) continue;
+
+      renderedPoints.push(thisPoint);
+
+      const vector = point.vectors.find((v) => v.time.startsWith(selectedTime));
+      if (!vector || vector.u == null || vector.v == null) continue;
+
       const { u, v } = vector;
 
       const length = 0.05;
@@ -82,7 +112,7 @@ export default function CurrentVectorsLayer() {
 
       layerGroup.addLayer(arrowLine);
       layerGroup.addLayer(decorator);
-    });
+    }
 
     if (layerRef.current) {
       map.removeLayer(layerRef.current);
@@ -91,7 +121,7 @@ export default function CurrentVectorsLayer() {
     console.log("🎯 Pilar renderade:", layerGroup.getLayers().length / 2);
     layerGroup.addTo(map);
     layerRef.current = layerGroup;
-  }, [precomputedData, selectedHour, map]);
+  }, [precomputedData, selectedHour, zoomLevel, map]);
 
   return null;
 }

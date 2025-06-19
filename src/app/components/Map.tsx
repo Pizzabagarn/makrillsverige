@@ -5,7 +5,8 @@
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
-import WaterMask from './WaterMask'; // 👈
+import WaterMask from './WaterMask';
+import CurrentMagnitudeHeatmap from './CurrentMagnitudeHeatmap';
 
 export default function MapView() {
   const position: [number, number] = [55.65, 12.85];
@@ -24,6 +25,7 @@ export default function MapView() {
         />
 
         <WaterMask />            {/* Lägg mask först */}
+        <CurrentMagnitudeHeatmap />  {/* Heatmap för strömstyrka */}
         <CurrentVectorsLayer />  {/* Pilar ovanpå */}
 
       </MapContainer>

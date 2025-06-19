@@ -16,7 +16,7 @@ export default function WaterMask() {
   useEffect(() => {
     if (!map.getPane('maskPane')) {
       map.createPane('maskPane');
-      map.getPane('maskPane')!.style.zIndex = '100'; // 👈 Lägst prioritet
+      map.getPane('maskPane')!.style.zIndex = '400'; // 👈 Lägst prioritet
     }
   }, [map]);
 
