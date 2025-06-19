@@ -5,46 +5,54 @@ import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-polylinedecorator";
-import { CurrentVector } from "../api/dmi/current";
 import { useTimeSlider } from "../context/TimeSliderContext";
+
+// Typdefinitioner
+interface CurrentVector {
+  u: number;
+  v: number;
+  time: string;
+}
+
+interface GridPoint {
+  lat: number;
+  lon: number;
+  vectors: CurrentVector[];
+}
 
 export default function CurrentVectorsLayer() {
   const map = useMap();
-  const [vectors, setVectors] = useState<CurrentVector[]>([]);
   const { selectedHour } = useTimeSlider();
+  const [precomputedData, setPrecomputedData] = useState<GridPoint[]>([]);
   const layerRef = useRef<L.LayerGroup | null>(null);
 
-  // Hämta alla vektorer från backend-cache
+  // Ladda vektordata från statisk JSON
   useEffect(() => {
-    async function loadAllVectors() {
-      try {
-        const res = await fetch("/api/dmi/full-grid");
-        const data: Record<string, CurrentVector[]> = await res.json();
-
-        const allVectors = Object.values(data).flat();
-        setVectors(allVectors);
-      } catch (err) {
-        console.error("❌ Kunde inte ladda vektorer från /api/dmi/full-grid", err);
-      }
-    }
-
-    loadAllVectors();
+    fetch("/data/precomputed-grid.json")
+      .then((res) => res.json())
+      .then((data) => setPrecomputedData(data))
+      .catch((err) => {
+        console.error("❌ Kunde inte läsa precomputed-grid.json", err);
+      });
   }, []);
 
-  // Uppdatera vektorpilar baserat på valt timsteg
+  // Rendera pilar
   useEffect(() => {
-    if (vectors.length === 0) return;
+    if (precomputedData.length === 0) return;
 
-    const selectedDateUTC = new Date(Date.now() + selectedHour * 3600 * 1000);
+    const selectedTime = new Date(Date.now() + selectedHour * 3600 * 1000)
+      .toISOString()
+      .slice(0, 13); // YYYY-MM-DDTHH
+
     const layerGroup = L.layerGroup();
 
-    vectors.forEach((vec) => {
-      const vecTime = new Date(vec.timestamp);
-      const diff = Math.abs(vecTime.getTime() - selectedDateUTC.getTime());
+    precomputedData.forEach((point) => {
+      const vector = point.vectors.find((v) => v.time.startsWith(selectedTime));
+      if (!vector || vector.u == null || vector.v == null) return;
 
-      if (diff > 30 * 60 * 1000) return; // max ±30min
+      const { lat, lon } = point;
+      const { u, v } = vector;
 
-      const { lat, lon, u, v } = vec;
       const length = 0.05;
       const endLat = lat + length * v;
       const endLng = lon + length * u;
@@ -76,15 +84,14 @@ export default function CurrentVectorsLayer() {
       layerGroup.addLayer(decorator);
     });
 
-    // Ta bort gamla pilar
     if (layerRef.current) {
       map.removeLayer(layerRef.current);
     }
 
-    // Lägg till nya pilar och spara referens
+    console.log("🎯 Pilar renderade:", layerGroup.getLayers().length / 2);
     layerGroup.addTo(map);
     layerRef.current = layerGroup;
-  }, [vectors, selectedHour, map]);
+  }, [precomputedData, selectedHour, map]);
 
   return null;
 }
