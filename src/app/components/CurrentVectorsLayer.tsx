@@ -47,6 +47,7 @@ export default function CurrentVectorsLayer() {
   useEffect(() => {
     const points = [
       { lat: 55.65, lon: 12.85 },
+      { lat: 55.65, lon: 12.90 },
       
     ];
 
