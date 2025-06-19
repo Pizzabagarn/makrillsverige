@@ -25,7 +25,6 @@ export default function MapView() {
         />
 
         <WaterMask />            {/* Lägg mask först */}
-        <CurrentMagnitudeHeatmap />  {/* Heatmap för strömstyrka */}
         <CurrentVectorsLayer />  {/* Pilar ovanpå */}
 
       </MapContainer>
