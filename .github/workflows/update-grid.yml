@@ -1,8 +1,8 @@
-name: Kör generateGrid.ts via GitHub Actions
+name: Kör Vercel Grid Update
 
 on:
   schedule:
-    - cron: '0 0 * * *' # varje dag kl 02:00 svensk tid (midnatt UTC)
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,26 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📦 Klona repo
+      - name: 📥 Klona repo
         uses: actions/checkout@v3
 
-      - name: 📚 Installera Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: 📥 Installera beroenden
+      - name: 📦 Installera beroenden
         run: npm install
 
-      - name: 🧠 Kör generateGrid.ts med ts-node ESM
+      - name: 🧠 Kör generateGrid.ts
+        env:
+          DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
         run: node --loader ts-node/esm scripts/generateGrid.ts
 
-      - name: 💾 Commit & push om uppdaterad
+      - name: 🔄 Lägg till och pusha ändrad grid
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add public/data/precomputed-grid.json
           git commit -m "🔁 Auto-uppdaterad grid" || echo "Inga ändringar"
           git push
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
