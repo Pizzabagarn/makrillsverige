@@ -1,0 +1,15 @@
+name: Kör Vercel Grid Update
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # varje dag kl 02:00 svensk tid (midnatt UTC)
+  workflow_dispatch:      # gör det möjligt att köra manuellt från GitHub
+
+jobs:
+  trigger-vercel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📡 Anropa /api/update-grid på Vercel
+        run: |
+          curl -X GET https://makrillsweden.vercel.app/api/update-grid
