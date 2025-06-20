@@ -65,7 +65,8 @@ export default function CurrentVectorsLayer() {
     const tsPrefix = new Date(Date.now()+selectedHour*3600_000)
       .toISOString().slice(0,13);
 
-    // Seed-avstånd
+    // Kommenterad kod som filtrerade bort punkter baserat på avstånd
+    /*
     const minD = zoomLevel<5?50:
                  zoomLevel<6?35:
                  zoomLevel<7?25:
@@ -73,11 +74,14 @@ export default function CurrentVectorsLayer() {
                  zoomLevel<9?8:4;
 
     const used: L.LatLng[] = [];
+    */
 
     for (const pt of gridData) {
-      // Täthet
+      // Skip täthetsbegränsning
+      /*
       if (used.some(u=>haversineDistance(u.lat,u.lng,pt.lat,pt.lon)<minD)) continue;
       used.push(L.latLng(pt.lat,pt.lon));
+      */
 
       const v = pt.vectors.find(v=>v.time.startsWith(tsPrefix));
       if (!v||v.u==null||v.v==null) continue;

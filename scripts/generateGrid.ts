@@ -11,12 +11,11 @@ dotenv.config({ path: resolve(__dirname, '../.env.local') });
 import fs from 'fs/promises';
 import path from 'path';
 
-// Hämta dina manuella punkter
-import { DMI_GRID_POINTS } from '../src/lib/points.js';
+// ❌ Inaktiverad: manuella punkter
+// import { DMI_GRID_POINTS } from '../src/lib/points.js';
 
-// Funktioner som tidigare
 import { generateSamplePointsFromWaterMask } from '../src/lib/extractWaterPoints.js';
-import { fetchCurrentVectors }           from '../src/lib/fetchCurrentVectors.js';
+import { fetchCurrentVectors } from '../src/lib/fetchCurrentVectors.js';
 
 async function main() {
   const geojsonPath = path.join(process.cwd(), 'public', 'data', 'skandinavien-water.geojson');
@@ -30,12 +29,18 @@ async function main() {
   const autoPoints = generateSamplePointsFromWaterMask(geojson, 0.05);
   console.log(`🌊 Automatiskt genererade punkter: ${autoPoints.length}`);
 
-  // Slå ihop dina manuella + automatiska punkter
+  // ✅ Använd endast automatiska punkter från vattenmasken
+  const allPoints = [...autoPoints];
+
+  // ❌ Tidigare: inkludera manuella punkter
+  /*
   const allPoints = [
     ...DMI_GRID_POINTS,
     ...autoPoints
   ];
-  console.log(`⭐ Totalt att behandla (manuella + auto): ${allPoints.length}`);
+  */
+
+  console.log(`⭐ Totalt att behandla: ${allPoints.length}`);
 
   const validPoints: { lat: number; lon: number; vectors: any[] }[] = [];
 
@@ -43,7 +48,6 @@ async function main() {
     try {
       const vectors = await fetchCurrentVectors(lat, lon);
 
-      // ignore if any null
       const allValid = vectors.every((v) => v.u !== null && v.v !== null);
       if (allValid) {
         validPoints.push({ lat, lon, vectors });
@@ -52,7 +56,6 @@ async function main() {
         console.warn(`⚠ Ogiltig data vid ${lat.toFixed(4)},${lon.toFixed(4)}`);
       }
 
-      // throttle
       await new Promise((r) => setTimeout(r, 150));
     } catch (err) {
       console.warn(`❌ API-fel vid ${lat.toFixed(4)},${lon.toFixed(4)}:`, err instanceof Error ? err.message : err);
