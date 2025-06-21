@@ -13,7 +13,6 @@ import { useRef } from 'react';
 
 export default function ClockKnob() {
   const { selectedHour, setSelectedHour, minHour, maxHour } = useTimeSlider();
-
   const clampedHour = Math.max(minHour, Math.min(selectedHour, maxHour));
   const value = (clampedHour - minHour) / (maxHour - minHour);
   const lastValue = useRef(value);
@@ -57,86 +56,27 @@ export default function ClockKnob() {
     const b = Math.round(50 - v * 50);
     return `rgb(${r},${Math.max(g, 0)},${Math.max(b, 0)})`;
   };
+
   const progressColor = getColor(value);
 
   return (
-    <div className="w-full px-4 py-5 bg-black/40 backdrop-blur-xl rounded-2xl shadow-xl text-white relative">
-      {/* Glow-filter för desktop */}
+    <div className="w-full px-4 py-4 md:py-5 bg-black/40 backdrop-blur-xl rounded-2xl shadow-xl text-white relative">
       <svg width="0" height="0">
         <defs>
           <filter id="glow">
-            <feDropShadow
-              dx="0"
-              dy="0"
-              stdDeviation="3"
-              floodColor={progressColor}
-              floodOpacity="0.6"
-            />
+            <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor={progressColor} floodOpacity="0.6" />
           </filter>
         </defs>
       </svg>
 
-      {/* Dag-knappar (desktop) */}
-      <div className="hidden md:flex justify-between mb-2 px-4">
-        <button
-          onClick={() => setSelectedHour(clampedHour - 24)}
-          disabled={clampedHour <= minHour}
-          className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-            clampedHour <= minHour
-              ? 'bg-white/5 text-white/30 cursor-default'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
-        >
-          « -1 dag
-        </button>
-        <button
-          onClick={() => setSelectedHour(clampedHour + 24)}
-          disabled={clampedHour >= maxHour}
-          className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-            clampedHour >= maxHour
-              ? 'bg-white/5 text-white/30 cursor-default'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
-        >
-          +1 dag »
-        </button>
-      </div>
-
-      {/* Tim-knappar (desktop) */}
-      <div className="hidden md:flex justify-between mb-4 px-4">
-        <button
-          onClick={() => setSelectedHour(clampedHour - 1)}
-          disabled={clampedHour <= minHour}
-          className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-            clampedHour <= minHour
-              ? 'bg-white/5 text-white/30 cursor-default'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
-        >
-          − 1 tim
-        </button>
-        <button
-          onClick={() => setSelectedHour(clampedHour + 1)}
-          disabled={clampedHour >= maxHour}
-          className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-            clampedHour >= maxHour
-              ? 'bg-white/5 text-white/30 cursor-default'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
-        >
-          +1 tim
-        </button>
-      </div>
-
-      {/* Titel */}
-      <h3 className="text-center text-sm font-semibold mb-4 tracking-wider text-white/90 uppercase">
+      {/* Desktop-rubrik */}
+      <h3 className="hidden md:block text-center text-sm font-semibold mb-4 tracking-wider text-white/90 uppercase">
         Välj prognostid
       </h3>
 
       {/* Knob och knappar mobil */}
-     <div className="flex flex-col md:items-stretch">
-        {/* Cirkeln centrerad */}
-         <div className="mx-auto">
+      <div className="flex flex-col md:items-stretch">
+        <div className="mx-auto">
           <CircularInput
             value={value}
             onChange={(v) => {
@@ -162,12 +102,24 @@ export default function ClockKnob() {
               style={{ filter: `drop-shadow(0 0 3px ${progressColor})` }}
             />
 
+            {/* MOBILTEXT INUTI CIRKELN */}
             <text
               x={80}
-              y={62}
+              y={40}
               textAnchor="middle"
-              fontSize="18"
-              fontWeight="600"
+              fontSize="10"
+              fill="#fff"
+              className="md:hidden"
+              style={{ filter: 'drop-shadow(0 0 2px #fff)' }}
+            >
+              Välj prognostid
+            </text>
+            <text
+              x={80}
+              y={60}
+              textAnchor="middle"
+              fontSize="16"
+              fontWeight="bold"
               fill="#ffffff"
               style={{ filter: 'drop-shadow(0 0 2px #fff)' }}
             >
@@ -175,10 +127,9 @@ export default function ClockKnob() {
             </text>
             <text
               x={80}
-              y={82}
+              y={77}
               textAnchor="middle"
-              fontSize="16"
-              fontWeight="bold"
+              fontSize="14"
               fill="#ffffff"
               style={{ filter: 'drop-shadow(0 0 2px #fff)' }}
             >
@@ -186,9 +137,9 @@ export default function ClockKnob() {
             </text>
             <text
               x={80}
-              y={102}
+              y={94}
               textAnchor="middle"
-              fontSize="18"
+              fontSize="16"
               fontWeight="bold"
               fill="#ffffff"
               style={{ filter: 'drop-shadow(0 0 3px #fff)' }}
@@ -197,7 +148,7 @@ export default function ClockKnob() {
             </text>
             <text
               x={80}
-              y={120}
+              y={110}
               textAnchor="middle"
               fontSize="11"
               fill="#e0e0e0"
@@ -210,48 +161,20 @@ export default function ClockKnob() {
 
         {/* Mobil-knappar */}
         <div className="flex justify-between w-full mt-4 px-4 md:hidden">
-          <button
-            onClick={() => setSelectedHour(clampedHour - 24)}
-            disabled={clampedHour <= minHour}
-            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-              clampedHour <= minHour
-                ? 'bg-white/5 text-white/30 cursor-default'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
+          <button onClick={() => setSelectedHour(clampedHour - 24)} disabled={clampedHour <= minHour}
+            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour <= minHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
             « -1 dag
           </button>
-          <button
-            onClick={() => setSelectedHour(clampedHour - 1)}
-            disabled={clampedHour <= minHour}
-            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-              clampedHour <= minHour
-                ? 'bg-white/5 text-white/30 cursor-default'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
+          <button onClick={() => setSelectedHour(clampedHour - 1)} disabled={clampedHour <= minHour}
+            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour <= minHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
             − 1 tim
           </button>
-          <button
-            onClick={() => setSelectedHour(clampedHour + 1)}
-            disabled={clampedHour >= maxHour}
-            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-              clampedHour >= maxHour
-                ? 'bg-white/5 text-white/30 cursor-default'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
+          <button onClick={() => setSelectedHour(clampedHour + 1)} disabled={clampedHour >= maxHour}
+            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour >= maxHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
             +1 tim
           </button>
-          <button
-            onClick={() => setSelectedHour(clampedHour + 24)}
-            disabled={clampedHour >= maxHour}
-            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${
-              clampedHour >= maxHour
-                ? 'bg-white/5 text-white/30 cursor-default'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
+          <button onClick={() => setSelectedHour(clampedHour + 24)} disabled={clampedHour >= maxHour}
+            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour >= maxHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
             +1 dag »
           </button>
         </div>

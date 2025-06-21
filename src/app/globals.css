@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom variables */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -38,4 +43,18 @@ html, body, #__next {
     font-size: 8px;
     padding: 0 4px;
   }
+}
+
+/* Glöd-animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 90px 25px rgba(80, 200, 255, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 120px 45px rgba(80, 200, 255, 0.55);
+  }
+}
+
+.glow-pulse {
+  animation: pulse-glow 4s ease-in-out infinite;
 }
