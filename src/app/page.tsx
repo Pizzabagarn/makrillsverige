@@ -7,7 +7,7 @@ import ClockKnob from './components/ClockKnob';
 
 export default function Home() {
   return (
-    <div className="h-screen w-full bg-[url('/images/makrill-bg.jpg')] bg-cover bg-center flex flex-col items-center px-2 pt-6">
+    <div className="min-h-screen w-full bg-[url('/images/makrill-bg.jpg')] bg-cover bg-center flex flex-col items-center px-2 pt-6 overflow-auto">
       <div className="absolute top-0 left-0 right-0 h-[100px] bg-gradient-to-b from-black/40 to-transparent z-10" />
 
       <div className="z-30 relative flex flex-col items-center justify-center text-center min-h-[120px] pt-12 md:pt-[4vh] mb-4 px-4">
@@ -21,9 +21,13 @@ export default function Home() {
 
       <MapView />
 
-      <div className="fixed bottom-[140px] left-1/2 transform -translate-x-1/2 z-50 w-[90%] md:hidden">
+      {/* Responsiv position på mobilen */}
+      <div
+        className="fixed left-1/2 transform -translate-x-1/2 z-50 w-[90%] md:hidden"
+        style={{ bottom: `calc(8vh + var(--safe-bottom))` }}
+      >
         <ClockKnob />
       </div>
     </div>
   );
-} 
+}

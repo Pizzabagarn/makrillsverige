@@ -28,6 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="sv">
+      <head>
+        {/* Gör sidan responsiv på mobila enheter */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <TimeSliderProvider> {/* 👈 wrappa ALLT */}
           <SidebarWithToggle>
