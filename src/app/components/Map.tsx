@@ -1,4 +1,5 @@
-// src/components/Map.tsx
+//src/app/components/Map.tsx
+
 'use client';
 
 import React from 'react';
@@ -12,40 +13,19 @@ export default function MapView() {
 
   return (
     <div
-      className="
-    relative
-    w-full
-    max-w-6xl
-
-    /* 📱 Mobilhöjd – kortare och manuellt styrd */
-    h-[32vh]
-
-    /* 🖥 Desktop: ignorera mobilhöjd, använd aspect-ratio */
-    sm:h-auto
-    sm:aspect-[4/3]
-
-    /* Mobil: ingen aspect-ratio så att h-[32vh] styr */
-    aspect-auto
-
-    mx-auto
-    mt-[2vh]
-    sm:mt-[6vh]
-
-    md:mb-[20vh]
-    rounded-3xl
-    border border-white/10
-    bg-white/5
-    backdrop-blur-md
-    overflow-hidden
-    glow-pulse
-  "
+      className="absolute top-0 left-0 right-0 bottom-[120px] lg:bottom-0 z-0 glow-pulse overflow-hidden"
+      style={{
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 2%, black 100%)',
+        maskImage: 'linear-gradient(to bottom, transparent 0%, black 2%, black 100%)',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+      }}
     >
-
       <MapContainer
         center={position}
         zoom={8.5}
         scrollWheelZoom
-        className="absolute inset-0 w-full h-full z-10"
+        className="absolute inset-0 w-full h-full"
       >
         <TileLayer
           attribution="&copy; Esri, Maxar, Earthstar Geographics"
