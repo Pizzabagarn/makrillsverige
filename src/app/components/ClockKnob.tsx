@@ -69,101 +69,55 @@ export default function ClockKnob() {
         </defs>
       </svg>
 
-      {/* Desktop-rubrik */}
-      <h3 className="hidden md:block text-center text-sm font-semibold mb-4 tracking-wider text-white/90 uppercase">
+      {/* Rubrik */}
+      <h3 className="text-center text-sm font-semibold mb-4 tracking-wider text-white/90 uppercase">
         Välj prognostid
       </h3>
 
-      {/* Knob och knappar mobil */}
-      <div className="flex flex-col md:items-stretch">
-        <div className="mx-auto">
-          <CircularInput
-            value={value}
-            onChange={(v) => {
-              const delta = Math.abs(v - lastValue.current);
-              if (delta > 0.5) return;
-              const scaled = Math.round(v * (maxHour - minHour) + minHour);
-              if (scaled < minHour || scaled > maxHour) return;
-              if (scaled !== clampedHour) setSelectedHour(scaled);
-              lastValue.current = v;
-            }}
-            radius={80}
-          >
-            <CircularTrack stroke="#ffffff10" strokeWidth={8} />
-            <CircularProgress
-              stroke={progressColor}
-              strokeWidth={8}
-              filter="url(#glow)"
-              style={{ filter: `drop-shadow(0 0 6px ${progressColor})` }}
-            />
-            <CircularThumb
-              r={6}
-              fill={progressColor}
-              style={{ filter: `drop-shadow(0 0 3px ${progressColor})` }}
-            />
+      {/* Knob och knappar */}
+      <div className="flex flex-col items-center">
+        <CircularInput
+          value={value}
+          onChange={(v) => {
+            const delta = Math.abs(v - lastValue.current);
+            if (delta > 0.5) return;
+            const scaled = Math.round(v * (maxHour - minHour) + minHour);
+            if (scaled < minHour || scaled > maxHour) return;
+            if (scaled !== clampedHour) setSelectedHour(scaled);
+            lastValue.current = v;
+          }}
+          radius={80}
+        >
+          <CircularTrack stroke="#ffffff10" strokeWidth={8} />
+          <CircularProgress
+            stroke={progressColor}
+            strokeWidth={8}
+            filter="url(#glow)"
+            style={{ filter: `drop-shadow(0 0 6px ${progressColor})` }}
+          />
+          <CircularThumb
+            r={6}
+            fill={progressColor}
+            style={{ filter: `drop-shadow(0 0 3px ${progressColor})` }}
+          />
+        </CircularInput>
 
-            {/* MOBILTEXT INUTI CIRKELN */}
-            <text
-              x={80}
-              y={40}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#fff"
-              className="md:hidden"
-              style={{ filter: 'drop-shadow(0 0 2px #fff)' }}
-            >
-              Välj prognostid
-            </text>
-            <text
-              x={80}
-              y={60}
-              textAnchor="middle"
-              fontSize="16"
-              fontWeight="bold"
-              fill="#ffffff"
-              style={{ filter: 'drop-shadow(0 0 2px #fff)' }}
-            >
-              {weekday}
-            </text>
-            <text
-              x={80}
-              y={77}
-              textAnchor="middle"
-              fontSize="14"
-              fill="#ffffff"
-              style={{ filter: 'drop-shadow(0 0 2px #fff)' }}
-            >
-              {fullDate}
-            </text>
-            <text
-              x={80}
-              y={94}
-              textAnchor="middle"
-              fontSize="16"
-              fontWeight="bold"
-              fill="#ffffff"
-              style={{ filter: 'drop-shadow(0 0 3px #fff)' }}
-            >
-              {time}
-            </text>
-            <text
-              x={80}
-              y={110}
-              textAnchor="middle"
-              fontSize="11"
-              fill="#e0e0e0"
-              style={{ filter: 'drop-shadow(0 0 1px #aaa)' }}
-            >
-              Prognos: {offsetString}
-            </text>
-          </CircularInput>
+        <div className="mt-3 text-center">
+          <p className="text-lg font-bold leading-none">{weekday}</p>
+          <p className="text-md font-semibold leading-tight">{fullDate}</p>
+          <p className="text-md font-bold leading-tight">{time}</p>
+          <p className="text-sm opacity-80 mt-1">Prognos: {offsetString}</p>
         </div>
 
-        {/* Mobil-knappar */}
-        <div className="flex justify-between w-full mt-4 px-4 md:hidden">
+        {/* Knappar */}
+        <div className="flex flex-wrap justify-center gap-2 mt-4">
           <button onClick={() => setSelectedHour(clampedHour - 24)} disabled={clampedHour <= minHour}
             className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour <= minHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
             « -1 dag
+          </button>
+          <button onClick={() => setSelectedHour(clampedHour + 24)} disabled={clampedHour >= maxHour}
+            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour >= maxHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+            +1 dag »
           </button>
           <button onClick={() => setSelectedHour(clampedHour - 1)} disabled={clampedHour <= minHour}
             className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour <= minHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
@@ -172,10 +126,6 @@ export default function ClockKnob() {
           <button onClick={() => setSelectedHour(clampedHour + 1)} disabled={clampedHour >= maxHour}
             className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour >= maxHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
             +1 tim
-          </button>
-          <button onClick={() => setSelectedHour(clampedHour + 24)} disabled={clampedHour >= maxHour}
-            className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour >= maxHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-            +1 dag »
           </button>
         </div>
       </div>
