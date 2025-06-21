@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import SidebarWithToggle from "./components/SidebarLayout";
-import { TimeSliderProvider } from "./context/TimeSliderContext"; // 👈 ny
+import { TimeSliderProvider } from "./context/TimeSliderContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   description: "Fiskedata och havsprognoser längs västkusten",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+  maximumScale: 1.0,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,8 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="sv">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <TimeSliderProvider> {/* 👈 wrappa ALLT */}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen w-screen overflow-y-auto`}>
+
+        <TimeSliderProvider>
           <SidebarWithToggle>
             {children}
           </SidebarWithToggle>

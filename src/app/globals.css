@@ -6,55 +6,64 @@
 
 /* Custom variables */
 :root {
---background: #ffffff;
---foreground: #171717;
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
 @theme inline {
---color-background: var(--background);
---color-foreground: var(--foreground);
---font-sans: var(--font-geist-sans);
---font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
-:root {
---background: #0a0a0a;
---foreground: #ededed;
-}
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
 }
 
 body {
-background: var(--background);
-color: var(--foreground);
-font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-html, body, #__next {
-height: 100%;
+html,
+body,
+#__next {
+  height: 100%;
 }
 
 .leaflet-control-attribution {
-font-size: 10px;
+  font-size: 10px;
 }
 
 @media (max-width: 640px) {
-.leaflet-control-attribution {
-font-size: 8px;
-padding: 0 4px;
-}
+  .leaflet-control-attribution {
+    font-size: 8px;
+    padding: 0 4px;
+  }
 }
 
 /* Glöd-animation */
 @keyframes pulse-glow {
-0%, 100% {
-box-shadow: inset 0 0 90px 25px rgba(231, 189, 52, 0.93);
-}
-50% {
-box-shadow: inset 0 0 120px 45px rgba(255, 179, 0, 0.866);
-}
+
+  0%,
+  100% {
+    box-shadow: inset 0 0 90px 25px rgba(231, 189, 52, 0.93);
+  }
+
+  50% {
+    box-shadow: inset 0 0 120px 45px rgba(255, 179, 0, 0.866);
+  }
 }
 
 .glow-pulse {
-animation: pulse-glow 4s ease-in-out infinite;
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+html, body {
+  height: 100%;
 }
