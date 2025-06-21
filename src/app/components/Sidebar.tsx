@@ -1,11 +1,12 @@
 // src/components/Sidebar.tsx
+
 'use client';
 
 import ClockKnob from './ClockKnob';
 
 export default function Sidebar() {
   return (
-    <div className="h-full w-64 backdrop-blur-sm bg-black/30 text-white p-6 flex flex-col justify-between border-r border-white/10">
+    <div className="h-full w-full md:w-64 backdrop-blur-sm bg-black/30 text-white p-6 flex flex-col justify-between border-r border-white/10">
       <div>
         <h2 className="text-xl font-bold mb-4">Makrill</h2>
         <ul className="space-y-2 text-sm">
@@ -16,10 +17,10 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      <div className="mt-6">
+      {/* Clock hidden on mobile */}
+      <div className="mt-6 hidden md:block">
         <ClockKnob />
       </div>
     </div>
   );
 }
-
