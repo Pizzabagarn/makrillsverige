@@ -1,29 +1,22 @@
-//src/app/page.tsx
-
 'use client';
 
 import dynamic from 'next/dynamic';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
-const MobileTimeSlider = dynamic(() => import('./components/MobileTimeSlider'), { ssr: false });
 
 export default function Home() {
   return (
-    <div className="h-screen w-screen flex flex-col lg:flex-row overflow-hidden">
-      {/* SIDEBAR hanteras av layout.tsx */}
+    <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
+      {/* Karta (70%) */}
+      <div className="flex-1 min-h-0">
+        <MapView />
+      </div>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col">
-
-        {/* KARTA */}
-        <div className="flex-1 relative overflow-hidden">
-          <MapView />
-        </div>
-
-        {/* MOBIL: TimeSlider under kartan */}
-        <div className="block lg:hidden w-full h-[100px] z-10 bg-black/80">
-          <MobileTimeSlider />
+      {/* KLOCKA (absolut över kartan längst ner) */}
+      <div className="md:hidden absolute bottom-0 left-0 w-full h-[50vh] z-[1000]">
+        <div className="w-full h-full bg-black/80 backdrop-blur-md rounded-none md:rounded-t-2xl shadow-xl">
+          <ClockKnob />
         </div>
       </div>
     </div>

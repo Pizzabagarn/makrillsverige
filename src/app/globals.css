@@ -34,7 +34,14 @@ html,
 body,
 #__next {
   height: 100%;
+  max-height: 100vh;
+  /* 🔧 Stoppar att det växer utanför skärmen */
+  overflow-y: hidden;
+  /* 🧹 Stoppar vertikal scroll */
+  box-sizing: border-box;
 }
+
+
 
 .leaflet-control-attribution {
   font-size: 10px;
@@ -64,6 +71,13 @@ body,
   animation: pulse-glow 4s ease-in-out infinite;
 }
 
-html, body {
-  height: 100%;
+/* Ta bort zoom-knapparna på skärmar smalare än 640px */
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    display: none !important;
+  }
+}
+
+.glow-ring {
+  filter: drop-shadow(0 0 6px var(--glow-color));
 }

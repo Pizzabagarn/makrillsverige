@@ -29,12 +29,13 @@ export const viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="sv">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen w-screen overflow-y-auto`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+
         <TimeSliderProvider>
           <SidebarWithToggle>
             {children}

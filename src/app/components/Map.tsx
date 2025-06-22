@@ -1,4 +1,7 @@
-// src/components/Map.tsx
+//src/app/components/Map.tsx
+
+// src/app/components/Map.tsx
+
 'use client';
 
 import { MapContainer, TileLayer } from 'react-leaflet';
@@ -10,7 +13,7 @@ export default function MapView() {
   const position: [number, number] = [55.65, 12.85];
 
   return (
-    <div className="relative w-full grow h-full overflow-hidden">
+    <div className="relative w-full h-full">
       <MapContainer
         center={position}
         zoom={8.5}
