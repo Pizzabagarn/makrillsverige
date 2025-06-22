@@ -77,3 +77,7 @@ body,
     display: none !important;
   }
 }
+
+.glow-ring {
+  filter: drop-shadow(0 0 6px var(--glow-color));
+}
