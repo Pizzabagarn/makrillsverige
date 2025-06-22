@@ -35,7 +35,6 @@ export default function RootLayout({
   return (
     <html lang="sv">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen w-screen overflow-y-auto`}>
-
         <TimeSliderProvider>
           <SidebarWithToggle>
             {children}
