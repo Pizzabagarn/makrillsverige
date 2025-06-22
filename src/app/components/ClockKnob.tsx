@@ -60,7 +60,19 @@ export default function ClockKnob() {
   const progressColor = getColor(value);
 
   return (
-    <div className="w-full px-4 py-4 md:py-5 bg-black/40 backdrop-blur-xl rounded-2xl shadow-xl text-white relative">
+    <div
+      className="
+        w-full h-full px-4 py-2
+        bg-black/40 backdrop-blur-xl text-white
+        overflow-hidden flex flex-col justify-center items-center
+
+        // Rundade hörn bara i sidebar (desktop)
+        md:rounded-2xl
+
+        // Rundade hörn i mobil under kartan
+        portrait:rounded-t-2xl
+      "
+    >
       <svg width="0" height="0">
         <defs>
           <filter id="glow">
@@ -69,12 +81,10 @@ export default function ClockKnob() {
         </defs>
       </svg>
 
-      {/* Rubrik */}
       <h3 className="text-center text-sm font-semibold mb-4 tracking-wider text-white/90 uppercase">
         Välj prognostid
       </h3>
 
-      {/* Knob och knappar */}
       <div className="flex flex-col items-center">
         <CircularInput
           value={value}
@@ -87,6 +97,7 @@ export default function ClockKnob() {
             lastValue.current = v;
           }}
           radius={80}
+          className="portrait:scale-90"
         >
           <CircularTrack stroke="#ffffff10" strokeWidth={8} />
           <CircularProgress
@@ -109,7 +120,6 @@ export default function ClockKnob() {
           <p className="text-sm opacity-80 mt-1">Prognos: {offsetString}</p>
         </div>
 
-        {/* Knappar */}
         <div className="flex flex-wrap justify-center gap-2 mt-4">
           <button onClick={() => setSelectedHour(clampedHour - 24)} disabled={clampedHour <= minHour}
             className={`text-xs px-3 py-1 rounded-md backdrop-blur-md shadow ${clampedHour <= minHour ? 'bg-white/5 text-white/30 cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}>
