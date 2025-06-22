@@ -2,9 +2,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  content: [
-    './src/**/*.{js,ts,jsx,tsx}',
-  ],
+  content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       maxHeight: {
@@ -12,7 +10,23 @@ const config: Config = {
         'screen-1/3': '33vh',
         '30vh': '30vh',
       },
-    },
+      screens: {
+        's5': '360px',
+        's8': '360px',
+        'xs': '375px',
+        'iph13mini': '375px',
+        'iph13_15': '390px',
+        'iph13pro': '393px',
+        'iph15pro': '393px',
+        'iphxr': '414px',
+        'px7': '412px',
+        'px3xl': '411px',
+        'iph14promax': '430px',
+        'iph15promax': '430px',
+      }
+    }
   },
   plugins: [],
 };
+
+export default config;
