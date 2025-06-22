@@ -70,3 +70,10 @@ body,
 .glow-pulse {
   animation: pulse-glow 4s ease-in-out infinite;
 }
+
+/* Ta bort zoom-knapparna på skärmar smalare än 640px */
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    display: none !important;
+  }
+}

@@ -19,7 +19,7 @@ export default function MapView() {
         center={position}
         zoom={8.5}
         scrollWheelZoom
-        className="absolute top-0 left-0 right-0 bottom-[30vh] md:bottom-0 landscape:bottom-0"
+        className="w-full h-full"
       >
         <TileLayer
           attribution="&copy; Esri, Maxar, Earthstar Geographics"
