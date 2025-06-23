@@ -28,12 +28,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
-html,
-body,
-#__next {
+/* Clean viewport height setup */
+html, body {
   height: 100%;
+}
+
+/* Mobile viewport fix - only target .h-screen class */
+@media screen and (max-width: 768px) {
+  .h-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  html {
+    height: -webkit-fill-available;
+  }
 }
 
 .leaflet-control-attribution {
@@ -49,12 +62,9 @@ body,
 
 /* Glöd-animation */
 @keyframes pulse-glow {
-
-  0%,
-  100% {
+  0%, 100% {
     box-shadow: inset 0 0 90px 25px rgba(231, 189, 52, 0.93);
   }
-
   50% {
     box-shadow: inset 0 0 120px 45px rgba(255, 179, 0, 0.866);
   }
@@ -62,8 +72,4 @@ body,
 
 .glow-pulse {
   animation: pulse-glow 4s ease-in-out infinite;
-}
-
-html, body {
-  height: 100%;
 }
