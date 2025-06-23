@@ -24,7 +24,7 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      {/* ClockKnob visas i sidebar på desktop och landscape/ipads */}
+      {/* Clock hidden on mobile */}
       <div className="mt-6 hidden md:block">
         <ClockKnob />
       </div>
