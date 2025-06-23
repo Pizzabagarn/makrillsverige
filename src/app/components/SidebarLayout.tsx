@@ -22,7 +22,7 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
         </div>
 
         {/* Hamburger-knapp */}
-        <div className="md:hidden fixed top-4 left-4 z-50">
+        <div className="md:hidden fixed top-4 left-4 z-1000">
           <button
             onClick={() => setOpen(!open)}
             className="bg-white/20 backdrop-blur-md p-2 rounded-md text-white"
