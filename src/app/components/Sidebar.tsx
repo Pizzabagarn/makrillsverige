@@ -28,7 +28,7 @@ export default function Sidebar() {
       </div>
 
       {/* Clock hidden on mobile */}
-      <div className="mt-6 hidden lg:block">
+      <div className="mt-6 hidden md:block">
         <ClockKnob />
       </div>
     </div>

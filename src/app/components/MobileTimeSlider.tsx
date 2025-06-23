@@ -5,7 +5,7 @@
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useRef, useState } from 'react';
 
-export default function MobileTimeSlider() {
+export default function MobileTimeSlider({ className = "" }: { className?: string }) {
   const { selectedHour, setSelectedHour, minHour, maxHour } = useTimeSlider();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -55,31 +55,42 @@ export default function MobileTimeSlider() {
 
   return (
     <div
-      className="w-full h-[100px] px-4 py-3 bg-black/70 backdrop-blur-lg text-white select-none"
+      className={`w-full h-full ${className}`}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <div className="text-center mb-2">
-        <p className="text-xs tracking-wide uppercase text-white/60">PROGNOSTID</p>
-        <p className="text-sm font-semibold">{weekday}, {time}</p>
-        <p className="text-xs">{date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+      <div className="text-center mb-3 px-2">
+        <p className="text-xs tracking-wide uppercase text-white/50">PROGNOSTID</p>
+        <p className="text-lg font-bold tracking-tight drop-shadow-sm">{weekday}, {time}</p>
+        <p className="text-xs text-white/70">{date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
       </div>
 
       <div
         ref={containerRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        className="relative h-6 rounded-full bg-white/20 touch-none"
+        className="relative h-10 w-full max-w-full overflow-hidden rounded-full bg-white/15 touch-none select-none flex items-center cursor-pointer pl-5 pr-5"
       >
+        {/* Progress bar */}
         <div
-          className="absolute h-full bg-orange-400 rounded-full transition-all duration-150 ease-out"
-          style={{ width: `${percent * 100}%` }}
+          className="absolute h-3 bg-gradient-to-r from-orange-400 via-yellow-300 to-orange-500 rounded-full transition-all duration-150 ease-out shadow-md"
+          style={{ left: 0, right: 0, width: `calc(${percent * 100}% )`, top: '50%', transform: 'translateY(-50%)' }}
         />
+        {/* Thumb (slider knob) */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-orange-400 shadow-xl transition-all"
-          style={{ left: `${percent * 100}%`, transform: 'translate(-50%, -50%)' }}
-        />
+          className="absolute z-10 top-1/2 w-10 h-10 rounded-full bg-orange-400 shadow-2xl border-4 border-white/80 transition-all duration-100 ease-out glow-pulse"
+          style={{ left: `calc(${percent * 100}% + 1.25rem)`, transform: 'translate(-50%, -50%)' }}
+        >
+          {/* Tooltip above thumb */}
+          {isDragging && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-black/90 text-xs font-semibold text-white shadow-lg border border-white/10 pointer-events-none animate-fade-in">
+              {time}
+            </div>
+          )}
+        </div>
+        {/* Slider track border for better contrast */}
+        <div className="absolute h-3 w-full rounded-full border border-white/20 pointer-events-none" style={{ left: 0, right: 0, top: '50%', transform: 'translateY(-50%)' }} />
       </div>
     </div>
   );
