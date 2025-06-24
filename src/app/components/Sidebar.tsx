@@ -48,8 +48,8 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      {/* Clock - nu visas även i mobil landscape */}
-      <div className={`${isMobileLandscape ? 'mt-1' : 'mt-6'} hidden md:block`} style={{ display: isMobileLandscape ? 'block' : undefined }}>
+      {/* Clock - visas alltid i sidebaren */}
+      <div className={`${isMobileLandscape ? 'mt-1' : 'mt-6'}`}>
         <ClockKnob />
       </div>
     </div>

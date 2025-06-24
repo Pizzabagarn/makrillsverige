@@ -8,22 +8,28 @@ export function getLayoutType(): LayoutType {
   const isLandscape = width > height;
   const isPortrait = height > width;
   
+  console.log(`Layout Debug: ${width}x${height}, landscape: ${isLandscape}, portrait: ${isPortrait}`);
+  
   // 1. Desktop: Stora skärmar (≥1200px bredd)
   if (width >= 1200) {
+    console.log('-> desktop');
     return 'desktop';
   }
   
-  // 2. Små mobiler i landscape: Mycket låg höjd när roterad
-  if (isLandscape && height <= 450) {
+  // 2. Mobiler i landscape: Kompakt layout för landscape-enheter
+  if (isLandscape && height <= 600 && width <= 1000) {
+    console.log('-> mobileLandscape');
     return 'mobileLandscape';
   }
   
   // 3. Små mobiler i portrait: Smal bredd OCH portrait
   if (isPortrait && width <= 600) {
+    console.log('-> mobilePortrait');
     return 'mobilePortrait';
   }
   
   // 4. Allt annat: Tablets, mellanstorlekar, bredare enheter
+  console.log('-> tablet');
   return 'tablet';
 }
 

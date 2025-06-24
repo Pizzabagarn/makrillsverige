@@ -26,15 +26,15 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
   }, []);
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-dvh w-full">
       {/* Bakgrundsbild & dim */}
       <div className="absolute inset-0 bg-[url('/images/makrill-bg.jpg')] bg-cover bg-center bg-no-repeat" />
       <div className="absolute inset-0 bg-black/30 z-0" />
 
       {/* Innehåll i desktop */}
       <div className="relative z-10 flex h-full">
-        {/* Sidebar för desktop och mobil landscape */}
-        {shouldShowSidebar(layoutType) && (
+        {/* Sidebar - visa ALLTID utom för mobilePortrait */}
+        {layoutType !== 'mobilePortrait' && (
           <div 
             className="block w-64" 
             style={{ width: layoutType === 'mobileLandscape' ? 'clamp(200px, 25vh, 280px)' : undefined }}
@@ -43,9 +43,9 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
           </div>
         )}
 
-        {/* Hamburger-knapp för tablets och andra mellanstorlekar */}
-        {shouldShowHamburger(layoutType) && (
-          <div className="fixed top-4 left-4 z-1000">
+        {/* Hamburger-knapp - visa för tablet layout */}
+        {layoutType === 'tablet' && (
+          <div className="fixed top-4 left-4 z-[1000]">
             <button
               onClick={() => setOpen(!open)}
               className="bg-white/20 backdrop-blur-md p-2 rounded-md text-white"
