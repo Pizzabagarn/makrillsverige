@@ -16,7 +16,7 @@ export default function Home() {
       {/* SIDEBAR hanteras av layout.tsx */}
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 relative overflow-hidden max-h-[625px] md:max-h-full">
 
         {/* Hamburger-ikon för mobil */}
         <button
@@ -28,14 +28,17 @@ export default function Home() {
         </button>
 
         {/* KARTA */}
-        <div className="flex-1 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 bottom-[112px] md:bottom-0 overflow-hidden">
           <MapView showZoom={false} />
         </div>
 
         {/* MOBIL: TimeSlider under kartan */}
         <div
-          className="block md:hidden w-full z-10 px-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-x border-b border-white/10 ring-1 ring-white/10 h-[18vh] flex flex-col justify-center"
-          style={{ ['--mtscale' as any]: 'calc(18vh / 120px)' } as React.CSSProperties}
+          className="md:hidden absolute bottom-0 left-0 right-0 z-10 px-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-x border-b border-white/10 ring-1 ring-white/10 flex flex-col justify-center"
+          style={{ 
+            height: '112px', // Fast 112px (18% av 625px)
+            ['--mtscale' as any]: 'calc(112px / 120px)' 
+          } as React.CSSProperties}
         >
           <MobileTimeSlider className="backdrop-blur-2xl text-white py-3" />
         </div>
