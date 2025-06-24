@@ -2,11 +2,28 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
+import { getLayoutType, shouldShowSidebar, shouldShowHamburger, type LayoutType } from '../../lib/layoutUtils';
 
 export default function SidebarWithToggle({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
+
+  useEffect(() => {
+    const checkLayout = () => {
+      setLayoutType(getLayoutType());
+    };
+    
+    checkLayout();
+    window.addEventListener('resize', checkLayout);
+    window.addEventListener('orientationchange', checkLayout);
+    
+    return () => {
+      window.removeEventListener('resize', checkLayout);
+      window.removeEventListener('orientationchange', checkLayout);
+    };
+  }, []);
 
   return (
     <div className="relative h-screen w-full">
@@ -16,20 +33,27 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
 
       {/* Innehåll i desktop */}
       <div className="relative z-10 flex h-full">
-        {/* Sidebar desktop */}
-        <div className="hidden md:block w-64">
-          <Sidebar />
-        </div>
-
-        {/* Hamburger-knapp */}
-        <div className="md:hidden fixed top-4 left-4 z-1000">
-          <button
-            onClick={() => setOpen(!open)}
-            className="bg-white/20 backdrop-blur-md p-2 rounded-md text-white"
+        {/* Sidebar för desktop och mobil landscape */}
+        {shouldShowSidebar(layoutType) && (
+          <div 
+            className="block w-64" 
+            style={{ width: layoutType === 'mobileLandscape' ? 'clamp(200px, 25vh, 280px)' : undefined }}
           >
-            ☰
-          </button>
-        </div>
+            <Sidebar />
+          </div>
+        )}
+
+        {/* Hamburger-knapp för tablets och andra mellanstorlekar */}
+        {shouldShowHamburger(layoutType) && (
+          <div className="fixed top-4 left-4 z-1000">
+            <button
+              onClick={() => setOpen(!open)}
+              className="bg-white/20 backdrop-blur-md p-2 rounded-md text-white"
+            >
+              ☰
+            </button>
+          </div>
+        )}
 
         {/* Popup-sidebar mobil */}
         {open && (

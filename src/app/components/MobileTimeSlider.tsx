@@ -59,7 +59,8 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
   const titleFontSize = `clamp(0.75rem, 1.2vh, 0.9rem)`;
   const mainFontSize = `clamp(1rem, 1.8vh, 1.4rem)`;
   const dateFontSize = `clamp(0.75rem, 1.2vh, 0.9rem)`;
-  const sliderHeight = `clamp(2.2rem, 3vh, 3.2rem)`;
+  const sliderHeight = `clamp(2.2rem, 4vh, 4rem)`;
+  const centerGap = `clamp(0.1rem, 0.5vh, 0.4rem)`;
 
   return (
     <div
@@ -69,7 +70,7 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
       onPointerCancel={handlePointerUp}
     >
       <div className="flex-1 flex flex-col justify-between h-full min-h-0">
-        <div className="flex flex-row items-center justify-between w-full mb-1 min-h-0 gap-2 px-4">
+        <div className="flex flex-row items-center justify-between w-full mb-1 min-h-0 gap-2 px-4" style={{ marginTop: 'clamp(-1rem, 3vh - 1.5rem, 2rem)' }}>
           {/* Vänster knappar: -1h och +1h */}
           <div className="flex flex-row gap-2 flex-shrink-0">
             <button
@@ -103,13 +104,13 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
           <div className="flex flex-col items-center flex-1 min-w-0 px-1" style={{ lineHeight: 1.1 }}>
             <p 
               className="tracking-wide uppercase text-white/50"
-              style={{ fontSize: titleFontSize }}
+              style={{ fontSize: titleFontSize, marginBottom: centerGap }}
             >
               PROGNOSTID
             </p>
             <p 
               className="font-bold tracking-tight drop-shadow-sm truncate"
-              style={{ fontSize: mainFontSize }}
+              style={{ fontSize: mainFontSize, marginBottom: centerGap }}
             >
               {weekday}, {time}
             </p>
@@ -163,12 +164,12 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
             {/* Progress bar */}
             <div
               className="absolute bg-gradient-to-r from-orange-400 via-yellow-300 to-orange-500 rounded-full transition-all duration-150 ease-out shadow-md"
-              style={{ left: 0, right: 0, width: `calc(${percent * 100}% )`, top: '50%', transform: 'translateY(-50%)', height: '0.7rem' }}
+              style={{ left: 0, width: `calc(1rem + (100% - 2rem) * ${percent})`, top: '50%', transform: 'translateY(-50%)', height: '0.7rem' }}
             />
             {/* Thumb (slider knob) */}
             <div
               className="absolute z-10 top-1/2 rounded-full bg-orange-400 shadow-2xl border-4 border-white/80 transition-all duration-100 ease-out glow-pulse"
-              style={{ left: `calc(${percent * 100}% + 1.25rem)`, transform: 'translate(-50%, -50%)', width: '2.2rem', height: '2.2rem' }}
+              style={{ left: `calc(1rem + (100% - 2rem) * ${percent})`, transform: 'translate(-50%, -50%)', width: '2.2rem', height: '2.2rem' }}
             >
               {/* Tooltip above thumb */}
               {isDragging && (
