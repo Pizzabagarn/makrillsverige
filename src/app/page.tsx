@@ -12,7 +12,7 @@ const MobileTimeSlider = dynamic(() => import('./components/MobileTimeSlider'), 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
-    <div className="h-screen w-screen flex flex-col lg:flex-row overflow-hidden">
+    <div className="max-h-dvh h-full w-screen flex flex-col lg:flex-row overflow-hidden">
       {/* SIDEBAR hanteras av layout.tsx */}
 
       {/* MAIN CONTENT */}

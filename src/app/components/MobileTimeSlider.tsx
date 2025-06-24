@@ -53,6 +53,14 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
     date.getDate() === tomorrow.getDate() ? 'Imorgon' :
     date.toLocaleDateString('sv-SE', { weekday: 'short' });
 
+  // Calculate responsive sizes based on viewport height
+  const buttonSize = `clamp(2.5rem, 5vh, 6rem)`;
+  const fontSize = `clamp(0.875rem, 2.2vh, 1.8rem)`;
+  const titleFontSize = `clamp(0.75rem, 1.2vh, 0.9rem)`;
+  const mainFontSize = `clamp(1rem, 1.8vh, 1.4rem)`;
+  const dateFontSize = `clamp(0.75rem, 1.2vh, 0.9rem)`;
+  const sliderHeight = `clamp(2.2rem, 3vh, 3.2rem)`;
+
   return (
     <div
       className={`w-full h-full overflow-hidden flex flex-col justify-between min-h-0 ${className}`}
@@ -61,46 +69,81 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
       onPointerCancel={handlePointerUp}
     >
       <div className="flex-1 flex flex-col justify-between h-full min-h-0">
-        <div className="flex flex-row items-center justify-between w-full mb-1 min-h-0 gap-2">
-          {/* Vänster knappar */}
+        <div className="flex flex-row items-center justify-between w-full mb-1 min-h-0 gap-2 px-4">
+          {/* Vänster knappar: -1h och +1h */}
           <div className="flex flex-row gap-2 flex-shrink-0">
             <button
               onClick={() => setSelectedHour(clampedHour - 1)}
               disabled={clampedHour <= minHour}
-              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 text-sm md:text-base ${clampedHour <= minHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              className={`flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 ${clampedHour <= minHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              style={{ 
+                width: buttonSize, 
+                height: buttonSize,
+                fontSize: fontSize 
+              }}
               aria-label="-1 timme"
             >
               <span>−1h</span>
             </button>
             <button
-              onClick={() => setSelectedHour(clampedHour - 24)}
-              disabled={clampedHour <= minHour}
-              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 text-sm md:text-base ${clampedHour <= minHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
-              aria-label="-1 dag"
-            >
-              <span>−1d</span>
-            </button>
-          </div>
-          {/* Texten centrerad */}
-          <div className="flex flex-col items-center flex-1 min-w-0 px-1" style={{ lineHeight: 1.1 }}>
-            <p className="tracking-wide uppercase text-white/50 text-xs md:text-sm">PROGNOSTID</p>
-            <p className="font-bold tracking-tight drop-shadow-sm text-base md:text-lg truncate">{weekday}, {time}</p>
-            <p className="text-white/70 text-xs md:text-sm">{date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-          </div>
-          {/* Höger knappar */}
-          <div className="flex flex-row gap-2 flex-shrink-0">
-            <button
               onClick={() => setSelectedHour(clampedHour + 1)}
               disabled={clampedHour >= maxHour}
-              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 text-sm md:text-base ${clampedHour >= maxHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              className={`flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 ${clampedHour >= maxHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              style={{ 
+                width: buttonSize, 
+                height: buttonSize,
+                fontSize: fontSize 
+              }}
               aria-label="+1 timme"
             >
               <span>+1h</span>
             </button>
+          </div>
+          {/* Texten centrerad */}
+          <div className="flex flex-col items-center flex-1 min-w-0 px-1" style={{ lineHeight: 1.1 }}>
+            <p 
+              className="tracking-wide uppercase text-white/50"
+              style={{ fontSize: titleFontSize }}
+            >
+              PROGNOSTID
+            </p>
+            <p 
+              className="font-bold tracking-tight drop-shadow-sm truncate"
+              style={{ fontSize: mainFontSize }}
+            >
+              {weekday}, {time}
+            </p>
+            <p 
+              className="text-white/70"
+              style={{ fontSize: dateFontSize }}
+            >
+              {date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+          {/* Höger knappar: -1d och +1d */}
+          <div className="flex flex-row gap-2 flex-shrink-0">
+            <button
+              onClick={() => setSelectedHour(clampedHour - 24)}
+              disabled={clampedHour <= minHour}
+              className={`flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 ${clampedHour <= minHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              style={{ 
+                width: buttonSize, 
+                height: buttonSize,
+                fontSize: fontSize 
+              }}
+              aria-label="-1 dag"
+            >
+              <span>−1d</span>
+            </button>
             <button
               onClick={() => setSelectedHour(clampedHour + 24)}
               disabled={clampedHour >= maxHour}
-              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 text-sm md:text-base ${clampedHour >= maxHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              className={`flex items-center justify-center rounded-full bg-white/10 text-white shadow-md font-bold backdrop-blur-md transition-all flex-shrink-0 ${clampedHour >= maxHour ? 'opacity-30 cursor-default' : 'hover:bg-white/20'}`}
+              style={{ 
+                width: buttonSize, 
+                height: buttonSize,
+                fontSize: fontSize 
+              }}
               aria-label="+1 dag"
             >
               <span>+1d</span>
@@ -115,7 +158,7 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             className="relative w-full max-w-full overflow-hidden rounded-full bg-white/15 touch-none select-none flex items-center cursor-pointer min-h-0 flex-shrink"
-            style={{ height: '2.2rem', paddingLeft: '1rem', paddingRight: '1rem' }}
+            style={{ height: sliderHeight, paddingLeft: '1rem', paddingRight: '1rem' }}
           >
             {/* Progress bar */}
             <div
