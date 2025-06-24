@@ -1,4 +1,4 @@
-export type LayoutType = 'desktop' | 'tablet' | 'mobileLandscape' | 'mobilePortrait';
+export type LayoutType = 'desktop' | 'tablet' | 'tabletLandscape' | 'mobileLandscape' | 'mobilePortrait';
 
 export function getLayoutType(): LayoutType {
   if (typeof window === 'undefined') return 'desktop';
@@ -16,31 +16,37 @@ export function getLayoutType(): LayoutType {
     return 'desktop';
   }
   
-  // 2. Mobiler i landscape: Kompakt layout för landscape-enheter
-  if (isLandscape && height <= 600 && width <= 1000) {
+  // 2. Tablet med sidebar: Större enheter som iPads (≥768px bredd ELLER ≥768px höjd)
+  if (Math.max(width, height) >= 720 && Math.min(width, height) >= 500) {
+    console.log('-> tabletLandscape');
+    return 'tabletLandscape';
+  }
+  
+  // 3. Små mobiler i landscape: Kompakt layout för små landscape-enheter
+  if (isLandscape && height <= 500) {
     console.log('-> mobileLandscape');
     return 'mobileLandscape';
   }
   
-  // 3. Små mobiler i portrait: Smal bredd OCH portrait
+  // 4. Små mobiler i portrait: Smal bredd OCH portrait
   if (isPortrait && width <= 600) {
     console.log('-> mobilePortrait');
     return 'mobilePortrait';
   }
   
-  // 4. Allt annat: Tablets, mellanstorlekar, bredare enheter
+  // 5. Allt annat: Mellanstorlekar som inte passar ovan
   console.log('-> tablet');
   return 'tablet';
 }
 
 export function shouldShowSidebar(layoutType: LayoutType): boolean {
-  return layoutType === 'desktop' || layoutType === 'mobileLandscape';
+  return layoutType === 'desktop' || layoutType === 'tabletLandscape';
 }
 
 export function shouldShowHamburger(layoutType: LayoutType): boolean {
-  return layoutType === 'tablet';
+  return layoutType === 'tablet' || layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
 }
 
 export function shouldShowMobileSlider(layoutType: LayoutType): boolean {
-  return layoutType === 'mobilePortrait';
+  return layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
 } 

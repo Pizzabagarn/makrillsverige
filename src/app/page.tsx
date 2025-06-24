@@ -28,17 +28,26 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="max-h-dvh h-full w-full flex flex-col lg:flex-row overflow-hidden">
       {/* KARTA */}
-      <div className="flex-1 relative overflow-hidden">
+      <div 
+        className="flex-1 relative overflow-hidden"
+        style={{
+          paddingBottom: layoutType === 'mobileLandscape' ? '25vh' : '0'
+        }}
+      >
         <MapView showZoom={false} />
       </div>
 
-      {/* MOBIL PORTRAIT: TimeSlider under kartan */}
-      {layoutType === 'mobilePortrait' && (
+      {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): TimeSlider under/över kartan */}
+      {(layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
         <div
-          className="w-full z-10 px-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-x border-b border-white/10 ring-1 ring-white/10 h-[18vh] flex flex-col justify-center"
-          style={{ ['--mtscale' as any]: 'calc(18vh / 120px)' } as React.CSSProperties}
+          className={`w-full px-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-x border-b border-white/10 ring-1 ring-white/10 flex flex-col justify-center ${
+            layoutType === 'mobileLandscape' 
+              ? 'h-[25vh] fixed bottom-0 left-0 right-0 z-[1001]' 
+              : 'h-[18vh] z-10'
+          }`}
+          style={{ ['--mtscale' as any]: `calc(${layoutType === 'mobileLandscape' ? '25vh' : '18vh'} / 120px)` } as React.CSSProperties}
         >
           <MobileTimeSlider className="backdrop-blur-2xl text-white py-3" />
         </div>

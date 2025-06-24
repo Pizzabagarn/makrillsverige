@@ -3,12 +3,30 @@
 'use client';
 
 import { useTimeSlider } from '../context/TimeSliderContext';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 export default function MobileTimeSlider({ className = "" }: { className?: string }) {
   const { selectedHour, setSelectedHour, minHour, maxHour } = useTimeSlider();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(checkOrientation, 150);
+    });
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   const clampedHour = Math.max(minHour, Math.min(selectedHour, maxHour));
   const totalRange = maxHour - minHour;
@@ -53,14 +71,34 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
     date.getDate() === tomorrow.getDate() ? 'Imorgon' :
     date.toLocaleDateString('sv-SE', { weekday: 'short' });
 
-  // Calculate responsive sizes based on viewport height
-  const buttonSize = `clamp(2.5rem, 5vh, 6rem)`;
-  const fontSize = `clamp(0.875rem, 2.2vh, 1.8rem)`;
-  const titleFontSize = `clamp(0.75rem, 1.2vh, 0.9rem)`;
-  const mainFontSize = `clamp(1rem, 1.8vh, 1.4rem)`;
-  const dateFontSize = `clamp(0.75rem, 1.2vh, 0.9rem)`;
-  const sliderHeight = `clamp(2.2rem, 4vh, 4rem)`;
-  const centerGap = `clamp(0.1rem, 0.5vh, 0.4rem)`;
+  // Calculate responsive sizes based on viewport height and orientation
+  const buttonSize = isLandscape 
+    ? `clamp(1.8rem, 3vh, 3.5rem)` // Smaller in landscape
+    : `clamp(2.5rem, 5vh, 6rem)`;   // Original size in portrait
+    
+  const fontSize = isLandscape
+    ? `clamp(0.7rem, 1.5vh, 1.2rem)` // Smaller in landscape  
+    : `clamp(0.875rem, 2.2vh, 1.8rem)`;
+    
+  const titleFontSize = isLandscape
+    ? `clamp(0.6rem, 0.8vh, 0.75rem)` // Smaller in landscape
+    : `clamp(0.75rem, 1.2vh, 0.9rem)`;
+    
+  const mainFontSize = isLandscape
+    ? `clamp(0.8rem, 1.2vh, 1.1rem)` // Smaller in landscape
+    : `clamp(1rem, 1.8vh, 1.4rem)`;
+    
+  const dateFontSize = isLandscape
+    ? `clamp(0.6rem, 0.8vh, 0.75rem)` // Smaller in landscape
+    : `clamp(0.75rem, 1.2vh, 0.9rem)`;
+    
+  const sliderHeight = isLandscape
+    ? `clamp(1.5rem, 2.5vh, 2.8rem)` // Smaller in landscape
+    : `clamp(2.2rem, 4vh, 4rem)`;
+    
+  const centerGap = isLandscape
+    ? `clamp(0.1rem, 0.3vh, 0.4rem)` // Slightly more gap in landscape
+    : `clamp(0.1rem, 0.5vh, 0.4rem)`;
 
   return (
     <div
@@ -70,9 +108,18 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
       onPointerCancel={handlePointerUp}
     >
       <div className="flex-1 flex flex-col justify-between h-full min-h-0">
-        <div className="flex flex-row items-center justify-between w-full mb-1 min-h-0 gap-2 px-4" style={{ marginTop: 'clamp(-1rem, 3vh - 1.5rem, 2rem)' }}>
+        <div 
+          className={`flex flex-row items-center justify-between w-full mb-1 min-h-0 px-4 ${
+            isLandscape ? 'gap-3' : 'gap-2'
+          }`} 
+          style={{ 
+            marginTop: isLandscape 
+              ? 'clamp(-0.3rem, 1.2vh - 0.6rem, 1.2rem)' // More margin in landscape
+              : 'clamp(-1rem, 3vh - 1.5rem, 2rem)'       // Original margin in portrait
+          }}
+        >
           {/* Vänster knappar: -1h och +1h */}
-          <div className="flex flex-row gap-2 flex-shrink-0">
+          <div className={`flex flex-row flex-shrink-0 ${isLandscape ? 'gap-3' : 'gap-2'}`}>
             <button
               onClick={() => setSelectedHour(clampedHour - 1)}
               disabled={clampedHour <= minHour}
@@ -101,7 +148,7 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
             </button>
           </div>
           {/* Texten centrerad */}
-          <div className="flex flex-col items-center flex-1 min-w-0 px-1" style={{ lineHeight: 1.1 }}>
+          <div className={`flex flex-col items-center flex-1 min-w-0 ${isLandscape ? 'px-2' : 'px-1'}`} style={{ lineHeight: 1.1 }}>
             <p 
               className="tracking-wide uppercase text-white/50"
               style={{ fontSize: titleFontSize, marginBottom: centerGap }}
@@ -122,7 +169,7 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
             </p>
           </div>
           {/* Höger knappar: -1d och +1d */}
-          <div className="flex flex-row gap-2 flex-shrink-0">
+          <div className={`flex flex-row flex-shrink-0 ${isLandscape ? 'gap-3' : 'gap-2'}`}>
             <button
               onClick={() => setSelectedHour(clampedHour - 24)}
               disabled={clampedHour <= minHour}
@@ -168,8 +215,13 @@ export default function MobileTimeSlider({ className = "" }: { className?: strin
             />
             {/* Thumb (slider knob) */}
             <div
-              className="absolute z-10 top-1/2 rounded-full bg-orange-400 shadow-2xl border-4 border-white/80 transition-all duration-100 ease-out glow-pulse"
-              style={{ left: `calc(1rem + (100% - 2rem) * ${percent})`, transform: 'translate(-50%, -50%)', width: '2.2rem', height: '2.2rem' }}
+              className="absolute z-10 top-1/2 rounded-full bg-orange-400 shadow-2xl border-2 border-white/80 transition-all duration-100 ease-out glow-pulse"
+              style={{ 
+                left: `calc(1rem + (100% - 2rem) * ${percent})`, 
+                transform: 'translate(-50%, -50%)', 
+                width: isLandscape ? '1.4rem' : '1.8rem', 
+                height: isLandscape ? '1.4rem' : '1.8rem' 
+              }}
             >
               {/* Tooltip above thumb */}
               {isDragging && (

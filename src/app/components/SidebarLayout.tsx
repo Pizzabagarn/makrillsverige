@@ -33,18 +33,22 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
 
       {/* Innehåll i desktop */}
       <div className="relative z-10 flex h-full">
-        {/* Sidebar - visa ALLTID utom för mobilePortrait */}
-        {layoutType !== 'mobilePortrait' && (
+        {/* Sidebar - visa för desktop och tabletLandscape */}
+        {(layoutType === 'desktop' || layoutType === 'tabletLandscape') && (
           <div 
-            className="block w-64" 
-            style={{ width: layoutType === 'mobileLandscape' ? 'clamp(200px, 25vh, 280px)' : undefined }}
+            className="block flex-shrink-0"
+            style={{
+              width: layoutType === 'tabletLandscape' 
+                ? 'clamp(200px, 20vw, 300px)'  // Mer responsiv bredd för tablets
+                : '256px'
+            }}
           >
             <Sidebar />
           </div>
         )}
 
-        {/* Hamburger-knapp - visa för tablet layout */}
-        {layoutType === 'tablet' && (
+        {/* Hamburger-knapp - visa för tablet och små mobila lägen */}
+        {(layoutType === 'tablet' || layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
           <div className="fixed top-4 left-4 z-[1000]">
             <button
               onClick={() => setOpen(!open)}
