@@ -242,15 +242,15 @@ const MobileTimeSlider = React.memo(({ className = "" }: { className?: string })
         };
       default: // large
         return {
-          titleText: 'text-sm',
-          mainText: 'text-lg',
-          dateText: 'text-sm',
-          sliderHeight: 'h-12',
-          thumbSize: 'w-7 h-7',
-          gap: 'gap-3',
-          marginTop: 'mt-4',
-          buttonSize: 'px-4 py-3 text-base',
-          buttonGap: 'gap-3'
+          titleText: 'text-base',
+          mainText: 'text-xl',
+          dateText: 'text-base',
+          sliderHeight: 'h-14',
+          thumbSize: 'w-8 h-8',
+          gap: 'gap-4',
+          marginTop: 'mt-5',
+          buttonSize: 'px-6 py-4 text-lg',
+          buttonGap: 'gap-4'
         };
     }
   }, [isLandscape, screenSize]);
