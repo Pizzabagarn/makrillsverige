@@ -25,6 +25,13 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
     };
   }, []);
 
+  // Close menu when layout changes
+  useEffect(() => {
+    if (layoutType === 'desktop' || layoutType === 'tabletLandscape') {
+      setOpen(false);
+    }
+  }, [layoutType]);
+
   return (
     <div className="relative h-dvh w-full">
       {/* Bakgrundsbild & dim */}
@@ -47,31 +54,79 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
           </div>
         )}
 
-        {/* Hamburger-knapp - visa för tablet och små mobila lägen */}
+        {/* Hamburgerknapp - förbättrad design */}
         {(layoutType === 'tablet' || layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
-          <div className="fixed top-4 left-4 z-[1000]">
+          <div className="fixed top-4 left-4 z-[1001]">
             <button
               onClick={() => setOpen(!open)}
-              className="bg-white/20 backdrop-blur-md p-2 rounded-md text-white"
+              className={`
+                relative overflow-hidden
+                bg-gradient-to-br from-white/25 via-white/20 to-white/15 
+                backdrop-blur-md border border-white/30
+                p-3 rounded-xl text-white text-lg font-medium
+                shadow-lg hover:shadow-xl
+                transition-all duration-300 ease-out
+                hover:scale-105 hover:bg-white/30
+                active:scale-95
+                ${open ? 'bg-white/30 scale-105' : ''}
+              `}
+              aria-label="Toggle menu"
             >
-              ☰
+              <div className={`transition-transform duration-300 ease-out ${open ? 'rotate-90' : ''}`}>
+                {open ? '✕' : '☰'}
+              </div>
             </button>
           </div>
         )}
 
-        {/* Popup-sidebar mobil */}
-        {open && (
-          <div className="fixed top-0 left-0 z-[9999] h-full w-[80vw] max-w-[280px] bg-black/90 backdrop-blur-md p-6 text-white shadow-xl">
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute top-2 right-2 text-xl font-bold"
-            >
-              ✕
-            </button>
-            <Sidebar />
-          </div>
-        )}
+        {/* Backdrop overlay med smooth transition */}
+        <div 
+          className={`
+            fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm
+            transition-all duration-300 ease-out
+            ${open ? 'opacity-100 visible' : 'opacity-0 invisible'}
+          `}
+          onClick={() => setOpen(false)}
+        />
 
+        {/* Popup-sidebar mobil med smooth slide-in animation */}
+        <div 
+          className={`
+            fixed top-0 left-0 z-[9999] h-full 
+            w-[30%]
+            bg-gradient-to-br from-black/95 via-black/90 to-black/85
+            backdrop-blur-xl border-r border-white/20
+            text-white shadow-2xl
+            transition-all duration-300 ease-out
+            ${open 
+              ? 'translate-x-0 opacity-100' 
+              : '-translate-x-full opacity-0'
+            }
+          `}
+        >
+          {/* Stängknapp */}
+          <button
+            onClick={() => setOpen(false)}
+            className="
+              absolute top-4 right-4 
+              w-8 h-8 rounded-full
+              bg-white/20 hover:bg-white/30
+              border border-white/30
+              text-white text-sm font-bold
+              transition-all duration-200 ease-out
+              hover:scale-110 active:scale-95
+              flex items-center justify-center
+            "
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+
+          {/* Sidebar innehåll med padding för stängknappen */}
+          <div className="h-full pt-16 pb-6 px-4">
+            <Sidebar isHamburgerMenu={true} />
+          </div>
+        </div>
 
         {/* Main content */}
         <main className="flex-1 h-full overflow-hidden">{children}</main>

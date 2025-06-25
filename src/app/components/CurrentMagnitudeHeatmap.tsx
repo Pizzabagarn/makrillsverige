@@ -22,7 +22,7 @@ interface GridPoint {
 
 export default function CurrentMagnitudeHeatmap() {
   const map = useMap();
-  const { selectedHour } = useTimeSlider();
+  const { selectedHour, baseTime } = useTimeSlider();
 
   const [mask, setMask] = useState<FeatureCollection | null>(null);
   const [grid, setGrid] = useState<GridPoint[]>([]);
@@ -46,7 +46,7 @@ export default function CurrentMagnitudeHeatmap() {
 
   // 3) Vid förändrat selectedHour / då både mask+grid finns: (re)rita heatmap
   useEffect(() => {
-    if (!map || !mask || !grid.length) return;
+    if (!map || !mask || !grid.length || !baseTime) return;
 
     // Se till att vi har en egen heat-pane
     if (!map.getPane('heatPane')) {
@@ -54,8 +54,8 @@ export default function CurrentMagnitudeHeatmap() {
       map.getPane('heatPane')!.style.zIndex = '410';
     }
 
-    // Plocka ut rätt timestamp (YYYY-MM-DDTHH)
-    const ts = new Date(Date.now() + selectedHour * 3600_000)
+    // Plocka ut rätt timestamp (YYYY-MM-DDTHH) - baseTime is current UTC hour for correct data mapping
+    const ts = new Date(baseTime + selectedHour * 3600_000)
       .toISOString()
       .slice(0, 13);
 
@@ -114,7 +114,7 @@ export default function CurrentMagnitudeHeatmap() {
     // Lägg på kartan och spara referens
     heat.addTo(map);
     setHeatLayer(heat);
-  }, [map, mask, grid, selectedHour]);
+  }, [map, mask, grid, selectedHour, baseTime]);
 
   return null;
 }

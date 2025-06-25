@@ -1,16 +1,17 @@
 // src/app/components/TimeSlider.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import React from 'react';
 import { useTimeSlider } from '../context/TimeSliderContext';
 
-export default function TimeSlider({ totalHours = 121 }: { totalHours?: number }) {
-  const { selectedHour, setSelectedHour } = useTimeSlider();
-  const [formattedTime, setFormattedTime] = useState('');
-  const [displayOffset, setDisplayOffset] = useState('');
+const TimeSlider = React.memo(() => {
+  const { selectedHour, setSelectedHour, baseTime, minHour, maxHour } = useTimeSlider();
 
-  useEffect(() => {
-    const date = new Date(Date.now() + selectedHour * 3600 * 1000);
+  // Memoize expensive date calculations
+  const timeInfo = useMemo(() => {
+    if (!baseTime) return { formatted: '', offsetString: '' };
+    const date = new Date(baseTime + selectedHour * 3600 * 1000);
     const formatted = date.toLocaleString('sv-SE', {
       weekday: 'short',
       year: 'numeric',
@@ -21,8 +22,6 @@ export default function TimeSlider({ totalHours = 121 }: { totalHours?: number }
       hour12: false,
     });
 
-    setFormattedTime(formatted);
-
     const days = Math.floor(selectedHour / 24);
     const hours = selectedHour % 24;
 
@@ -31,28 +30,35 @@ export default function TimeSlider({ totalHours = 121 }: { totalHours?: number }
         ? `+${days} dag${days > 1 ? 'ar' : ''} ${hours}h`
         : `+${hours}h`;
 
-    setDisplayOffset(offsetString);
-  }, [selectedHour]);
+    return { formatted, offsetString };
+  }, [selectedHour, baseTime]);
+
+  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedHour(Number(e.target.value));
+  }, [setSelectedHour]);
 
   return (
     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[5000] w-full px-4 pointer-events-none">
       <div className="mx-auto w-full max-w-6xl bg-black/60 backdrop-blur-sm text-white rounded-md px-6 py-2 shadow-md pointer-events-auto">
         <input
           type="range"
-          min={0}
-          max={totalHours - 1}
+          min={minHour}
+          max={maxHour}
           value={selectedHour}
-          onChange={(e) => setSelectedHour(Number(e.target.value))}
+          onChange={handleSliderChange}
           className="w-full accent-blue-500"
         />
         <p className="text-center text-sm mt-1 font-light tracking-wide text-white/90">
-          Prognos: {displayOffset} ({formattedTime})
+          Prognos: {timeInfo.offsetString} ({timeInfo.formatted})
         </p>
       </div>
     </div>
   );
-}
+});
 
+TimeSlider.displayName = 'TimeSlider';
+
+export default TimeSlider;
 
 // This component provides a time slider to select forecast hours.
 // It uses the TimeSliderContext to manage the selected hour state.
