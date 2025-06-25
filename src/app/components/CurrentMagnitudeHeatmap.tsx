@@ -54,7 +54,7 @@ export default function CurrentMagnitudeHeatmap() {
       map.getPane('heatPane')!.style.zIndex = '410';
     }
 
-    // Plocka ut rätt timestamp (YYYY-MM-DDTHH) using baseTime + selectedHour for consistency
+    // Plocka ut rätt timestamp (YYYY-MM-DDTHH) - baseTime is current UTC hour for correct data mapping
     const ts = new Date(baseTime + selectedHour * 3600_000)
       .toISOString()
       .slice(0, 13);

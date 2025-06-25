@@ -121,9 +121,10 @@ const CurrentVectorsLayer = React.memo(() => {
       .domain([0,0.7]);
   }, []);
 
-  // 5) Memoized timestamp prefix
+  // 5) Memoized timestamp prefix - baseTime is now current UTC hour
   const timestampPrefix = useMemo(() => {
     if (!baseTime) return '';
+    // baseTime is current UTC hour, so this calculation gives us the correct UTC time for data lookup
     return new Date(baseTime + effectiveSelectedHour * 3600_000)
       .toISOString().slice(0, 13);
   }, [effectiveSelectedHour, baseTime]);

@@ -48,15 +48,22 @@ async function calculateTimeBounds(): Promise<{ minHour: number; maxHour: number
     const firstTimestamp = timestamps[0];
     const lastTimestamp = timestamps[timestamps.length - 1];
     
-    // Set baseTime to CURRENT TIME (not first available timestamp)
-    const baseTime = Date.now();
-    const firstTime = new Date(firstTimestamp).getTime();
-    const lastTime = new Date(lastTimestamp).getTime();
+    // Set baseTime to CURRENT TIME UTC (rounded to nearest hour for consistency with data)
+    const now = new Date();
+    const currentHourUTC = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(), 
+      now.getUTCDate(),
+      now.getUTCHours(),
+      0, 0, 0
+    ));
+    const baseTime = currentHourUTC.getTime();
     
-    // Calculate exact hours relative to CURRENT TIME for precise time alignment
+    // Calculate exact hours relative to CURRENT HOUR UTC for precise time alignment
     const availableHours: number[] = [];
     for (const ts of timestamps) {
-      const hour = Math.floor((new Date(ts).getTime() - baseTime) / (1000 * 60 * 60));
+      const dataTime = new Date(ts).getTime();
+      const hour = Math.round((dataTime - baseTime) / (1000 * 60 * 60));
       availableHours.push(hour);
     }
     
@@ -66,14 +73,15 @@ async function calculateTimeBounds(): Promise<{ minHour: number; maxHour: number
     const maxHour = availableHours[availableHours.length - 1]; // Last available hour (most positive)
     
     console.log(`📊 Dynamic time bounds calculated:
-      Base time (current time): ${new Date(baseTime).toISOString()}
-      First available data: ${firstTimestamp} (${new Date(firstTimestamp).toLocaleString('sv-SE')})
-      Last available data: ${lastTimestamp} (${new Date(lastTimestamp).toLocaleString('sv-SE')})
+      Base time (current hour UTC): ${new Date(baseTime).toISOString()}
+      Current time (local): ${new Date().toLocaleString('sv-SE')}
+      First available data: ${firstTimestamp} (UTC)
+      Last available data: ${lastTimestamp} (UTC)
       Available time steps: ${availableHours.length}
-      Range: ${minHour} to ${maxHour} hours (current time = 0)
+      Range: ${minHour} to ${maxHour} hours (current UTC hour = 0)
       First 5 available hours: [${availableHours.slice(0, 5).join(', ')}]
       Last 5 available hours: [${availableHours.slice(-5).join(', ')}]
-      System starts at hour 0 (current time) but can navigate within data bounds`);
+      Note: Hour 0 = current UTC hour, UI shows local time but data is UTC-based`);
     
     return { minHour, maxHour, baseTime, availableHours };
   } catch (error) {
@@ -161,8 +169,9 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
     const closestAvailableHour = findClosestAvailableHour(h);
     
     console.log(`🎯 setSelectedHour: requested=${h}, closest=${closestAvailableHour}, current=${selectedHour}`);
-    console.log(`   Requested time: ${new Date(Date.now() + h * 3600 * 1000).toLocaleString('sv-SE')}`);
-    console.log(`   Closest time: ${new Date(Date.now() + closestAvailableHour * 3600 * 1000).toLocaleString('sv-SE')}`);
+    console.log(`   Requested time (UTC): ${new Date(baseTime + h * 3600 * 1000).toISOString()}`);
+    console.log(`   Requested time (local): ${new Date(baseTime + h * 3600 * 1000).toLocaleString('sv-SE')}`);
+    console.log(`   Closest data time (UTC): ${new Date(baseTime + closestAvailableHour * 3600 * 1000).toISOString()}`);
     
     if (closestAvailableHour !== selectedHour) {
       setSelectedHour(closestAvailableHour);
