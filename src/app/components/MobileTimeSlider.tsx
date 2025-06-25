@@ -108,26 +108,79 @@ const MobileTimeSlider = React.memo(({ className = "" }: { className?: string })
 
   const percent = (clampedHour - minHour) / totalRange;
 
-  // Memoize progress color calculation - blue for past, golden to red for future
+  // Beautiful asymmetric color: Yellow at "now", blue scale for past, red scale for future
   const progressColor = useMemo(() => {
+    if (clampedHour === 0) {
+      // Exactly at "now" - bright yellow
+      return `rgb(255, 223, 0)`;
+    }
+    
     if (clampedHour < 0) {
-      // Going back in time: blue scale, deeper blue the further back
-      const backProgress = Math.abs(clampedHour) / Math.abs(minHour);
-      const intensity = Math.min(backProgress, 1);
-      const r = Math.round(50 * (1 - intensity * 0.8)); // Less red as we go back
-      const g = Math.round(150 * (1 - intensity * 0.3)); // Keep some green for blend
-      const b = Math.round(200 + intensity * 55); // More blue as we go back
-      return `rgb(${Math.max(r, 0)},${Math.max(g, 0)},${Math.min(b, 255)})`;
-    } else if (clampedHour === 0) {
-      // Present time: neutral blend color
-      return `rgb(150, 170, 200)`;
+      // Past time: Yellow → Blue → Deep night blue
+      const distanceIntoPast = Math.abs(clampedHour);
+      const maxPastDistance = Math.abs(minHour);
+      const intensity = Math.min(distanceIntoPast / maxPastDistance, 1);
+      
+      const pastColorStops = [
+        { pos: 0.0, r: 255, g: 223, b: 0 },    // Bright yellow (now)
+        { pos: 0.3, r: 135, g: 206, b: 235 },  // Sky blue
+        { pos: 0.6, r: 70, g: 130, b: 180 },   // Steel blue
+        { pos: 1.0, r: 25, g: 25, b: 112 }     // Deep night blue (midnight)
+      ];
+      
+      // Find color segment for past
+      let startStop = pastColorStops[0];
+      let endStop = pastColorStops[pastColorStops.length - 1];
+      
+      for (let i = 0; i < pastColorStops.length - 1; i++) {
+        if (intensity >= pastColorStops[i].pos && intensity <= pastColorStops[i + 1].pos) {
+          startStop = pastColorStops[i];
+          endStop = pastColorStops[i + 1];
+          break;
+        }
+      }
+      
+      const segmentProgress = (intensity - startStop.pos) / (endStop.pos - startStop.pos);
+      const clampedSegmentProgress = Math.max(0, Math.min(1, segmentProgress || 0));
+      
+      const r = Math.round(startStop.r + (endStop.r - startStop.r) * clampedSegmentProgress);
+      const g = Math.round(startStop.g + (endStop.g - startStop.g) * clampedSegmentProgress);
+      const b = Math.round(startStop.b + (endStop.b - startStop.b) * clampedSegmentProgress);
+      
+      return `rgb(${r},${g},${b})`;
     } else {
-      // Going forward in time: golden to red scale (original behavior)
-      const progress = Math.min(clampedHour / maxHour, 1);
-      const r = Math.round(250 + progress * 5);
-      const g = Math.round(200 - progress * 200);
-      const b = Math.round(50 - progress * 50);
-      return `rgb(${r},${Math.max(g, 0)},${Math.max(b, 0)})`;
+      // Future time: Yellow → Orange → Deep red
+      const distanceIntoFuture = clampedHour;
+      const maxFutureDistance = maxHour;
+      const intensity = Math.min(distanceIntoFuture / maxFutureDistance, 1);
+      
+             const futureColorStops = [
+         { pos: 0.0, r: 255, g: 223, b: 0 },    // Bright yellow (now)
+         { pos: 0.4, r: 255, g: 165, b: 0 },    // Orange 
+         { pos: 0.7, r: 255, g: 69, b: 0 },     // Red-orange
+         { pos: 1.0, r: 80, g: 0, b: 0 }        // Very deep dark red
+       ];
+      
+      // Find color segment for future
+      let startStop = futureColorStops[0];
+      let endStop = futureColorStops[futureColorStops.length - 1];
+      
+      for (let i = 0; i < futureColorStops.length - 1; i++) {
+        if (intensity >= futureColorStops[i].pos && intensity <= futureColorStops[i + 1].pos) {
+          startStop = futureColorStops[i];
+          endStop = futureColorStops[i + 1];
+          break;
+        }
+      }
+      
+      const segmentProgress = (intensity - startStop.pos) / (endStop.pos - startStop.pos);
+      const clampedSegmentProgress = Math.max(0, Math.min(1, segmentProgress || 0));
+      
+      const r = Math.round(startStop.r + (endStop.r - startStop.r) * clampedSegmentProgress);
+      const g = Math.round(startStop.g + (endStop.g - startStop.g) * clampedSegmentProgress);
+      const b = Math.round(startStop.b + (endStop.b - startStop.b) * clampedSegmentProgress);
+      
+      return `rgb(${r},${g},${b})`;
     }
   }, [clampedHour, maxHour, minHour]);
 
@@ -221,14 +274,14 @@ const MobileTimeSlider = React.memo(({ className = "" }: { className?: string })
           {/* Left buttons - Beautiful responsive design with instant response */}
           <div className={`flex flex-row flex-shrink-0 ${styles.buttonGap}`}>
             <button
-              onClick={() => setDisplayHour(Math.max(clampedHour - 1, minHour))}
+              onClick={() => setSelectedHour(clampedHour - 1)}
               disabled={clampedHour === minHour}
               className={`${styles.buttonSize} rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 text-white font-semibold shadow-lg backdrop-blur-md transition-all duration-75 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 border border-white/10 hover:border-white/20`}
             >
               −1h
             </button>
             <button
-              onClick={() => setDisplayHour(Math.min(clampedHour + 1, maxHour))}
+              onClick={() => setSelectedHour(clampedHour + 1)}
               disabled={clampedHour === maxHour}
               className={`${styles.buttonSize} rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 text-white font-semibold shadow-lg backdrop-blur-md transition-all duration-75 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 border border-white/10 hover:border-white/20`}
             >
@@ -252,14 +305,14 @@ const MobileTimeSlider = React.memo(({ className = "" }: { className?: string })
           {/* Right buttons - Beautiful responsive design with instant response */}
           <div className={`flex flex-row flex-shrink-0 ${styles.buttonGap}`}>
             <button
-              onClick={() => setDisplayHour(Math.max(clampedHour - 24, minHour))}
+              onClick={() => setSelectedHour(clampedHour - 24)}
               disabled={clampedHour === minHour}
               className={`${styles.buttonSize} rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 hover:from-orange-500/30 hover:to-red-500/30 text-white font-semibold shadow-lg backdrop-blur-md transition-all duration-75 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 border border-white/10 hover:border-white/20`}
             >
               −1d
             </button>
             <button
-              onClick={() => setDisplayHour(Math.min(clampedHour + 24, maxHour))}
+              onClick={() => setSelectedHour(clampedHour + 24)}
               disabled={clampedHour === maxHour}
               className={`${styles.buttonSize} rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 hover:from-orange-500/30 hover:to-red-500/30 text-white font-semibold shadow-lg backdrop-blur-md transition-all duration-75 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 border border-white/10 hover:border-white/20`}
             >

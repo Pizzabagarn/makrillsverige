@@ -53,25 +53,26 @@ async function calculateTimeBounds(): Promise<{ minHour: number; maxHour: number
     const firstTime = new Date(firstTimestamp).getTime();
     const lastTime = new Date(lastTimestamp).getTime();
     
-    // Calculate hours relative to CURRENT TIME, not first timestamp
+    // Calculate exact hours relative to CURRENT TIME for precise time alignment
     const availableHours: number[] = [];
     for (const ts of timestamps) {
-      const hour = Math.round((new Date(ts).getTime() - baseTime) / (1000 * 60 * 60));
+      const hour = Math.floor((new Date(ts).getTime() - baseTime) / (1000 * 60 * 60));
       availableHours.push(hour);
     }
     
-    // minHour = hours from now to first available data (likely negative)
-    // maxHour = hours from now to last available data
-    const minHour = Math.round((firstTime - baseTime) / (1000 * 60 * 60));
-    const maxHour = Math.round((lastTime - baseTime) / (1000 * 60 * 60));
+    // Use exact first and last available hours as bounds
+    // This ensures minHour/maxHour match exactly with availableHours array
+    const minHour = availableHours[0]; // First available hour (most negative)
+    const maxHour = availableHours[availableHours.length - 1]; // Last available hour (most positive)
     
     console.log(`📊 Dynamic time bounds calculated:
       Base time (current time): ${new Date(baseTime).toISOString()}
-      First available data: ${firstTimestamp}
-      Last available data: ${lastTimestamp}
+      First available data: ${firstTimestamp} (${new Date(firstTimestamp).toLocaleString('sv-SE')})
+      Last available data: ${lastTimestamp} (${new Date(lastTimestamp).toLocaleString('sv-SE')})
       Available time steps: ${availableHours.length}
       Range: ${minHour} to ${maxHour} hours (current time = 0)
-      Available hours: [${availableHours.slice(0, 10).join(', ')}${availableHours.length > 10 ? '...' : ''}]
+      First 5 available hours: [${availableHours.slice(0, 5).join(', ')}]
+      Last 5 available hours: [${availableHours.slice(-5).join(', ')}]
       System starts at hour 0 (current time) but can navigate within data bounds`);
     
     return { minHour, maxHour, baseTime, availableHours };
@@ -143,10 +144,11 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
     setDisplayHour((h) => Math.min(Math.max(h, min), max));
   }, []);
 
-  // Function to find the closest available hour
+  // Function to find the closest available hour - always snaps to exact available timestamps
   const findClosestAvailableHour = useCallback((targetHour: number): number => {
     if (availableHours.length === 0) return targetHour;
     
+    // Always find the closest available hour from the actual data
     return availableHours.reduce((prev, curr) => 
       Math.abs(curr - targetHour) < Math.abs(prev - targetHour) ? curr : prev
     );
@@ -157,25 +159,27 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
     if (!initializedRef.current) return; // Prevent during initialization
     
     const closestAvailableHour = findClosestAvailableHour(h);
-    const clampedHour = Math.min(Math.max(closestAvailableHour, minHour), maxHour);
     
-    if (clampedHour !== selectedHour) {
-      setSelectedHour(clampedHour);
+    console.log(`🎯 setSelectedHour: requested=${h}, closest=${closestAvailableHour}, current=${selectedHour}`);
+    console.log(`   Requested time: ${new Date(Date.now() + h * 3600 * 1000).toLocaleString('sv-SE')}`);
+    console.log(`   Closest time: ${new Date(Date.now() + closestAvailableHour * 3600 * 1000).toLocaleString('sv-SE')}`);
+    
+    if (closestAvailableHour !== selectedHour) {
+      setSelectedHour(closestAvailableHour);
     }
-  }, [minHour, maxHour, selectedHour, findClosestAvailableHour]);
+  }, [selectedHour, findClosestAvailableHour]);
 
   // Display hour setter - for immediate UI feedback
   const handleSetDisplayHour = useCallback((h: number) => {
     if (!initializedRef.current) return; // Prevent during initialization
     
     const closestAvailableHour = findClosestAvailableHour(h);
-    const clampedHour = Math.min(Math.max(closestAvailableHour, minHour), maxHour);
     
-    setDisplayHour(clampedHour);
-    if (clampedHour !== selectedHour) {
-      setSelectedHour(clampedHour);
+    setDisplayHour(closestAvailableHour);
+    if (closestAvailableHour !== selectedHour) {
+      setSelectedHour(closestAvailableHour);
     }
-  }, [minHour, maxHour, selectedHour, findClosestAvailableHour]);
+  }, [selectedHour, findClosestAvailableHour]);
 
   const contextValue = useMemo(() => ({
     selectedHour,
