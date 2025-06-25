@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../lib/layoutUtils';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
-const MobileTimeSlider = dynamic(() => import('./components/MobileTimeSlider'), { ssr: false });
+const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
 
 export default function Home() {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
@@ -39,7 +39,7 @@ export default function Home() {
         <MapView showZoom={false} />
       </div>
 
-      {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): TimeSlider under/över kartan */}
+      {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): ClockKnob under/över kartan */}
       {(layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
         <div
           className={`w-full px-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-x border-b border-white/10 ring-1 ring-white/10 flex flex-col justify-center ${
@@ -49,7 +49,7 @@ export default function Home() {
           }`}
           style={{ ['--mtscale' as any]: `calc(${layoutType === 'mobileLandscape' ? '25vh' : '18vh'} / 120px)` } as React.CSSProperties}
         >
-          <MobileTimeSlider className="backdrop-blur-2xl text-white py-3" />
+          <ClockKnob />
         </div>
       )}
     </div>

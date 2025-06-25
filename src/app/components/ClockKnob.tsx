@@ -139,9 +139,6 @@ const ClockKnob = React.memo(() => {
     }
   }, [clampedHour, maxHour, minHour]);
 
-  // Use static glow effect ID to prevent hydration mismatch
-  const glowId = 'clock-knob-glow';
-
   const handleCircularInputChange = useCallback((v: number) => {
     const delta = Math.abs(v - lastValue.current);
     if (delta > 0.5) return;
@@ -152,13 +149,26 @@ const ClockKnob = React.memo(() => {
   }, [maxHour, minHour, clampedHour, setSelectedHour]);
 
   const isTabletLandscape = layoutType === 'tabletLandscape';
+  const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
 
   // Memoize responsive dimensions
-  const responsiveDimensions = useMemo(() => ({
-    radius: isTabletLandscape ? 65 : 80,
-    strokeWidth: isTabletLandscape ? 6 : 8,
-    thumbRadius: isTabletLandscape ? 5 : 6,
-  }), [isTabletLandscape]);
+  const responsiveDimensions = useMemo(() => {
+    if (isMobile) {
+      return {
+        radius: layoutType === 'mobileLandscape' ? 35 : 40,
+        strokeWidth: 4,
+        thumbRadius: 3,
+      };
+    }
+    return {
+      radius: isTabletLandscape ? 65 : 80,
+      strokeWidth: isTabletLandscape ? 6 : 8,
+      thumbRadius: isTabletLandscape ? 5 : 6,
+    };
+  }, [isTabletLandscape, isMobile, layoutType]);
+
+  // Use static glow effect ID to prevent hydration mismatch
+  const glowId = isMobile ? 'clock-knob-glow-mobile' : 'clock-knob-glow';
 
   if (layoutType === 'desktop' || layoutType === 'tabletLandscape') {
     // Show loading state while bounds are being calculated
@@ -273,17 +283,114 @@ const ClockKnob = React.memo(() => {
     );
   }
 
-  // Mobil layout - bara text, ingen knapp
-  return (
-    <div className="flex flex-col items-center text-center text-white space-y-1">
-      <p className="text-base font-semibold">{dateInfo.weekday}</p>
-      <p className="text-xs text-white/70">{dateInfo.fullDate}</p>
-      <p className="text-sm font-bold">{dateInfo.time}</p>
-      <p className="text-xs text-white/50">
-        Prognos: {dateInfo.offsetString}
-      </p>
-    </div>
-  );
+  // Mobil layout - nu med ClockKnob istället för bara text
+  if (isMobile) {
+    // Show loading state while bounds are being calculated
+    if (isLoadingBounds) {
+      return (
+        <div className="flex flex-col items-center space-y-2">
+          <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          </div>
+          <p className="text-xs text-white/70 text-center">Laddar...</p>
+        </div>
+      );
+    }
+
+    // Responsiv sizing baserat på skärmstorlek
+    const isLargerMobile = window.innerWidth >= 390; // iPhone 14 Pro och större
+    const isLandscape = layoutType === 'mobileLandscape';
+    
+    const knobSize = isLandscape 
+      ? (isLargerMobile ? 80 : 70)    // Landscape: 80px på större skärmar, 70px på mindre
+      : (isLargerMobile ? 100 : 85);  // Portrait: 100px på större skärmar, 85px på mindre
+    
+    const responsiveDimensions = {
+      radius: knobSize / 2,
+      strokeWidth: isLargerMobile ? 6 : 5,
+      thumbRadius: isLargerMobile ? 5 : 4,
+    };
+
+    const buttonSize = isLargerMobile 
+      ? { width: 'w-12', height: 'h-9', text: 'text-sm' }
+      : { width: 'w-10', height: 'h-8', text: 'text-xs' };
+
+    return (
+      <div className="flex items-center justify-between w-full h-full px-4 py-2">
+        <svg width="0" height="0">
+          <defs>
+            <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+        </svg>
+
+        {/* ClockKnob till vänster - responsiv storlek */}
+        <div className="flex-shrink-0">
+          <CircularInput
+            value={value}
+            onChange={handleCircularInputChange}
+            radius={responsiveDimensions.radius}
+          >
+            <CircularTrack stroke="#ffffff10" strokeWidth={responsiveDimensions.strokeWidth} />
+            <CircularProgress stroke={progressColor} strokeWidth={responsiveDimensions.strokeWidth} filter={`url(#${glowId})`} />
+            <CircularThumb r={responsiveDimensions.thumbRadius} fill={progressColor} />
+          </CircularInput>
+        </div>
+
+        {/* Text i mitten - responsiv storlek */}
+        <div className="flex-1 text-center text-white px-4">
+          <div className={`text-white/60 mb-1 ${isLargerMobile ? 'text-sm' : 'text-xs'}`}>PROGNOSTID</div>
+          <div className={`font-semibold ${isLargerMobile ? 'text-base' : 'text-sm'}`}>{dateInfo.weekday}, {dateInfo.time}</div>
+          <div className={`text-white/70 ${isLargerMobile ? 'text-sm' : 'text-xs'}`}>{dateInfo.fullDate}</div>
+          <div className={`text-white/50 mt-1 ${isLargerMobile ? 'text-sm' : 'text-xs'}`}>{dateInfo.offsetString}</div>
+        </div>
+
+        {/* Knappar till höger - responsiv storlek */}
+        <div className={`flex-shrink-0 flex flex-col ${isLargerMobile ? 'gap-1.5' : 'gap-1'}`}>
+          <div className={`flex ${isLargerMobile ? 'gap-1.5' : 'gap-1'}`}>
+            <button 
+              onClick={() => setSelectedHour(clampedHour - 1)} 
+              disabled={clampedHour === minHour} 
+              className={`${buttonSize.width} ${buttonSize.height} rounded-md bg-slate-800/90 hover:bg-slate-700/90 ${buttonSize.text} text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-slate-600/90 active:scale-95 border border-white/10`}
+            >
+              -1h
+            </button>
+            <button 
+              onClick={() => setSelectedHour(clampedHour + 1)} 
+              disabled={clampedHour === maxHour} 
+              className={`${buttonSize.width} ${buttonSize.height} rounded-md bg-slate-800/90 hover:bg-slate-700/90 ${buttonSize.text} text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-slate-600/90 active:scale-95 border border-white/10`}
+            >
+              +1h
+            </button>
+          </div>
+          <div className={`flex ${isLargerMobile ? 'gap-1.5' : 'gap-1'}`}>
+            <button 
+              onClick={() => setSelectedHour(clampedHour - 24)} 
+              disabled={clampedHour === minHour} 
+              className={`${buttonSize.width} ${buttonSize.height} rounded-md bg-amber-900/80 hover:bg-amber-800/80 ${buttonSize.text} text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-amber-700/80 active:scale-95 border border-amber-600/30`}
+            >
+              -1d
+            </button>
+            <button 
+              onClick={() => setSelectedHour(clampedHour + 24)} 
+              disabled={clampedHour === maxHour} 
+              className={`${buttonSize.width} ${buttonSize.height} rounded-md bg-amber-900/80 hover:bg-amber-800/80 ${buttonSize.text} text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-amber-700/80 active:scale-95 border border-amber-600/30`}
+            >
+              +1d
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback - should not reach here
+  return null;
 });
 
 ClockKnob.displayName = 'ClockKnob';
