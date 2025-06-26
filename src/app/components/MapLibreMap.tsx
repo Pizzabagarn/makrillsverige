@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useMemo } from 'react';
-import Map, { MapRef } from 'react-map-gl/maplibre';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { Map as ReactMapGL, MapRef } from 'react-map-gl/maplibre';
 import { DeckGL } from '@deck.gl/react';
 import { ScatterplotLayer, TextLayer, PathLayer, IconLayer } from '@deck.gl/layers';
 
@@ -47,6 +47,60 @@ interface MapLibreMapProps {
   mackerelThreshold: number;
 }
 
+// Heavy throttle function for dragging - borrowed from original CurrentVectorsLayer
+function useHeavyThrottle<T>(value: T, delay: number): T {
+  const [throttledValue, setThrottledValue] = useState<T>(value);
+  const lastExecuted = useRef<number>(0);
+
+  useEffect(() => {
+    const now = Date.now();
+    if (now >= lastExecuted.current + delay) {
+      lastExecuted.current = now;
+      setThrottledValue(value);
+    } else {
+      const timer = setTimeout(() => {
+        lastExecuted.current = Date.now();
+        setThrottledValue(value);
+      }, delay - (now - lastExecuted.current));
+
+      return () => clearTimeout(timer);
+    }
+  }, [value, delay]);
+
+  return throttledValue;
+}
+
+// Dragging detection hook - borrowed from original CurrentVectorsLayer
+function useDraggingDetection(selectedHour: number): boolean {
+  const [isDragging, setIsDragging] = useState(false);
+  const lastChangeTime = useRef<number>(0);
+  const dragTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    // Mark as dragging when value changes
+    setIsDragging(true);
+    lastChangeTime.current = Date.now();
+    
+    // Clear existing timer
+    if (dragTimer.current) {
+      clearTimeout(dragTimer.current);
+    }
+    
+    // Set timer to detect when dragging stops (300ms after last change)
+    dragTimer.current = setTimeout(() => {
+      setIsDragging(false);
+    }, 300);
+
+    return () => {
+      if (dragTimer.current) {
+        clearTimeout(dragTimer.current);
+      }
+    };
+  }, [selectedHour]);
+
+  return isDragging;
+}
+
 export default function MapLibreMap({
   activeLayer,
   activeDepth,
@@ -56,14 +110,36 @@ export default function MapLibreMap({
   mackerelThreshold
 }: MapLibreMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   
-  // Data states enligt specifikationen
+  // Dragging detection and throttling - same as original CurrentVectorsLayer
+  // Use selectedHour for consistent state management - the primary source of truth
+  const isDragging = useDraggingDetection(selectedHour);
+  const lightThrottledHour = useHeavyThrottle(selectedHour, 50);   
+  const heavyThrottledHour = useHeavyThrottle(selectedHour, 200); 
+  const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
+
+    // Data states enligt specifikationen
   const [temperatureData, setTemperatureData] = useState<TemperatureData[]>([]);
   const [mackerelHotspots, setMackerelHotspots] = useState<MackerelHotspot[]>([]);
   const [currentGridData, setCurrentGridData] = useState<GridPoint[]>([]);
+
+  // Debug sync between ClockKnob and Map
+  useEffect(() => {
+    console.log(`🎯 MAP SYNC DEBUG:
+      selectedHour: ${selectedHour}
+      displayHour: ${displayHour}
+      effectiveSelectedHour: ${effectiveSelectedHour}
+      isDragging: ${isDragging}
+      timestampPrefix: ${new Date(baseTime + effectiveSelectedHour * 3600_000).toISOString().slice(0, 13)}
+      showCurrentVectors: ${showCurrentVectors}
+      currentGridData.length: ${currentGridData.length}`);
+  }, [selectedHour, displayHour, effectiveSelectedHour, isDragging, baseTime, showCurrentVectors, currentGridData.length]);
   const [visibleArrows, setVisibleArrows] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Cache for arrows to avoid recalculation - similar to original CurrentVectorsLayer
+  const arrowCache = useRef<Map<string, any[]>>(new Map());
 
   const initialViewState = {
     longitude: 12.6,  // Centrerat på Öresund
@@ -142,67 +218,61 @@ export default function MapLibreMap({
     }
   }, [showCurrentVectors]);
 
+  // Memoized timestamp prefix calculation - same logic as original CurrentVectorsLayer
+  const timestampPrefix = useMemo(() => {
+    if (!baseTime) return '';
+    // baseTime is current UTC hour, so this calculation gives us the correct UTC time for data lookup
+    return new Date(baseTime + effectiveSelectedHour * 3600_000)
+      .toISOString().slice(0, 13);
+  }, [effectiveSelectedHour, baseTime]);
+
   // Deck.gl lager enligt specifikationen
   const layers = useMemo(() => {
-    const deckLayers = [];
+    const deckLayers: any[] = [];
 
-    // Temperatur scatter-plot lager (ersätter heatmap för enkelhet)
+    // Temperaturdatapunkter enligt specifikationen
     if (activeLayer === 'temperature' && temperatureData.length > 0) {
       const temperatureLayer = new ScatterplotLayer<TemperatureData>({
         id: 'temperature-points',
         data: temperatureData,
         getPosition: (d: TemperatureData) => [d.lon, d.lat],
-        getRadius: 800, // Större radie för heatmap-liknande effekt
         getFillColor: (d: TemperatureData) => {
-          // Utökad temperatur färgkodning: 0°C = djupblå, 25°C = rött
-          const temp = Math.max(0, Math.min(25, d.temperature));
-          const ratio = temp / 25;
-          
-          if (ratio < 0.2) {
-            // 0-5°C: Djupblå till blå
-            const localRatio = ratio / 0.2;
-            return [Math.floor(0 + localRatio * 50), Math.floor(50 + localRatio * 150), 255, 160];
-          } else if (ratio < 0.4) {
-            // 5-10°C: Blå till cyan
-            const localRatio = (ratio - 0.2) / 0.2;
-            return [0, Math.floor(200 + localRatio * 55), 255, 160];
-          } else if (ratio < 0.6) {
-            // 10-15°C: Cyan till grön
-            const localRatio = (ratio - 0.4) / 0.2;
-            return [0, 255, Math.floor(255 - localRatio * 155), 160];
-          } else if (ratio < 0.8) {
-            // 15-20°C: Grön till gul
-            const localRatio = (ratio - 0.6) / 0.2;
-            return [Math.floor(localRatio * 255), 255, Math.floor(100 - localRatio * 100), 160];
-          } else {
-            // 20-25°C: Gul till rött
-            const localRatio = (ratio - 0.8) / 0.2;
-            return [255, Math.floor(255 - localRatio * 255), 0, 160];
-          }
+          // Färgskala baserad på temperatur: Blå (kallt) -> Grön -> Gul -> Röd (varmt)
+          const temp = d.temperature;
+          if (temp < 5) return [0, 100, 255];      // Djupblå för kallt vatten
+          if (temp < 10) return [0, 150, 255];     // Ljusblå 
+          if (temp < 15) return [0, 255, 200];     // Turkos
+          if (temp < 20) return [100, 255, 100];   // Grön
+          if (temp < 25) return [255, 255, 0];     // Gul
+          return [255, 100, 0];                    // Orange/röd för varmt
         },
+        getRadius: 150,
         pickable: true,
         autoHighlight: true,
+        highlightColor: [0, 0, 128, 128],
         radiusScale: 1,
-        radiusMinPixels: 15,
-        radiusMaxPixels: 120,
+        radiusMinPixels: 8,
+        radiusMaxPixels: 100,
         visible: true
       });
       deckLayers.push(temperatureLayer);
     }
 
-    // Makrill-hotspots med konfidensbaserad visualisering
+    // Makrill-hotspots enligt specifikationen
     if (showMackerelOverlay && mackerelHotspots.length > 0) {
       const mackerelLayer = new ScatterplotLayer<MackerelHotspot>({
         id: 'mackerel-hotspots',
         data: mackerelHotspots,
         getPosition: (d: MackerelHotspot) => [d.lon, d.lat],
-        getRadius: (d: MackerelHotspot) => d.suitability * 300 + 100,
-        getFillColor: (d: MackerelHotspot): Color => {
-          // Färgkodning enligt suitability-algoritmen
-          if (d.confidence === 'high') return [0, 255, 0, 200]; // Grön för hög konfidans
-          if (d.confidence === 'medium') return [255, 255, 0, 180]; // Gul för medel
-          return [255, 165, 0, 160]; // Orange för låg
+        getFillColor: (d: MackerelHotspot) => {
+          // Färgskala baserad på suitability: Grön (hög) -> Gul -> Orange -> Röd (låg)
+          const suitability = d.suitability;
+          if (suitability > 0.8) return [0, 255, 0];     // Grön för utmärkt
+          if (suitability > 0.65) return [128, 255, 0];   // Gulgrön för bra
+          if (suitability > 0.5) return [255, 255, 0];    // Gul för ok
+          return [255, 128, 0];                           // Orange för dålig
         },
+        getRadius: (d: MackerelHotspot) => d.suitability * 300 + 50,
         pickable: true,
         autoHighlight: true,
         highlightColor: [0, 0, 128, 128],
@@ -231,103 +301,61 @@ export default function MapLibreMap({
       deckLayers.push(textLayer);
     }
 
-    // Havsströmmar som pilar med PathLayer (enklare och mer tillförlitlig)
+    // Havsströmmar som pilar med IconLayer - använder arrow.png
     if (showCurrentVectors && currentGridData.length > 0) {
-      // Skapa pildata för EXAKT tid från TimeSlider
-      const currentTimeMs = baseTime + selectedHour * 3600 * 1000;
-      const currentTime = new Date(currentTimeMs).toISOString();
-      
-      console.log(`🌊 Updating vectors for time: ${currentTime} (selectedHour: ${selectedHour})`);
-      
-      const arrows: Array<{
-        path: [number, number][];
-        speed: number;
-        u: number;
-        v: number;
-        lat: number;
-        lon: number;
-      }> = [];
-      
-      currentGridData.forEach(point => {
-        // Hitta närmaste vector baserat på tid (mer flexibel matching)
-        const vector = point.vectors.find(v => {
-          const vectorTime = new Date(v.time).getTime();
-          const timeDiff = Math.abs(vectorTime - currentTimeMs);
-          return timeDiff < 1800000; // Inom 30 minuter = match
-        });
-        
-        if (!vector || vector.u == null || vector.v == null) {
-          // DEBUG: Logga varför vector inte hittas
-          if (point === currentGridData[0]) { // Bara logga för första punkten
-            console.log(`❌ No vector found for time ${currentTime}`);
-            console.log(`Available times in first point:`, point.vectors.slice(0, 3).map(v => v.time));
-          }
-          return;
-        }
+      const iconData = [];
+      for (const point of currentGridData) {
+        const vector = point.vectors.find(v => v.time.startsWith(timestampPrefix));
+        if (!vector || vector.u == null || vector.v == null) continue;
         
         const speed = Math.hypot(vector.u, vector.v);
-        if (speed < 0.01) return; // Skippa mycket svaga strömmar
+        if (speed < 0.01) continue;
         
-        // Beräkna pilens riktning (radianer)
-        const angle = Math.atan2(vector.u, vector.v);
+        const direction = Math.atan2(vector.u, vector.v) * (180 / Math.PI);
         
-        // Skapa en större, mer synlig pil
-        const length = Math.min(speed * 0.02 + 0.008, 0.015); // Större baslängd
-        const endLon = point.lon + Math.sin(angle) * length;
-        const endLat = point.lat + Math.cos(angle) * length;
-        
-        // Större pilspets för bättre synlighet
-        const arrowAngle = 0.6; // 35 grader - bredare pilspets
-        const arrowLength = length * 0.4; // Längre pilspets
-        const leftArrowLon = endLon - Math.sin(angle - arrowAngle) * arrowLength;
-        const leftArrowLat = endLat - Math.cos(angle - arrowAngle) * arrowLength;
-        const rightArrowLon = endLon - Math.sin(angle + arrowAngle) * arrowLength;
-        const rightArrowLat = endLat - Math.cos(angle + arrowAngle) * arrowLength;
-        
-        arrows.push({
-          path: [
-            [point.lon, point.lat],
-            [endLon, endLat],
-            [leftArrowLon, leftArrowLat],
-            [endLon, endLat],
-            [rightArrowLon, rightArrowLat]
-          ],
+        iconData.push({
+          position: [point.lon, point.lat],
           speed,
+          direction,
           u: vector.u,
           v: vector.v,
           lat: point.lat,
           lon: point.lon
         });
-      });
+      }
       
-      console.log(`🏹 Rendered ${arrows.length} arrows from ${currentGridData.length} grid points`);
-      setVisibleArrows(arrows.length);
-      
-      const currentLayer = new PathLayer<typeof arrows[0]>({
-        id: 'current-vectors',
-        data: arrows,
-        getPath: (d) => d.path,
-        getWidth: (d) => Math.max(3, d.speed * 100 + 2),
-        getColor: (d) => {
-          // Starkare färger med bättre kontrast
-          const speed = d.speed;
-          if (speed < 0.1) return [0, 150, 255, 255];   // Klarblå för svag ström
-          if (speed < 0.3) return [0, 255, 100, 255];   // Klargrön för medel
-          if (speed < 0.5) return [255, 220, 0, 255];   // Klargul för stark
-          return [255, 50, 0, 255];                     // Klarröd för mycket stark ström
-        },
-        pickable: true,
-        autoHighlight: true,
-        widthScale: 1,
-        widthMinPixels: 2,
-        widthMaxPixels: 15,
-        visible: true
-      });
-      deckLayers.push(currentLayer);
+      if (iconData.length > 0) {
+        const currentLayer = new IconLayer({
+          id: 'current-arrows',
+          data: iconData,
+          getPosition: d => d.position,
+          getIcon: () => ({
+            url: '/images/arrow.png',
+            width: 128,
+            height: 128,
+            anchorY: 64,
+            anchorX: 64
+          }),
+          getSize: 25,
+          getAngle: d => d.direction,
+          getColor: d => {
+            const speed = d.speed;
+            if (speed < 0.1) return [50, 150, 255];     // Klarare blå
+            if (speed < 0.3) return [0, 255, 150];      // Klarare grön  
+            if (speed < 0.5) return [255, 200, 0];      // Klarare gul
+            return [255, 80, 0];                        // Klarare röd
+          },
+          pickable: true,
+          sizeScale: 1,
+          visible: true
+        });
+        deckLayers.push(currentLayer);
+        setVisibleArrows(iconData.length);
+      }
     }
 
     return deckLayers;
-  }, [activeLayer, temperatureData, showMackerelOverlay, mackerelHotspots, showCurrentVectors, currentGridData, baseTime, selectedHour]);
+  }, [activeLayer, temperatureData, showMackerelOverlay, mackerelHotspots, showCurrentVectors, currentGridData, timestampPrefix]);
 
   // Tooltip för interaktivitet enligt specifikationen
   const getTooltip = (info: PickingInfo) => {
@@ -364,8 +392,8 @@ export default function MapLibreMap({
       };
     }
 
-    if (object.speed !== undefined && object.path !== undefined) {
-      const direction = Math.atan2(object.u, object.v) * (180 / Math.PI);
+    if (object.speed !== undefined && object.position !== undefined) {
+      const direction = object.direction;
       const directionDegrees = ((direction + 360) % 360).toFixed(0);
       
       return {
@@ -393,7 +421,7 @@ export default function MapLibreMap({
         layers={layers}
         getTooltip={getTooltip}
       >
-        <Map
+        <ReactMapGL
           ref={mapRef}
           mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
           attributionControl={false}
@@ -425,7 +453,10 @@ export default function MapLibreMap({
             <div><strong>Strömpunkter:</strong> {currentGridData.length} → {visibleArrows} pilar</div>
           )}
           {showCurrentVectors && baseTime && (
-            <div><strong>Strömtid:</strong> {new Date(baseTime + selectedHour * 3600 * 1000).toLocaleString('sv-SE').slice(0, 16)}</div>
+            <div><strong>Strömtid:</strong> {new Date(baseTime + effectiveSelectedHour * 3600 * 1000).toLocaleString('sv-SE').slice(0, 16)}</div>
+          )}
+          {isDragging && (
+            <div className="text-yellow-300"><strong>Status:</strong> Drar (display: {displayHour}, selected: {selectedHour}, effective: {effectiveSelectedHour})</div>
           )}
         </div>
       </div>
