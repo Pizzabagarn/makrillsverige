@@ -176,7 +176,7 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
     if (closestAvailableHour !== selectedHour) {
       setSelectedHour(closestAvailableHour);
     }
-  }, [selectedHour, findClosestAvailableHour]);
+  }, [selectedHour, findClosestAvailableHour, baseTime]);
 
   // Display hour setter - for immediate UI feedback
   const handleSetDisplayHour = useCallback((h: number) => {

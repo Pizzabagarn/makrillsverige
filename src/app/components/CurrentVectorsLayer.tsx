@@ -265,18 +265,19 @@ const CurrentVectorsLayer = React.memo(() => {
     group.addTo(map);
     layerRef.current = group;
 
-  }, [map, gridData, timestampPrefix, zoomLevel, createLayerGroup, isDragging]);
+  }, [map, gridData, timestampPrefix, zoomLevel, createLayerGroup, isDragging, baseTime]);
 
   // Cleanup on unmount
   useEffect(() => {
+    const currentLayerCache = layerCacheRef.current;
     return () => {
       if (layerRef.current) {
         map.removeLayer(layerRef.current);
       }
-      layerCacheRef.current.forEach(group => {
+      currentLayerCache.forEach(group => {
         map.removeLayer(group);
       });
-      layerCacheRef.current.clear();
+      currentLayerCache.clear();
     };
   }, [map]);
 

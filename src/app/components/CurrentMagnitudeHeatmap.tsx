@@ -114,7 +114,7 @@ export default function CurrentMagnitudeHeatmap() {
     // Lägg på kartan och spara referens
     heat.addTo(map);
     setHeatLayer(heat);
-  }, [map, mask, grid, selectedHour, baseTime]);
+  }, [map, mask, grid, selectedHour, baseTime, heatLayer]);
 
   return null;
 }
