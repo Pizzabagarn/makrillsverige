@@ -2,12 +2,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { useMap, useMapEvent } from 'react-leaflet';
+import { useMap } from 'react-map-gl/maplibre';
+import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
-import L from 'leaflet';
-import 'leaflet-polylinedecorator';
 import chroma from 'chroma-js';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import type { GeoJSON } from 'geojson';
 
 interface CurrentVector { u: number; v: number; time: string }
 interface GridPoint      { lat: number; lon: number; vectors: CurrentVector[] }
@@ -75,9 +75,24 @@ function useDraggingDetection(selectedHour: number): boolean {
   return isDragging;
 }
 
+// Calculate rotation angle from u,v components
+function calculateRotation(u: number, v: number): number {
+  // Calculate angle in radians from u,v components
+  const angleRad = Math.atan2(v, u);
+  // Convert to degrees and adjust for MapLibre GL's coordinate system
+  // MapLibre GL uses 0° = north, clockwise positive
+  // atan2 gives us standard math coordinates (0° = east, counter-clockwise positive)
+  const angleDeg = (angleRad * 180) / Math.PI;
+  // Convert from math coordinates to MapLibre GL coordinates
+  return (90 - angleDeg) % 360;
+}
+
 const CurrentVectorsLayer = React.memo(() => {
-  const map = useMap();
+  const { current: map } = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
+  
+  // Track if arrow image is loaded
+  const [arrowImageLoaded, setArrowImageLoaded] = useState(false);
   
   // Detect if user is actively dragging
   const isDragging = useDraggingDetection(selectedHour);
@@ -88,9 +103,8 @@ const CurrentVectorsLayer = React.memo(() => {
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [gridData, setGridData] = useState<GridPoint[]>([]);
-  const layerRef = useRef<L.LayerGroup|null>(null);
-  const layerCacheRef = useRef<Map<string, L.LayerGroup>>(new Map());
-  const [zoomLevel, setZoomLevel] = useState(() => map.getZoom());
+  const [zoomLevel, setZoomLevel] = useState(8.5);
+  const [arrowsGeoJSON, setArrowsGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
 
   // 1) Ladda förberäknad grid
   useEffect(() => {
@@ -100,18 +114,45 @@ const CurrentVectorsLayer = React.memo(() => {
       .catch(console.error);
   }, []);
 
-  // 2) Track zoom with throttling
-  const handleZoomEnd = useCallback(() => {
-    setZoomLevel(map.getZoom());
+  // 2) Load arrow image into MapLibre GL
+  useEffect(() => {
+    if (!map) return;
+    
+    const loadArrowImage = async () => {
+      try {
+        const response = await fetch('/images/arrow.png');
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        
+        const img = new Image();
+        img.onload = () => {
+          if (!map.hasImage('arrow')) {
+            map.addImage('arrow', img);
+            setArrowImageLoaded(true);
+          }
+          URL.revokeObjectURL(imageUrl);
+        };
+        img.src = imageUrl;
+      } catch (error) {
+        console.error('Failed to load arrow image:', error);
+      }
+    };
+    
+    loadArrowImage();
   }, [map]);
 
-  useMapEvent('zoomend', handleZoomEnd);
-
-  // 3) Se till att vectorPane finns
+  // 3) Track zoom changes
   useEffect(() => {
-    if (!map.getPane('vectorPane')) {
-      map.createPane('vectorPane').style.zIndex = '420';
-    }
+    if (!map) return;
+    
+    const handleZoomEnd = () => {
+      setZoomLevel(map.getZoom());
+    };
+    
+    map.on('zoomend', handleZoomEnd);
+    return () => {
+      map.off('zoomend', handleZoomEnd);
+    };
   }, [map]);
 
   // 4) Memoized color scale
@@ -129,20 +170,23 @@ const CurrentVectorsLayer = React.memo(() => {
       .toISOString().slice(0, 13);
   }, [effectiveSelectedHour, baseTime]);
 
-  // 6) Create layer group for specific time and zoom with performance mode
-  const createLayerGroup = useCallback((timestamp: string, zoom: number, performanceMode: boolean = false) => {
-    const group = L.layerGroup([], { pane: 'vectorPane' });
+  // 6) Create GeoJSON data for arrows only
+  const createGeoJSONData = useCallback((timestamp: string, performanceMode: boolean = false) => {
+    const arrowsFeatures: GeoJSON.Feature[] = [];
 
-    // Reduce arrow density during dragging for better performance
-    const skipFactor = performanceMode ? 3 : 1; // Show every 3rd arrow when dragging
-    let skipCounter = 0;
+    // Distance-based filtering (samma som gamla Leaflet-koden)
+    const minD = zoomLevel < 4 ? 50 :
+                 zoomLevel < 5 ? 35 :
+                 zoomLevel < 6 ? 25 :
+                 zoomLevel < 7 ? 15 :
+                 zoomLevel < 8 ? 4 : 0; // Mjukare första steget - bara 4 km avstånd
+
+    const used: { lat: number; lon: number }[] = [];
 
     for (const pt of gridData) {
-      // Skip arrows during performance mode
-      if (performanceMode) {
-        skipCounter++;
-        if (skipCounter % skipFactor !== 0) continue;
-      }
+      // Täthetskontroll - skippa om för nära en redan använd punkt (bara om minD > 0)
+      if (minD > 0 && used.some(u => haversineDistance(u.lat, u.lon, pt.lat, pt.lon) < minD)) continue;
+      if (minD > 0) used.push({ lat: pt.lat, lon: pt.lon });
 
       const v = pt.vectors.find(v => v.time.startsWith(timestamp));
       if (!v || v.u == null || v.v == null) continue;
@@ -152,135 +196,91 @@ const CurrentVectorsLayer = React.memo(() => {
       
       const color = colorScale(mag).hex();
 
-      // Linjens slutpunkt
-      const len = 0.05;
-      const lat2 = pt.lat + len * v.v;
-      const lon2 = pt.lon + len * v.u;
-
-      // Simplified rendering during performance mode - keep arrows but simpler
-      if (performanceMode) {
-        // Simple line + arrow during dragging (no glow)
-        const line = L.polyline(
-          [[pt.lat,pt.lon],[lat2,lon2]],
-          { pane:'vectorPane', color, weight: 2, opacity: 0.8 }
-        );
-        group.addLayer(line);
-        
-        // Simplified arrow head for performance
-        const decorator = (L as any).polylineDecorator(line, {
-          pane: 'vectorPane',
-          patterns: [{
-            offset: '100%',
-            repeat: 0,
-            symbol: (L as any).Symbol.arrowHead({
-              pixelSize: 6, // Smaller arrow during dragging
-              polygon: true,
-              pathOptions: {
-                fill: true,
-                fillColor: color,
-                fillOpacity: 0.8, // Slightly transparent during dragging
-                stroke: false
-              }
-            })
-          }]
-        });
-        group.addLayer(decorator);
-      } else {
-        // Full quality rendering when not dragging
-        // 1) Glow-linje (tjock & låg opacity) - DISABLED FOR PERFORMANCE TEST
-        // const glow = L.polyline(
-        //   [[pt.lat,pt.lon],[lat2,lon2]],
-        //   { pane:'vectorPane', color, weight:6, opacity:0.3 }
-        // );
-        // group.addLayer(glow);
-
-        // 2) Huvudlinje
-        const line = L.polyline(
-          [[pt.lat,pt.lon],[lat2,lon2]],
-          { pane:'vectorPane', color, weight:2, opacity:1 }
-        );
-        group.addLayer(line);
-
-        // 3) Pilhuvud med decorator
-        const decorator = (L as any).polylineDecorator(line, {
-          pane: 'vectorPane',
-          patterns: [{
-            offset: '100%',
-            repeat: 0,
-            symbol: (L as any).Symbol.arrowHead({
-              pixelSize: 8,
-              polygon: true,
-              pathOptions: {
-                fill: true,
-                fillColor: color,
-                fillOpacity: 1,
-                stroke: false
-              }
-            })
-          }]
-        });
-        group.addLayer(decorator);
+      // Create arrow feature - place exactly on the grid point coordinates
+      const rotation = calculateRotation(v.u, v.v);
+      
+      // Calculate size based on zoom level - smaller at lower zoom
+      let baseSize = 0.03; // Minskad från 0.04
+      if (zoomLevel < 6) {
+        baseSize = 0.015; // Minskad från 0.02
+      } else if (zoomLevel < 7) {
+        baseSize = 0.025; // Minskad från 0.03
       }
+      
+      const arrowFeature: GeoJSON.Feature = {
+        type: 'Feature',
+        properties: {
+          color: color,
+          magnitude: mag,
+          opacity: performanceMode ? 0.8 : 1,
+          rotation: rotation,
+          size: baseSize // Konstant storlek, ingen ändring under dragging
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [pt.lon, pt.lat] // Exact coordinates, no offset
+        }
+      };
+      arrowsFeatures.push(arrowFeature);
     }
 
-    return group;
-  }, [gridData, colorScale]);
+    return {
+      arrows: {
+        type: 'FeatureCollection' as const,
+        features: arrowsFeatures
+      }
+    };
+  }, [gridData, colorScale, zoomLevel]);
 
-  // 7) Main rendering effect with performance-aware caching
+  // 7) Main rendering effect with immediate updates
   useEffect(() => {
     if (!gridData.length || !baseTime || !timestampPrefix) return;
 
     const performanceMode = isDragging;
-    const cacheKey = `${timestampPrefix}_${zoomLevel}_${performanceMode ? 'perf' : 'full'}`;
     
-    // Check if we already have this layer cached
-    let group = layerCacheRef.current.get(cacheKey);
-    
-    if (!group) {
-      // Create new layer group if not cached
-      group = createLayerGroup(timestampPrefix, zoomLevel, performanceMode);
-      
-      // Cache the layer group (limit cache size to prevent memory leaks)
-      if (layerCacheRef.current.size > 15) { // Increased cache size for perf/full modes
-        // Remove oldest entries
-        const firstKey = layerCacheRef.current.keys().next().value;
-        if (firstKey) {
-          const oldGroup = layerCacheRef.current.get(firstKey);
-          if (oldGroup) {
-            map.removeLayer(oldGroup);
-          }
-          layerCacheRef.current.delete(firstKey);
-        }
-      }
-      
-      layerCacheRef.current.set(cacheKey, group);
-    }
+    // Always regenerate immediately - no caching
+    const cachedData = createGeoJSONData(timestampPrefix, performanceMode);
 
-    // Remove old layer
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
-    }
+    // Update the GeoJSON data state immediately
+    setArrowsGeoJSON(cachedData.arrows);
 
-    // Add new/cached layer
-    group.addTo(map);
-    layerRef.current = group;
+  }, [gridData, timestampPrefix, zoomLevel, createGeoJSONData, isDragging]);
 
-  }, [map, gridData, timestampPrefix, zoomLevel, createLayerGroup, isDragging]);
+  // 8) No cleanup needed anymore (no cache)
+  // useEffect removed since we don't use cache anymore
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-      }
-      layerCacheRef.current.forEach(group => {
-        map.removeLayer(group);
-      });
-      layerCacheRef.current.clear();
-    };
-  }, [map]);
+  if (!arrowsGeoJSON || !arrowImageLoaded) return null;
 
-  return null;
+  return (
+    <>
+      <Source id="current-arrows" type="geojson" data={arrowsGeoJSON}>
+        <Layer
+          id="current-arrows-layer"
+          type="symbol"
+          layout={{
+            'icon-image': 'arrow',
+            'icon-size': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              4, ['*', ['get', 'size'], 0.6],  // Smaller at low zoom
+              6, ['*', ['get', 'size'], 0.8],  // Medium at medium zoom
+              8, ['get', 'size'],              // Normal at high zoom
+              12, ['*', ['get', 'size'], 1.2]  // Slightly larger at very high zoom
+            ],
+            'icon-rotate': ['get', 'rotation'],
+            'icon-rotation-alignment': 'map',
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true
+          }}
+          paint={{
+            'icon-color': ['get', 'color'],
+            'icon-opacity': ['get', 'opacity']
+          }}
+        />
+      </Source>
+    </>
+  );
 });
 
 CurrentVectorsLayer.displayName = 'CurrentVectorsLayer';

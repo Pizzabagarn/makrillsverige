@@ -1,11 +1,11 @@
 // src/components/WaterMask.tsx
 
 import { useEffect, useState } from 'react';
-import { GeoJSON, useMap } from 'react-leaflet';
+import { Source, Layer } from 'react-map-gl/maplibre';
+import type { GeoJSON } from 'geojson';
 
 export default function WaterMask() {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null);
-  const map = useMap();
 
   useEffect(() => {
     fetch('/data/skandinavien-water.geojson')
@@ -13,25 +13,19 @@ export default function WaterMask() {
       .then(setData);
   }, []);
 
-  useEffect(() => {
-    if (!map.getPane('maskPane')) {
-      map.createPane('maskPane');
-      map.getPane('maskPane')!.style.zIndex = '400'; // 👈 Lägst prioritet
-    }
-  }, [map]);
-
   if (!data) return null;
 
   return (
-    <GeoJSON
-      data={data}
-      pane="maskPane"
-      style={{
-        fillOpacity: 0, // helt osynlig för nu
-        color: 'transparent',
-        weight: 0,
-      }}
-    />
+    <Source id="water-mask" type="geojson" data={data}>
+      <Layer
+        id="water-mask-layer"
+        type="fill"
+        paint={{
+          'fill-opacity': 0, // helt osynlig för nu
+          'fill-color': 'transparent'
+        }}
+      />
+    </Source>
   );
 }
 

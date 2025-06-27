@@ -1,0 +1,77 @@
+name: Uppdatera Områdesparametrar
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Kör kl 02:00 varje natt (efter update-grid)
+  workflow_dispatch:     # Möjliggör manuell körning
+
+jobs:
+  update-area-parameters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Timeout för att undvika långa körningar
+
+    steps:
+      - name: 📥 Klona repo
+        uses: actions/checkout@v3
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Installera beroenden
+        run: npm ci
+
+      - name: 🌊 Kör fetchAreaParametersStructured.ts
+        env:
+          DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
+        run: npx tsx scripts/fetchAreaParametersStructured.ts
+
+      - name: 📊 Kontrollera filstorlek
+        run: |
+          if [ -f "public/data/area-parameters.json.gz" ]; then
+            FILE_SIZE=$(stat -c%s "public/data/area-parameters.json.gz")
+            FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+            echo "Komprimerad filstorlek: ${FILE_SIZE_MB}MB"
+            
+            if [ $FILE_SIZE -gt 104857600 ]; then  # 100MB i bytes
+              echo "❌ Fil är för stor (${FILE_SIZE_MB}MB > 100MB)"
+              exit 1
+            else
+              echo "✅ Filstorlek OK (${FILE_SIZE_MB}MB)"
+            fi
+          else
+            echo "❌ Komprimerad fil hittades inte"
+            exit 1
+          fi
+
+      - name: 🔄 Pusha uppdaterad data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/area-parameters.json.gz
+          git add src/lib/loadAreaParameters.ts
+          
+          # Kontrollera om det finns ändringar
+          if git diff --staged --quiet; then
+            echo "Inga ändringar att commita"
+          else
+            git commit -m "🌊 Auto-uppdaterade områdesparametrar ($(date +'%Y-%m-%d %H:%M'))"
+            git push
+            echo "✅ Data uppdaterad och pushad"
+          fi
+
+      - name: 📝 Sammanfattning
+        run: |
+          echo "## 🌊 Områdesparametrar uppdaterade" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tid**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fil**: public/data/area-parameters.json.gz" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "public/data/area-parameters.json.gz" ]; then
+            FILE_SIZE=$(stat -c%s "public/data/area-parameters.json.gz")
+            FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+            echo "- **Storlek**: ${FILE_SIZE_MB}MB (komprimerad)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "- **Status**: ✅ Klart" >> $GITHUB_STEP_SUMMARY 

@@ -1,6 +1,10 @@
 // src/components/CurrentMagnitudeHeatmap.tsx
 'use client';
 
+// NOTE: This component is not currently used and contains legacy Leaflet code
+// Commented out to prevent build errors during MapLibre GL migration
+
+/*
 import { useEffect, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -19,7 +23,16 @@ interface GridPoint {
   lon: number;
   vectors: Vector[];
 }
+*/
 
+export default function CurrentMagnitudeHeatmap() {
+  // This component is not currently used
+  // Legacy Leaflet implementation commented out during MapLibre GL migration
+  return null;
+}
+
+/*
+// Legacy Leaflet implementation - commented out
 export default function CurrentMagnitudeHeatmap() {
   const map = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
@@ -118,3 +131,4 @@ export default function CurrentMagnitudeHeatmap() {
 
   return null;
 }
+*/
