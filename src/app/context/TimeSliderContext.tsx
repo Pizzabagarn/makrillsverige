@@ -26,22 +26,18 @@ const TimeSliderContext = createContext<{
   availableHours: [],
 });
 
-// Function to calculate time bounds from precomputed grid data
+// Function to calculate time bounds from area-parameters data
 async function calculateTimeBounds(): Promise<{ minHour: number; maxHour: number; baseTime: number; availableHours: number[] } | null> {
   try {
-    const response = await fetch('/data/precomputed-grid.json');
-    if (!response.ok) throw new Error('Failed to load precomputed grid');
+    const response = await fetch('/api/area-parameters');
+    if (!response.ok) throw new Error('Failed to load area-parameters data');
     
-    const gridData: Array<{ lat: number; lon: number; vectors: Array<{ time: string }> }> = await response.json();
+    const areaData = await response.json();
     
-    if (!gridData.length) return null;
+    if (!areaData.metadata?.timestamps || areaData.metadata.timestamps.length === 0) return null;
     
-    // Take the first point's vectors to get the time series (they should all have the same timestamps)
-    const firstPointVectors = gridData[0].vectors;
-    if (!firstPointVectors.length) return null;
-    
-    // Get timestamps from the first point (all points should have same time series)
-    const timestamps = firstPointVectors.map(v => v.time).filter(Boolean);
+    // Get timestamps from metadata (all points should have same time series)
+    const timestamps = areaData.metadata.timestamps;
     if (timestamps.length === 0) return null;
     
     // First timestamp is oldest, last timestamp is newest (as per your description)

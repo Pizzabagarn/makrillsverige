@@ -2,7 +2,7 @@ name: Uppdatera Områdesparametrar
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Kör kl 02:00 varje natt (efter update-grid)
+    - cron: '0 1 * * *'  # Kör kl 02:00 svensk tid varje natt (01:00 UTC)
   workflow_dispatch:     # Möjliggör manuell körning
 
 jobs:

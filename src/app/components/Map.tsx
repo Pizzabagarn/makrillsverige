@@ -7,7 +7,7 @@
 import { Map, NavigationControl } from 'react-map-gl/maplibre';
 import { useEffect, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import CurrentVectorsLayer from './CurrentVectorsLayer';
+import AreaParametersLayer from './AreaParametersLayer';
 import WaterMask from './WaterMask';
 
 export default function MapView({ showZoom = true }: { showZoom?: boolean }) {
@@ -55,7 +55,7 @@ export default function MapView({ showZoom = true }: { showZoom?: boolean }) {
       >
         {showNavigation && <NavigationControl position="top-right" />}
         <WaterMask />
-        <CurrentVectorsLayer />
+        <AreaParametersLayer />
       </Map>
     </div>
   );
