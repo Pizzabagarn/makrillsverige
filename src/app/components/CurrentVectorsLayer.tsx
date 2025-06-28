@@ -19,6 +19,56 @@ function calculateRotation(u: number, v: number): number {
   return (90 - angleDeg) % 360;
 }
 
+// Simple haversine distance function
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + 
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+// Throttle hook for performance
+function useThrottle<T>(value: T, delay: number): T {
+  const [throttledValue, setThrottledValue] = useState<T>(value);
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const now = Date.now();
+    if (now - lastUpdate < delay) {
+      const timer = setTimeout(() => {
+        setThrottledValue(value);
+        setLastUpdate(Date.now());
+      }, delay - (now - lastUpdate));
+      return () => clearTimeout(timer);
+    } else {
+      setThrottledValue(value);
+      setLastUpdate(now);
+    }
+  }, [value, delay, lastUpdate]);
+
+  return throttledValue;
+}
+
+// Detect when user is actively dragging time slider
+function useDraggingDetection(selectedHour: number): boolean {
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    setIsDragging(true);
+    
+    const timer = setTimeout(() => {
+      setIsDragging(false);
+    }, 300); // Consider dragging stopped after 300ms of no changes
+
+    return () => clearTimeout(timer);
+  }, [selectedHour]);
+
+  return isDragging;
+}
+
 interface CurrentVectorsLayerProps {
   visible?: boolean;
 }
@@ -26,14 +76,19 @@ interface CurrentVectorsLayerProps {
 const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({ 
   visible = true 
 }) => {
-  console.log('🏹 CurrentVectorsLayer render with visible:', visible);
-  
   const { current: map } = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
   
   const [arrowImageLoaded, setArrowImageLoaded] = useState(false);
   const [gridData, setGridData] = useState<GridPoint[]>([]);
   const [arrowsGeoJSON, setArrowsGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(8);
+  const imageLoadAttempted = useRef(false);
+  
+  // Performance optimizations
+  const isDragging = useDraggingDetection(selectedHour);
+  const throttledSelectedHour = useThrottle(selectedHour, isDragging ? 200 : 100);
+  const effectiveSelectedHour = isDragging ? throttledSelectedHour : selectedHour;
   
   // Simple color scale
   const colorScale = useMemo(() => {
@@ -43,15 +98,34 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
   // Current timestamp
   const timestampPrefix = useMemo(() => {
     if (!baseTime) return '';
-    return new Date(baseTime + selectedHour * 3600_000).toISOString().slice(0, 13);
-  }, [selectedHour, baseTime]);
+    return new Date(baseTime + effectiveSelectedHour * 3600_000).toISOString().slice(0, 13);
+  }, [effectiveSelectedHour, baseTime]);
+
+  // Track zoom level for performance optimizations
+  useEffect(() => {
+    if (!map) return;
+    
+    const handleZoomEnd = () => {
+      setZoomLevel(map.getZoom());
+    };
+    
+    map.on('zoomend', handleZoomEnd);
+    setZoomLevel(map.getZoom());
+    
+    return () => {
+      map.off('zoomend', handleZoomEnd);
+    };
+  }, [map]);
 
   // Load grid data
   useEffect(() => {
     const loadGridData = async () => {
       try {
         const response = await fetch('/api/area-parameters');
-        if (!response.ok) return;
+        if (!response.ok) {
+          console.error('❌ Failed to fetch grid data:', response.status);
+          return;
+        }
         
         const data = await response.json();
         if (data.points) {
@@ -66,7 +140,6 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
           }));
           
           setGridData(gridPoints);
-          console.log(`✅ Grid data loaded: ${gridPoints.length} points`);
         }
       } catch (error) {
         console.error('❌ Could not load grid data:', error);
@@ -76,110 +149,308 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     loadGridData();
   }, []);
 
-  // Load arrow image
+  // Load arrow image - IMPROVED VERSION
   useEffect(() => {
-    if (!map) return;
+    if (!map || imageLoadAttempted.current) return;
     
     const loadArrowImage = async () => {
+      imageLoadAttempted.current = true;
+      
+      try {
+        // Method 1: Try loading directly from public path
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+          try {
+            if (map.hasImage('arrow')) {
+              map.removeImage('arrow');
+            }
+            map.addImage('arrow', img);
+            setArrowImageLoaded(true);
+          } catch (error) {
+            console.error('❌ Failed to add image to map:', error);
+          }
+        };
+        
+        img.onerror = (error) => {
+          console.error('❌ Failed to load arrow image:', error);
+          // Try alternative method
+          loadImageAlternative();
+        };
+        
+        img.src = '/images/arrow.png';
+        
+      } catch (error) {
+        console.error('❌ Image loading error:', error);
+        loadImageAlternative();
+      }
+    };
+    
+    const loadImageAlternative = async () => {
       try {
         const response = await fetch('/images/arrow.png');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
         const blob = await response.blob();
         const imageUrl = URL.createObjectURL(blob);
         
         const img = new Image();
         img.onload = () => {
-          if (!map.hasImage('arrow')) {
+          try {
+            if (map.hasImage('arrow')) {
+              map.removeImage('arrow');
+            }
             map.addImage('arrow', img);
             setArrowImageLoaded(true);
+          } catch (error) {
+            console.error('❌ Failed to add blob image to map:', error);
           }
           URL.revokeObjectURL(imageUrl);
         };
+        
+        img.onerror = (error) => {
+          console.error('❌ Failed to load arrow image via blob:', error);
+          URL.revokeObjectURL(imageUrl);
+        };
+        
         img.src = imageUrl;
+        
       } catch (error) {
-        console.error('Failed to load arrow image:', error);
+        console.error('❌ Alternative image loading failed:', error);
       }
     };
     
     loadArrowImage();
   }, [map]);
 
-  // Generate arrows - SIMPLE, NO CACHING
-  useEffect(() => {
-    if (!gridData.length || !timestampPrefix || !visible) {
-      setArrowsGeoJSON(null);
-      return;
-    }
-
-    console.log('🔄 Generating arrows for timestamp:', timestampPrefix, 'visible:', visible);
+  // Generate arrows with performance optimizations
+  const generateArrows = useCallback((performanceMode: boolean = false) => {
+    if (!gridData.length || !timestampPrefix) return null;
     
     const arrowsFeatures: GeoJSON.Feature[] = [];
     
+    // Detect mobile devices
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    
+    // Debug logging
+    console.log('🔍 Debug:', { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
+    
+    // Performance optimization: skip points during dragging for smoother experience
+    const skipRatio = performanceMode ? (isMobile ? 2 : 3) : 1;
+    let pointIndex = 0;
+    
+    // First pass: collect all valid points with their vectors
+    const validPoints: Array<{
+      pt: GridPoint;
+      vector: CurrentVector;
+      magnitude: number;
+      lat: number;
+      lon: number;
+    }> = [];
+    
     for (const pt of gridData) {
+      pointIndex++;
+      
+      // Skip points in performance mode
+      if (performanceMode && pointIndex % skipRatio !== 0) continue;
+      
       const v = pt.vectors.find(v => v.time.startsWith(timestampPrefix));
       if (!v || v.u == null || v.v == null) continue;
 
       const mag = Math.hypot(v.u, v.v);
       if (mag < 0.01) continue;
       
-      const color = colorScale(mag).toString();
-      const rotation = calculateRotation(v.u, v.v);
+      validPoints.push({
+        pt,
+        vector: v,
+        magnitude: mag,
+        lat: pt.lat,
+        lon: pt.lon
+      });
+    }
+    
+    console.log('📊 Valid points found:', validPoints.length);
+    
+    // Smart density-aware filtering - activate at higher zoom levels on desktop
+    const shouldApplyDensityFiltering = zoomLevel < (isMobile ? 7 : 9); // Desktop activates earlier
+    console.log('🎯 Apply density filtering:', shouldApplyDensityFiltering, { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
+    
+    if (shouldApplyDensityFiltering) {
+      // EXTREME filtering - only keep strongest currents with minimum distance
+      const used: Array<{ lat: number; lon: number }> = [];
+      let filteredCount = 0;
       
-      const arrowFeature: GeoJSON.Feature = {
-        type: 'Feature',
-        properties: {
-          color: color,
-          magnitude: mag,
-          opacity: 1,
-          rotation: rotation,
-          size: 0.03
-        },
-        geometry: {
-          type: 'Point',
-          coordinates: [pt.lon, pt.lat]
+      // Calculate minDistance once outside the loop
+      const minDistance = isMobile 
+        ? (zoomLevel < 6 ? 15.0 : 10.0)  // Mobile: same as before
+        : (zoomLevel < 6 ? 15.0 : zoomLevel < 7 ? 10.0 : zoomLevel < 8 ? 7.0 : 5.0); // Desktop: graduated
+      
+      // Sort points by magnitude (keep strongest currents)
+      const sortedPoints = [...validPoints].sort((a, b) => b.magnitude - a.magnitude);
+      
+      for (let i = 0; i < sortedPoints.length; i++) {
+        const point = sortedPoints[i];
+        let shouldInclude = true;
+        
+        // Check if too close to any already included point
+        for (const usedPoint of used) {
+          const distance = haversineDistance(usedPoint.lat, usedPoint.lon, point.lat, point.lon);
+          if (distance < minDistance) {
+            shouldInclude = false;
+            filteredCount++;
+            break;
+          }
         }
-      };
-      arrowsFeatures.push(arrowFeature);
+        
+        if (shouldInclude) {
+          used.push({ lat: point.lat, lon: point.lon });
+          
+          const color = colorScale(point.magnitude).toString();
+          const rotation = calculateRotation(point.vector.u, point.vector.v);
+          
+          // Adjust arrow size based on zoom level and device
+          let baseSize = 0.03;
+          if (isMobile) {
+            if (zoomLevel < 6) {
+              baseSize = 0.025;
+            } else if (zoomLevel < 7) {
+              baseSize = 0.03;
+            } else {
+              baseSize = 0.035;
+            }
+          } else {
+            if (zoomLevel < 6) {
+              baseSize = 0.02;
+            } else if (zoomLevel < 7) {
+              baseSize = 0.025;
+            }
+          }
+          
+          const arrowFeature: GeoJSON.Feature = {
+            type: 'Feature',
+            properties: {
+              color: color,
+              magnitude: point.magnitude,
+              opacity: performanceMode ? (isMobile ? 0.8 : 0.7) : 1,
+              rotation: rotation,
+              size: baseSize
+            },
+            geometry: {
+              type: 'Point',
+              coordinates: [point.lon, point.lat]
+            }
+          };
+          arrowsFeatures.push(arrowFeature);
+        }
+      }
+      
+      console.log('🔥 EXTREME Filtering results:', { 
+        total: validPoints.length, 
+        filtered: filteredCount, 
+        remaining: arrowsFeatures.length,
+        percentage: Math.round((filteredCount / validPoints.length) * 100) + '%',
+        minDistance: minDistance,
+        device: isMobile ? 'mobile' : 'desktop',
+        zoomLevel: zoomLevel.toFixed(1)
+      });
+      
+    } else {
+      // No filtering - include all points
+      for (const point of validPoints) {
+        const color = colorScale(point.magnitude).toString();
+        const rotation = calculateRotation(point.vector.u, point.vector.v);
+        
+        // Adjust arrow size based on zoom level and device
+        let baseSize = 0.03;
+        if (isMobile) {
+          if (zoomLevel < 6) {
+            baseSize = 0.025;
+          } else if (zoomLevel < 7) {
+            baseSize = 0.03;
+          } else {
+            baseSize = 0.035;
+          }
+        } else {
+          if (zoomLevel < 6) {
+            baseSize = 0.02;
+          } else if (zoomLevel < 7) {
+            baseSize = 0.025;
+          }
+        }
+        
+        const arrowFeature: GeoJSON.Feature = {
+          type: 'Feature',
+          properties: {
+            color: color,
+            magnitude: point.magnitude,
+            opacity: performanceMode ? (isMobile ? 0.8 : 0.7) : 1,
+            rotation: rotation,
+            size: baseSize
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [point.lon, point.lat]
+          }
+        };
+        arrowsFeatures.push(arrowFeature);
+      }
     }
 
-    const geoJSON = {
+    return {
       type: 'FeatureCollection' as const,
       features: arrowsFeatures
     };
+  }, [gridData, timestampPrefix, colorScale, zoomLevel]);
 
+  // Generate arrows with performance mode
+  useEffect(() => {
+    if (!visible) {
+      setArrowsGeoJSON(null);
+      return;
+    }
+    
+    const performanceMode = isDragging;
+    const geoJSON = generateArrows(performanceMode);
     setArrowsGeoJSON(geoJSON);
-    console.log('✅ Generated', arrowsFeatures.length, 'arrows');
 
-  }, [gridData, timestampPrefix, visible, colorScale]);
+  }, [visible, generateArrows, isDragging]);
 
-  // Don't render anything if not visible or no data
-  if (!visible || !arrowsGeoJSON || !arrowImageLoaded) {
-    console.log('🚫 Not rendering arrows:', { visible, hasGeoJSON: !!arrowsGeoJSON, arrowImageLoaded });
+  // Don't render anything if not visible
+  if (!visible) {
     return null;
   }
 
-  console.log('✅ Rendering', arrowsGeoJSON.features.length, 'arrows');
+  // Don't render if no data or image not loaded
+  if (!arrowsGeoJSON || !arrowImageLoaded) {
+    return null;
+  }
 
   return (
-    <>
-      <Source id="current-arrows" type="geojson" data={arrowsGeoJSON}>
-        <Layer
-          id="current-arrows-layer"
-          type="symbol"
-          layout={{
-            'icon-image': 'arrow',
-            'icon-size': ['get', 'size'],
-            'icon-rotate': ['get', 'rotation'],
-            'icon-rotation-alignment': 'map',
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true
-          }}
-          paint={{
-            'icon-color': ['get', 'color'],
-            'icon-opacity': ['get', 'opacity']
-          }}
-        />
-      </Source>
-    </>
+    <Source 
+      id="current-arrows" 
+      type="geojson" 
+      data={arrowsGeoJSON}
+    >
+      <Layer
+        id="current-arrows-layer"
+        type="symbol"
+        layout={{
+          'icon-image': 'arrow',
+          'icon-size': ['get', 'size'],
+          'icon-rotate': ['get', 'rotation'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
+        }}
+        paint={{
+          'icon-color': ['get', 'color'],
+          'icon-opacity': ['get', 'opacity']
+        }}
+      />
+    </Source>
   );
 });
 
