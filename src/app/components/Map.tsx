@@ -8,9 +8,23 @@ import { Map, NavigationControl } from 'react-map-gl/maplibre';
 import { useEffect, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import AreaParametersLayer from './AreaParametersLayer';
-import WaterMask from './WaterMask';
+import CurrentMagnitudeLayer from './CurrentMagnitudeLayer';
+import CurrentVectorsLayer from './CurrentVectorsLayer';
 
-export default function MapView({ showZoom = true }: { showZoom?: boolean }) {
+interface MapViewProps {
+  showZoom?: boolean;
+  // Layer visibility controls
+  showCurrentMagnitude?: boolean;
+  showCurrentVectors?: boolean;
+  currentMagnitudeOpacity?: number;
+}
+
+export default function MapView({ 
+  showZoom = true,
+  showCurrentMagnitude = true,
+  showCurrentVectors = true,
+  currentMagnitudeOpacity = 0.8
+}: MapViewProps) {
   const [isDesktop, setIsDesktop] = useState(true);
   
   useEffect(() => {
@@ -30,6 +44,12 @@ export default function MapView({ showZoom = true }: { showZoom?: boolean }) {
           latitude: 55.65,
           zoom: 8.5
         }}
+        maxBounds={[
+          [10.3, 54.9], // sydväst (lon_min, lat_min)
+          [16.6, 59.6]  // nordöst (lon_max, lat_max)
+        ]}
+        minZoom={6}
+        maxZoom={12}
         style={{ width: '100%', height: '100%' }}
         mapStyle={{
           version: 8,
@@ -54,8 +74,22 @@ export default function MapView({ showZoom = true }: { showZoom?: boolean }) {
         scrollZoom={true}
       >
         {showNavigation && <NavigationControl position="top-right" />}
-        <WaterMask />
+        
+        {/* Grundlager */}
         <AreaParametersLayer />
+        
+        {/* Ström-lager - strömstyrka kommer först (under pilar) */}
+        <CurrentMagnitudeLayer 
+          visible={showCurrentMagnitude}
+          opacity={currentMagnitudeOpacity}
+        />
+        
+        {/* PILAR MÅSTE RENDERAS EFTER MAGNITUDE FÖR ATT VARA OVANPÅ */}
+        {showCurrentVectors && (
+          <CurrentVectorsLayer 
+            visible={true}
+          />
+        )}
       </Map>
     </div>
   );

@@ -15,7 +15,7 @@ export async function GET() {
 
 async function updateGrid() {
   try {
-    const geojsonPath = path.join(process.cwd(), "public/data/skandinavien-water.geojson");
+    const geojsonPath = path.join(process.cwd(), "public/data/scandinavian-waters.geojson");
     const outputPath = path.join(process.cwd(), "public/data/precomputed-grid.json");
 
     const raw = await fs.readFile(geojsonPath, "utf-8");

@@ -18,7 +18,7 @@ import { generateSamplePointsFromWaterMask } from '../src/lib/extractWaterPoints
 import { fetchCurrentVectors } from '../src/lib/fetchCurrentVectors.js';
 
 async function main() {
-  const geojsonPath = path.join(process.cwd(), 'public', 'data', 'skandinavien-water.geojson');
+  const geojsonPath = path.join(process.cwd(), 'public', 'data', 'scandinavian-waters.geojson');
   const outputPath = path.join(process.cwd(), 'public', 'data', 'precomputed-grid.json');
 
   console.log('📥 Läser GeoJSON…');

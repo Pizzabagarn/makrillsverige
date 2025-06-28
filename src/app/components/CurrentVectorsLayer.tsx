@@ -63,7 +63,7 @@ function useDraggingDetection(selectedHour: number): boolean {
     // Set timer to detect when dragging stops (300ms after last change)
     dragTimer.current = setTimeout(() => {
       setIsDragging(false);
-    }, 300) as any;
+    }, 1000) as any; // Längre timeout för mindre känslighet
 
     return () => {
       if (dragTimer.current) {
@@ -87,7 +87,13 @@ function calculateRotation(u: number, v: number): number {
   return (90 - angleDeg) % 360;
 }
 
-const CurrentVectorsLayer = React.memo(() => {
+interface CurrentVectorsLayerProps {
+  visible?: boolean;
+}
+
+const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({ 
+  visible = true 
+}) => {
   const { current: map } = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
   
@@ -97,21 +103,47 @@ const CurrentVectorsLayer = React.memo(() => {
   // Detect if user is actively dragging
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Use different throttling based on dragging state
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 50);   // Fast updates when not dragging
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 200);  // Slow updates when dragging
+  // Use different throttling based on dragging state - mycket aggressivare
+  const lightThrottledHour = useHeavyThrottle(selectedHour, 200);   // Långsammare även när inte dragging
+  const heavyThrottledHour = useHeavyThrottle(selectedHour, 800);   // Mycket långsam under dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [gridData, setGridData] = useState<GridPoint[]>([]);
   const [zoomLevel, setZoomLevel] = useState(8.5);
   const [arrowsGeoJSON, setArrowsGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
 
-  // 1) Ladda förberäknad grid
+  // 1) Ladda grid från area-parameters API
   useEffect(() => {
-    fetch('/data/precomputed-grid.json')
-      .then(r => r.json())
-      .then(setGridData)
-      .catch(console.error);
+    const loadGridData = async () => {
+      try {
+        const response = await fetch('/api/area-parameters');
+        if (!response.ok) {
+          console.warn('⚠️ Area parameters API inte tillgänglig');
+          return;
+        }
+        
+        const data = await response.json();
+        if (data.points) {
+          // Konvertera area-parameters format till grid format
+          const gridPoints: GridPoint[] = data.points.map((point: any) => ({
+            lat: point.lat,
+            lon: point.lon,
+            vectors: point.data ? point.data.map((timeData: any) => ({
+              time: timeData.time,
+              u: timeData.current?.u || null,
+              v: timeData.current?.v || null
+            })).filter((v: any) => v.u !== null && v.v !== null) : []
+          }));
+          
+          setGridData(gridPoints);
+          console.log(`✅ Grid data laddad: ${gridPoints.length} punkter`);
+        }
+      } catch (error) {
+        console.error('❌ Kunde inte ladda grid data:', error);
+      }
+    };
+    
+    loadGridData();
   }, []);
 
   // 2) Load arrow image into MapLibre GL
@@ -174,12 +206,8 @@ const CurrentVectorsLayer = React.memo(() => {
   const createGeoJSONData = useCallback((timestamp: string, performanceMode: boolean = false) => {
     const arrowsFeatures: GeoJSON.Feature[] = [];
 
-    // Distance-based filtering (samma som gamla Leaflet-koden)
-    const minD = zoomLevel < 4 ? 50 :
-                 zoomLevel < 5 ? 35 :
-                 zoomLevel < 6 ? 25 :
-                 zoomLevel < 7 ? 15 :
-                 zoomLevel < 8 ? 4 : 0; // Mjukare första steget - bara 4 km avstånd
+    // Visa alla pilar på alla zoom-nivåer - ingen begränsning
+    const minD = 0; // Alltid visa alla pilar
 
     const used: { lat: number; lon: number }[] = [];
 
@@ -249,7 +277,7 @@ const CurrentVectorsLayer = React.memo(() => {
   // 8) No cleanup needed anymore (no cache)
   // useEffect removed since we don't use cache anymore
 
-  if (!arrowsGeoJSON || !arrowImageLoaded) return null;
+  if (!visible || !arrowsGeoJSON || !arrowImageLoaded) return null;
 
   return (
     <>

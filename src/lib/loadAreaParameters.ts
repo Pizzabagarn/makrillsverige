@@ -17,7 +17,7 @@ export async function loadAreaParameters(): Promise<any> {
     console.log('📦 Laddar komprimerad area-parameters data...');
     const startTime = performance.now();
     
-    const response = await fetch('/data/area-parameters.json.gz');
+    const response = await fetch('/data/area-parameters-extended.json.gz');
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
