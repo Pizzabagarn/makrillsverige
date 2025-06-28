@@ -1,9 +1,12 @@
 // src/app/layout.tsx
+'use client';
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SidebarWithToggle from "./components/SidebarLayout";
 import { TimeSliderProvider } from "./context/TimeSliderContext";
+import { LayerProvider } from "./context/LayerContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,18 +18,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Makrill-Sverige",
-  description: "Fiskedata och havsprognoser längs västkusten",
-};
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1.0,
-  maximumScale: 5.0,
-  userScalable: true,
-  viewportFit: 'cover',
-};
+// Metadata moved to separate file since this is now a client component
 
 export default function RootLayout({
   children,
@@ -36,11 +28,12 @@ export default function RootLayout({
   return (
     <html lang="sv">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-
         <TimeSliderProvider>
-          <SidebarWithToggle>
-            {children}
-          </SidebarWithToggle>
+          <LayerProvider>
+            <SidebarWithToggle>
+              {children}
+            </SidebarWithToggle>
+          </LayerProvider>
         </TimeSliderProvider>
       </body>
     </html>

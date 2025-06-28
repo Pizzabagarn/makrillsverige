@@ -24,11 +24,11 @@ export default function LayerToggleControls({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className={`bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border p-3 ${className}`}>
+    <div className={`backdrop-blur-md bg-white/90 border border-white/20 rounded-lg shadow-lg p-3 ${className}`}>
       {/* Header med toggle */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900"
+        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
       >
         <span className="flex items-center">
           <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -47,33 +47,42 @@ export default function LayerToggleControls({
 
       {/* Expanderat innehåll */}
       {isExpanded && (
-        <div className="mt-3 space-y-3 border-t pt-3">
+        <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
           {/* Strömstyrka toggle */}
-          <div className="space-y-2">
+          <div className="backdrop-blur-sm bg-white/60 border border-gray-200/50 rounded-lg p-2.5 shadow-sm">
             <label className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600 flex items-center">
-                <div className="w-3 h-3 mr-2 rounded-sm bg-gradient-to-r from-blue-500 via-green-500 via-yellow-500 to-red-500"></div>
+              <span className="text-xs font-medium text-gray-700 flex items-center">
+                <div className="w-2.5 h-2.5 mr-2 rounded-sm bg-gradient-to-r from-blue-500 via-green-500 via-yellow-500 to-red-500"></div>
                 Strömstyrka
               </span>
               <button
-                onClick={() => onToggleCurrentMagnitude(!showCurrentMagnitude)}
-                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                  showCurrentMagnitude ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCurrentMagnitude(!showCurrentMagnitude);
+                }}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg ${
+                  showCurrentMagnitude 
+                    ? 'bg-blue-600 shadow-blue-500/30' 
+                    : 'bg-gray-600 shadow-gray-600/20'
+                } hover:scale-105 active:scale-95`}
               >
                 <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    showCurrentMagnitude ? 'translate-x-3.5' : 'translate-x-0.5'
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all duration-300 ease-in-out shadow-sm ${
+                    showCurrentMagnitude ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
+                {/* Glowing effect when active */}
+                {showCurrentMagnitude && (
+                  <div className="absolute inset-0 rounded-full bg-blue-400/20 animate-pulse"></div>
+                )}
               </button>
             </label>
             
             {/* Opacity slider när strömstyrka är synlig */}
             {showCurrentMagnitude && (
-              <div className="ml-5">
+              <div className="mt-2">
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-gray-500">Transparens</span>
+                  <span className="text-xs text-gray-600">Transparens</span>
                   <input
                     type="range"
                     min="0.1"
@@ -81,9 +90,9 @@ export default function LayerToggleControls({
                     step="0.1"
                     value={currentMagnitudeOpacity}
                     onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
-                    className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">
+                  <span className="text-xs text-gray-600 w-8 text-right">
                     {Math.round(currentMagnitudeOpacity * 100)}%
                   </span>
                 </div>
@@ -92,32 +101,41 @@ export default function LayerToggleControls({
           </div>
 
           {/* Strömpilar toggle */}
-          <div className="space-y-2">
+          <div className="backdrop-blur-sm bg-white/60 border border-gray-200/50 rounded-lg p-2.5 shadow-sm">
             <label className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600 flex items-center">
-                <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <span className="text-xs font-medium text-gray-700 flex items-center">
+                <svg className="w-2.5 h-2.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
                   <path fillRule="evenodd" d="M3 10a1 1 0 011-1h10a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                 </svg>
                 Strömpilar
               </span>
               <button
-                onClick={() => onToggleCurrentVectors(!showCurrentVectors)}
-                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                  showCurrentVectors ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCurrentVectors(!showCurrentVectors);
+                }}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg ${
+                  showCurrentVectors 
+                    ? 'bg-blue-600 shadow-blue-500/30' 
+                    : 'bg-gray-600 shadow-gray-600/20'
+                } hover:scale-105 active:scale-95`}
               >
                 <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    showCurrentVectors ? 'translate-x-3.5' : 'translate-x-0.5'
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all duration-300 ease-in-out shadow-sm ${
+                    showCurrentVectors ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
+                {/* Glowing effect when active */}
+                {showCurrentVectors && (
+                  <div className="absolute inset-0 rounded-full bg-blue-400/20 animate-pulse"></div>
+                )}
               </button>
             </label>
           </div>
 
-          {/* Info text */}
-          <div className="text-xs text-gray-500 bg-gray-50 rounded p-2">
+          {/* Info text med inglasad design */}
+          <div className="text-xs text-gray-600 backdrop-blur-sm bg-gray-50/80 border border-gray-200/50 rounded-lg p-2 shadow-sm">
             <strong>Strömstyrka</strong> visas som färgade zoner, <strong>pilarna</strong> visar strömriktning.
           </div>
         </div>

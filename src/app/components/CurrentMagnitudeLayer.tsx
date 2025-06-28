@@ -238,7 +238,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     };
   }, [currentImageUrl, imageLoaded, metadata]);
 
-  // 6) Layer configuration
+  // 6) Layer configuration - LAG Z-INDEX FÖR ATT VARA UNDER PILAR
   const rasterLayer = useMemo(() => {
     if (!visible) return null;
     
@@ -249,6 +249,9 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         'raster-opacity': opacity,
         'raster-fade-duration': 300, // Mjuk övergång mellan bilder
       },
+      metadata: {
+        'z-index': 10 // Låg z-index så pilar (z-index 20) renderas ovanpå
+      }
     };
   }, [visible, opacity]);
 

@@ -10,22 +10,23 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import AreaParametersLayer from './AreaParametersLayer';
 import CurrentMagnitudeLayer from './CurrentMagnitudeLayer';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
+import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
 
 interface MapViewProps {
   showZoom?: boolean;
   // Layer visibility controls
   showCurrentMagnitude?: boolean;
   showCurrentVectors?: boolean;
-  currentMagnitudeOpacity?: number;
 }
 
 export default function MapView({ 
   showZoom = true,
   showCurrentMagnitude = true,
-  showCurrentVectors = true,
-  currentMagnitudeOpacity = 0.8
+  showCurrentVectors = true
 }: MapViewProps) {
   const [isDesktop, setIsDesktop] = useState(true);
+  
+  console.log('🗺️ MapView render:', { showCurrentMagnitude, showCurrentVectors });
   
   useEffect(() => {
     const check = () => setIsDesktop(window.matchMedia('(min-width: 768px)').matches);
@@ -81,16 +82,20 @@ export default function MapView({
         {/* Ström-lager - strömstyrka kommer först (under pilar) */}
         <CurrentMagnitudeLayer 
           visible={showCurrentMagnitude}
-          opacity={currentMagnitudeOpacity}
+          opacity={1.0}
         />
         
         {/* PILAR MÅSTE RENDERAS EFTER MAGNITUDE FÖR ATT VARA OVANPÅ */}
-        {showCurrentVectors && (
-          <CurrentVectorsLayer 
-            visible={true}
-          />
-        )}
+        <CurrentVectorsLayer 
+          visible={showCurrentVectors}
+        />
       </Map>
+      
+      {/* Legend för strömstyrka - FLYTTAD TILL ÖVRE HÖGRA HÖRNET, kompakt design */}
+      <CurrentMagnitudeLegend 
+        visible={showCurrentMagnitude}
+        className="absolute top-4 right-4 z-10"
+      />
     </div>
   );
 }

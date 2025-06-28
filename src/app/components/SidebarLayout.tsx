@@ -5,8 +5,19 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { getLayoutType, shouldShowSidebar, shouldShowHamburger, type LayoutType } from '../../lib/layoutUtils';
+import { useLayer } from '../context/LayerContext';
 
-export default function SidebarWithToggle({ children }: { children: React.ReactNode }) {
+interface SidebarLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
+  const {
+    showCurrentMagnitude,
+    showCurrentVectors,
+    setShowCurrentMagnitude,
+    setShowCurrentVectors
+  } = useLayer();
   const [open, setOpen] = useState(false);
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
 
@@ -50,7 +61,12 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
                 : '256px'
             }}
           >
-            <Sidebar />
+            <Sidebar 
+              showCurrentMagnitude={showCurrentMagnitude}
+              showCurrentVectors={showCurrentVectors}
+              onToggleCurrentMagnitude={setShowCurrentMagnitude}
+              onToggleCurrentVectors={setShowCurrentVectors}
+            />
           </div>
         )}
 
@@ -89,11 +105,11 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
           onClick={() => setOpen(false)}
         />
 
-        {/* Popup-sidebar mobil med smooth slide-in animation */}
+        {/* Popup-sidebar mobil - BREDARE för att få plats med kartlager (65% av skärmbredden) */}
         <div 
           className={`
             fixed top-0 left-0 z-[9999] h-full 
-            w-[30%]
+            w-[65%]
             bg-gradient-to-br from-black/95 via-black/90 to-black/85
             backdrop-blur-xl border-r border-white/20
             text-white shadow-2xl
@@ -122,10 +138,16 @@ export default function SidebarWithToggle({ children }: { children: React.ReactN
             ✕
           </button>
 
-          {/* Sidebar innehåll med padding för stängknappen */}
+          {/* Sidebar innehåll med padding för stängknappen - nu med kartlager som huvudinnehåll */}
           <div className="h-full pt-16 pb-6 px-4">
-            <Sidebar isHamburgerMenu={true} />
-          </div>
+            <Sidebar 
+              isHamburgerMenu={true}
+              showCurrentMagnitude={showCurrentMagnitude}
+              showCurrentVectors={showCurrentVectors}
+              onToggleCurrentMagnitude={setShowCurrentMagnitude}
+              onToggleCurrentVectors={setShowCurrentVectors}
+            />
+                    </div>
         </div>
 
         {/* Main content */}

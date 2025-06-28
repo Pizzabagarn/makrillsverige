@@ -5,18 +5,16 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../lib/layoutUtils';
+import { useLayer } from './context/LayerContext';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
-const LayerToggleControls = dynamic(() => import('./components/LayerToggleControls'), { ssr: false });
 
 export default function Home() {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
   
-  // Layer visibility state
-  const [showCurrentMagnitude, setShowCurrentMagnitude] = useState(true);
-  const [showCurrentVectors, setShowCurrentVectors] = useState(true);
-  const [currentMagnitudeOpacity, setCurrentMagnitudeOpacity] = useState(0.8);
+  // Layer state från LayerContext - kontrolleras nu från sidebaren
+  const { showCurrentMagnitude, showCurrentVectors } = useLayer();
 
   useEffect(() => {
     const checkLayout = () => {
@@ -46,23 +44,9 @@ export default function Home() {
           showZoom={false}
           showCurrentMagnitude={showCurrentMagnitude}
           showCurrentVectors={showCurrentVectors}
-          currentMagnitudeOpacity={currentMagnitudeOpacity}
         />
         
-        {/* Layer Controls - Desktop: top-left, Mobile: overlay */}
-        <LayerToggleControls
-          showCurrentMagnitude={showCurrentMagnitude}
-          showCurrentVectors={showCurrentVectors}
-          onToggleCurrentMagnitude={setShowCurrentMagnitude}
-          onToggleCurrentVectors={setShowCurrentVectors}
-          currentMagnitudeOpacity={currentMagnitudeOpacity}
-          onOpacityChange={setCurrentMagnitudeOpacity}
-          className={`absolute z-10 ${
-            layoutType === 'desktop' 
-              ? 'top-4 left-4' 
-              : 'top-2 left-2 right-2'
-          }`}
-        />
+        {/* Lager-kontroller flyttade till sidebaren - ingen overlay längre */}
       </div>
 
       {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): ClockKnob under/över kartan */}
