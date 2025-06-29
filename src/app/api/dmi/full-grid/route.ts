@@ -12,7 +12,7 @@ export async function GET() {
 
   try {
     // 1. Läs in GeoJSON-filen från public/data
-    const geoPath = path.join(process.cwd(), 'public', 'data', 'skandinavien-water.geojson');
+    const geoPath = path.join(process.cwd(), 'public', 'data', 'scandinavian-waters.geojson');
     const raw = await fs.readFile(geoPath, 'utf-8');
     const geojson = JSON.parse(raw);
 

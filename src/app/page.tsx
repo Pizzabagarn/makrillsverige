@@ -5,12 +5,16 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../lib/layoutUtils';
+import { useLayer } from './context/LayerContext';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
 
 export default function Home() {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
+  
+  // Layer state från LayerContext - kontrolleras nu från sidebaren
+  const { showCurrentMagnitude, showCurrentVectors } = useLayer();
 
   useEffect(() => {
     const checkLayout = () => {
@@ -36,7 +40,13 @@ export default function Home() {
           paddingBottom: layoutType === 'mobileLandscape' ? '25vh' : '0'
         }}
       >
-        <MapView showZoom={false} />
+        <MapView 
+          showZoom={false}
+          showCurrentMagnitude={showCurrentMagnitude}
+          showCurrentVectors={showCurrentVectors}
+        />
+        
+        {/* Lager-kontroller flyttade till sidebaren - ingen overlay längre */}
       </div>
 
       {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): ClockKnob under/över kartan */}

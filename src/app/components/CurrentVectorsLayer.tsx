@@ -2,285 +2,456 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { useMap, useMapEvent } from 'react-leaflet';
+import { useMap } from 'react-map-gl/maplibre';
+import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
-import L from 'leaflet';
-import 'leaflet-polylinedecorator';
 import chroma from 'chroma-js';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import type { GeoJSON } from 'geojson';
 
 interface CurrentVector { u: number; v: number; time: string }
-interface GridPoint      { lat: number; lon: number; vectors: CurrentVector[] }
+interface GridPoint { lat: number; lon: number; vectors: CurrentVector[] }
 
-// Beräkna avstånd (km)
-function haversineDistance(lat1:number,lon1:number,lat2:number,lon2:number) {
-  const R=6371, toRad=(d:number)=>(d*Math.PI)/180;
-  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-  const a=Math.sin(dLat/2)**2
-          +Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+// Calculate rotation angle from u,v components
+function calculateRotation(u: number, v: number): number {
+  const angleRad = Math.atan2(v, u);
+  const angleDeg = (angleRad * 180) / Math.PI;
+  return (90 - angleDeg) % 360;
 }
 
-// Heavy throttle function for dragging
-function useHeavyThrottle<T>(value: T, delay: number): T {
+// Simple haversine distance function
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + 
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+// Throttle hook for performance
+function useThrottle<T>(value: T, delay: number): T {
   const [throttledValue, setThrottledValue] = useState<T>(value);
-  const lastExecuted = useRef<number>(0);
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
   useEffect(() => {
     const now = Date.now();
-    if (now >= lastExecuted.current + delay) {
-      lastExecuted.current = now;
-      setThrottledValue(value);
-    } else {
+    if (now - lastUpdate < delay) {
       const timer = setTimeout(() => {
-        lastExecuted.current = Date.now();
         setThrottledValue(value);
-      }, delay - (now - lastExecuted.current));
-
+        setLastUpdate(Date.now());
+      }, delay - (now - lastUpdate));
       return () => clearTimeout(timer);
+    } else {
+      setThrottledValue(value);
+      setLastUpdate(now);
     }
-  }, [value, delay]);
+  }, [value, delay, lastUpdate]);
 
   return throttledValue;
 }
 
-// Dragging detection hook
+// Detect when user is actively dragging time slider
 function useDraggingDetection(selectedHour: number): boolean {
   const [isDragging, setIsDragging] = useState(false);
-  const lastChangeTime = useRef<number>(0);
-  const dragTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    // Mark as dragging when value changes
     setIsDragging(true);
-    lastChangeTime.current = Date.now();
     
-    // Clear existing timer
-    if (dragTimer.current) {
-      clearTimeout(dragTimer.current);
-    }
-    
-    // Set timer to detect when dragging stops (300ms after last change)
-    dragTimer.current = setTimeout(() => {
+    const timer = setTimeout(() => {
       setIsDragging(false);
-    }, 300) as any;
+    }, 300); // Consider dragging stopped after 300ms of no changes
 
-    return () => {
-      if (dragTimer.current) {
-        clearTimeout(dragTimer.current);
-      }
-    };
+    return () => clearTimeout(timer);
   }, [selectedHour]);
 
   return isDragging;
 }
 
-const CurrentVectorsLayer = React.memo(() => {
-  const map = useMap();
+interface CurrentVectorsLayerProps {
+  visible?: boolean;
+}
+
+const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({ 
+  visible = true 
+}) => {
+  const { current: map } = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
   
-  // Detect if user is actively dragging
-  const isDragging = useDraggingDetection(selectedHour);
-  
-  // Use different throttling based on dragging state
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 50);   // Fast updates when not dragging
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 200);  // Slow updates when dragging
-  const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
-  
+  const [arrowImageLoaded, setArrowImageLoaded] = useState(false);
   const [gridData, setGridData] = useState<GridPoint[]>([]);
-  const layerRef = useRef<L.LayerGroup|null>(null);
-  const layerCacheRef = useRef<Map<string, L.LayerGroup>>(new Map());
-  const [zoomLevel, setZoomLevel] = useState(() => map.getZoom());
-
-  // 1) Ladda förberäknad grid
-  useEffect(() => {
-    fetch('/data/precomputed-grid.json')
-      .then(r => r.json())
-      .then(setGridData)
-      .catch(console.error);
-  }, []);
-
-  // 2) Track zoom with throttling
-  const handleZoomEnd = useCallback(() => {
-    setZoomLevel(map.getZoom());
-  }, [map]);
-
-  useMapEvent('zoomend', handleZoomEnd);
-
-  // 3) Se till att vectorPane finns
-  useEffect(() => {
-    if (!map.getPane('vectorPane')) {
-      map.createPane('vectorPane').style.zIndex = '420';
-    }
-  }, [map]);
-
-  // 4) Memoized color scale
+  const [arrowsGeoJSON, setArrowsGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(8);
+  const imageLoadAttempted = useRef(false);
+  
+  // Performance optimizations
+  const isDragging = useDraggingDetection(selectedHour);
+  const throttledSelectedHour = useThrottle(selectedHour, isDragging ? 200 : 100);
+  const effectiveSelectedHour = isDragging ? throttledSelectedHour : selectedHour;
+  
+  // Simple color scale
   const colorScale = useMemo(() => {
-    return chroma
-      .scale(['#0000ff','#00ffff','#00ff00','#ffff00','#ff0000'])
-      .domain([0,0.7]);
+    return chroma.scale(['#0000ff','#00ffff','#00ff00','#ffff00','#ff0000']).domain([0,0.7]);
   }, []);
 
-  // 5) Memoized timestamp prefix - baseTime is now current UTC hour
+  // Current timestamp
   const timestampPrefix = useMemo(() => {
     if (!baseTime) return '';
-    // baseTime is current UTC hour, so this calculation gives us the correct UTC time for data lookup
-    return new Date(baseTime + effectiveSelectedHour * 3600_000)
-      .toISOString().slice(0, 13);
+    return new Date(baseTime + effectiveSelectedHour * 3600_000).toISOString().slice(0, 13);
   }, [effectiveSelectedHour, baseTime]);
 
-  // 6) Create layer group for specific time and zoom with performance mode
-  const createLayerGroup = useCallback((timestamp: string, zoom: number, performanceMode: boolean = false) => {
-    const group = L.layerGroup([], { pane: 'vectorPane' });
+  // Track zoom level for performance optimizations
+  useEffect(() => {
+    if (!map) return;
+    
+    const handleZoomEnd = () => {
+      setZoomLevel(map.getZoom());
+    };
+    
+    map.on('zoomend', handleZoomEnd);
+    setZoomLevel(map.getZoom());
+    
+    return () => {
+      map.off('zoomend', handleZoomEnd);
+    };
+  }, [map]);
 
-    // Reduce arrow density during dragging for better performance
-    const skipFactor = performanceMode ? 3 : 1; // Show every 3rd arrow when dragging
-    let skipCounter = 0;
-
-    for (const pt of gridData) {
-      // Skip arrows during performance mode
-      if (performanceMode) {
-        skipCounter++;
-        if (skipCounter % skipFactor !== 0) continue;
+  // Load grid data
+  useEffect(() => {
+    const loadGridData = async () => {
+      try {
+        const response = await fetch('/api/area-parameters');
+        if (!response.ok) {
+          console.error('❌ Failed to fetch grid data:', response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        if (data.points) {
+          const gridPoints: GridPoint[] = data.points.map((point: any) => ({
+            lat: point.lat,
+            lon: point.lon,
+            vectors: point.data ? point.data.map((timeData: any) => ({
+              time: timeData.time,
+              u: timeData.current?.u || null,
+              v: timeData.current?.v || null
+            })).filter((v: any) => v.u !== null && v.v !== null) : []
+          }));
+          
+          setGridData(gridPoints);
+        }
+      } catch (error) {
+        console.error('❌ Could not load grid data:', error);
       }
+    };
+    
+    loadGridData();
+  }, []);
 
-      const v = pt.vectors.find(v => v.time.startsWith(timestamp));
+  // Load arrow image - IMPROVED VERSION
+  useEffect(() => {
+    if (!map || imageLoadAttempted.current) return;
+    
+    const loadArrowImage = async () => {
+      imageLoadAttempted.current = true;
+      
+      try {
+        // Method 1: Try loading directly from public path
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+          try {
+            if (map.hasImage('arrow')) {
+              map.removeImage('arrow');
+            }
+            map.addImage('arrow', img);
+            setArrowImageLoaded(true);
+          } catch (error) {
+            console.error('❌ Failed to add image to map:', error);
+          }
+        };
+        
+        img.onerror = (error) => {
+          console.error('❌ Failed to load arrow image:', error);
+          // Try alternative method
+          loadImageAlternative();
+        };
+        
+        img.src = '/images/arrow.png';
+        
+      } catch (error) {
+        console.error('❌ Image loading error:', error);
+        loadImageAlternative();
+      }
+    };
+    
+    const loadImageAlternative = async () => {
+      try {
+        const response = await fetch('/images/arrow.png');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        
+        const img = new Image();
+        img.onload = () => {
+          try {
+            if (map.hasImage('arrow')) {
+              map.removeImage('arrow');
+            }
+            map.addImage('arrow', img);
+            setArrowImageLoaded(true);
+          } catch (error) {
+            console.error('❌ Failed to add blob image to map:', error);
+          }
+          URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.onerror = (error) => {
+          console.error('❌ Failed to load arrow image via blob:', error);
+          URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.src = imageUrl;
+        
+      } catch (error) {
+        console.error('❌ Alternative image loading failed:', error);
+      }
+    };
+    
+    loadArrowImage();
+  }, [map]);
+
+  // Generate arrows with performance optimizations
+  const generateArrows = useCallback((performanceMode: boolean = false) => {
+    if (!gridData.length || !timestampPrefix) return null;
+    
+    const arrowsFeatures: GeoJSON.Feature[] = [];
+    
+    // Detect mobile devices
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    
+    // Debug logging
+    console.log('🔍 Debug:', { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
+    
+    // Performance optimization: skip points during dragging for smoother experience
+    const skipRatio = performanceMode ? (isMobile ? 2 : 3) : 1;
+    let pointIndex = 0;
+    
+    // First pass: collect all valid points with their vectors
+    const validPoints: Array<{
+      pt: GridPoint;
+      vector: CurrentVector;
+      magnitude: number;
+      lat: number;
+      lon: number;
+    }> = [];
+    
+    for (const pt of gridData) {
+      pointIndex++;
+      
+      // Skip points in performance mode
+      if (performanceMode && pointIndex % skipRatio !== 0) continue;
+      
+      const v = pt.vectors.find(v => v.time.startsWith(timestampPrefix));
       if (!v || v.u == null || v.v == null) continue;
 
       const mag = Math.hypot(v.u, v.v);
       if (mag < 0.01) continue;
       
-      const color = colorScale(mag).hex();
-
-      // Linjens slutpunkt
-      const len = 0.05;
-      const lat2 = pt.lat + len * v.v;
-      const lon2 = pt.lon + len * v.u;
-
-      // Simplified rendering during performance mode - keep arrows but simpler
-      if (performanceMode) {
-        // Simple line + arrow during dragging (no glow)
-        const line = L.polyline(
-          [[pt.lat,pt.lon],[lat2,lon2]],
-          { pane:'vectorPane', color, weight: 2, opacity: 0.8 }
-        );
-        group.addLayer(line);
-        
-        // Simplified arrow head for performance
-        const decorator = (L as any).polylineDecorator(line, {
-          pane: 'vectorPane',
-          patterns: [{
-            offset: '100%',
-            repeat: 0,
-            symbol: (L as any).Symbol.arrowHead({
-              pixelSize: 6, // Smaller arrow during dragging
-              polygon: true,
-              pathOptions: {
-                fill: true,
-                fillColor: color,
-                fillOpacity: 0.8, // Slightly transparent during dragging
-                stroke: false
-              }
-            })
-          }]
-        });
-        group.addLayer(decorator);
-      } else {
-        // Full quality rendering when not dragging
-        // 1) Glow-linje (tjock & låg opacity) - DISABLED FOR PERFORMANCE TEST
-        // const glow = L.polyline(
-        //   [[pt.lat,pt.lon],[lat2,lon2]],
-        //   { pane:'vectorPane', color, weight:6, opacity:0.3 }
-        // );
-        // group.addLayer(glow);
-
-        // 2) Huvudlinje
-        const line = L.polyline(
-          [[pt.lat,pt.lon],[lat2,lon2]],
-          { pane:'vectorPane', color, weight:2, opacity:1 }
-        );
-        group.addLayer(line);
-
-        // 3) Pilhuvud med decorator
-        const decorator = (L as any).polylineDecorator(line, {
-          pane: 'vectorPane',
-          patterns: [{
-            offset: '100%',
-            repeat: 0,
-            symbol: (L as any).Symbol.arrowHead({
-              pixelSize: 8,
-              polygon: true,
-              pathOptions: {
-                fill: true,
-                fillColor: color,
-                fillOpacity: 1,
-                stroke: false
-              }
-            })
-          }]
-        });
-        group.addLayer(decorator);
-      }
+      validPoints.push({
+        pt,
+        vector: v,
+        magnitude: mag,
+        lat: pt.lat,
+        lon: pt.lon
+      });
     }
-
-    return group;
-  }, [gridData, colorScale]);
-
-  // 7) Main rendering effect with performance-aware caching
-  useEffect(() => {
-    if (!gridData.length || !baseTime || !timestampPrefix) return;
-
-    const performanceMode = isDragging;
-    const cacheKey = `${timestampPrefix}_${zoomLevel}_${performanceMode ? 'perf' : 'full'}`;
     
-    // Check if we already have this layer cached
-    let group = layerCacheRef.current.get(cacheKey);
+    console.log('📊 Valid points found:', validPoints.length);
     
-    if (!group) {
-      // Create new layer group if not cached
-      group = createLayerGroup(timestampPrefix, zoomLevel, performanceMode);
+    // Smart density-aware filtering - activate at higher zoom levels on desktop
+    const shouldApplyDensityFiltering = zoomLevel < (isMobile ? 7 : 9); // Desktop activates earlier
+    console.log('🎯 Apply density filtering:', shouldApplyDensityFiltering, { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
+    
+    if (shouldApplyDensityFiltering) {
+      // EXTREME filtering - only keep strongest currents with minimum distance
+      const used: Array<{ lat: number; lon: number }> = [];
+      let filteredCount = 0;
       
-      // Cache the layer group (limit cache size to prevent memory leaks)
-      if (layerCacheRef.current.size > 15) { // Increased cache size for perf/full modes
-        // Remove oldest entries
-        const firstKey = layerCacheRef.current.keys().next().value;
-        if (firstKey) {
-          const oldGroup = layerCacheRef.current.get(firstKey);
-          if (oldGroup) {
-            map.removeLayer(oldGroup);
+      // Calculate minDistance once outside the loop
+      const minDistance = isMobile 
+        ? (zoomLevel < 6 ? 15.0 : 10.0)  // Mobile: same as before
+        : (zoomLevel < 6 ? 15.0 : zoomLevel < 7 ? 10.0 : zoomLevel < 8 ? 7.0 : 5.0); // Desktop: graduated
+      
+      // Sort points by magnitude (keep strongest currents)
+      const sortedPoints = [...validPoints].sort((a, b) => b.magnitude - a.magnitude);
+      
+      for (let i = 0; i < sortedPoints.length; i++) {
+        const point = sortedPoints[i];
+        let shouldInclude = true;
+        
+        // Check if too close to any already included point
+        for (const usedPoint of used) {
+          const distance = haversineDistance(usedPoint.lat, usedPoint.lon, point.lat, point.lon);
+          if (distance < minDistance) {
+            shouldInclude = false;
+            filteredCount++;
+            break;
           }
-          layerCacheRef.current.delete(firstKey);
+        }
+        
+        if (shouldInclude) {
+          used.push({ lat: point.lat, lon: point.lon });
+          
+          const color = colorScale(point.magnitude).toString();
+          const rotation = calculateRotation(point.vector.u, point.vector.v);
+          
+          // Adjust arrow size based on zoom level and device
+          let baseSize = 0.03;
+          if (isMobile) {
+            if (zoomLevel < 6) {
+              baseSize = 0.025;
+            } else if (zoomLevel < 7) {
+              baseSize = 0.03;
+            } else {
+              baseSize = 0.035;
+            }
+          } else {
+            if (zoomLevel < 6) {
+              baseSize = 0.02;
+            } else if (zoomLevel < 7) {
+              baseSize = 0.025;
+            }
+          }
+          
+          const arrowFeature: GeoJSON.Feature = {
+            type: 'Feature',
+            properties: {
+              color: color,
+              magnitude: point.magnitude,
+              opacity: performanceMode ? (isMobile ? 0.8 : 0.7) : 1,
+              rotation: rotation,
+              size: baseSize
+            },
+            geometry: {
+              type: 'Point',
+              coordinates: [point.lon, point.lat]
+            }
+          };
+          arrowsFeatures.push(arrowFeature);
         }
       }
       
-      layerCacheRef.current.set(cacheKey, group);
-    }
-
-    // Remove old layer
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
-    }
-
-    // Add new/cached layer
-    group.addTo(map);
-    layerRef.current = group;
-
-  }, [map, gridData, timestampPrefix, zoomLevel, createLayerGroup, isDragging]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-      }
-      layerCacheRef.current.forEach(group => {
-        map.removeLayer(group);
+      console.log('🔥 EXTREME Filtering results:', { 
+        total: validPoints.length, 
+        filtered: filteredCount, 
+        remaining: arrowsFeatures.length,
+        percentage: Math.round((filteredCount / validPoints.length) * 100) + '%',
+        minDistance: minDistance,
+        device: isMobile ? 'mobile' : 'desktop',
+        zoomLevel: zoomLevel.toFixed(1)
       });
-      layerCacheRef.current.clear();
-    };
-  }, [map]);
+      
+    } else {
+      // No filtering - include all points
+      for (const point of validPoints) {
+        const color = colorScale(point.magnitude).toString();
+        const rotation = calculateRotation(point.vector.u, point.vector.v);
+        
+        // Adjust arrow size based on zoom level and device
+        let baseSize = 0.03;
+        if (isMobile) {
+          if (zoomLevel < 6) {
+            baseSize = 0.025;
+          } else if (zoomLevel < 7) {
+            baseSize = 0.03;
+          } else {
+            baseSize = 0.035;
+          }
+        } else {
+          if (zoomLevel < 6) {
+            baseSize = 0.02;
+          } else if (zoomLevel < 7) {
+            baseSize = 0.025;
+          }
+        }
+        
+        const arrowFeature: GeoJSON.Feature = {
+          type: 'Feature',
+          properties: {
+            color: color,
+            magnitude: point.magnitude,
+            opacity: performanceMode ? (isMobile ? 0.8 : 0.7) : 1,
+            rotation: rotation,
+            size: baseSize
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [point.lon, point.lat]
+          }
+        };
+        arrowsFeatures.push(arrowFeature);
+      }
+    }
 
-  return null;
+    return {
+      type: 'FeatureCollection' as const,
+      features: arrowsFeatures
+    };
+  }, [gridData, timestampPrefix, colorScale, zoomLevel]);
+
+  // Generate arrows with performance mode
+  useEffect(() => {
+    if (!visible) {
+      setArrowsGeoJSON(null);
+      return;
+    }
+    
+    const performanceMode = isDragging;
+    const geoJSON = generateArrows(performanceMode);
+    setArrowsGeoJSON(geoJSON);
+
+  }, [visible, generateArrows, isDragging]);
+
+  // Don't render anything if not visible
+  if (!visible) {
+    return null;
+  }
+
+  // Don't render if no data or image not loaded
+  if (!arrowsGeoJSON || !arrowImageLoaded) {
+    return null;
+  }
+
+  return (
+    <Source 
+      id="current-arrows" 
+      type="geojson" 
+      data={arrowsGeoJSON}
+    >
+      <Layer
+        id="current-arrows-layer"
+        type="symbol"
+        layout={{
+          'icon-image': 'arrow',
+          'icon-size': ['get', 'size'],
+          'icon-rotate': ['get', 'rotation'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
+        }}
+        paint={{
+          'icon-color': ['get', 'color'],
+          'icon-opacity': ['get', 'opacity']
+        }}
+      />
+    </Source>
+  );
 });
 
 CurrentVectorsLayer.displayName = 'CurrentVectorsLayer';
