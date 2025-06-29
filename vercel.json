@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/update-grid",
-      "schedule": "20 16 * * *"
-    }
-  ]
-}
+{}
