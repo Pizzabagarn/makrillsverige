@@ -97,12 +97,14 @@ def extract_current_data_for_timestamp(area_data, timestamp_prefix, water_point_
                     v = data_entry['current'].get('v')
                     
                     if u is not None and v is not None:
-                        # Beräkna strömstyrka (magnitude)
-                        magnitude = np.sqrt(u**2 + v**2)
+                        # Beräkna strömstyrka (magnitude) i m/s
+                        magnitude_ms = np.sqrt(u**2 + v**2)
+                        # Konvertera till knop (1 m/s = 1.944 knop)
+                        magnitude_knots = magnitude_ms * 1.944
                         
                         lons.append(lon)
                         lats.append(lat)
-                        magnitudes.append(magnitude)
+                        magnitudes.append(magnitude_knots)
                 break
     
     return np.array(lons), np.array(lats), np.array(magnitudes)
@@ -131,8 +133,35 @@ def create_interpolated_image(lons, lats, magnitudes, water_mask_grid, output_pa
             magnitudes, 
             (lon_mesh, lat_mesh), 
             method='linear',
-            fill_value=0
+            fill_value=np.nan  # Använd NaN istället för 0 för att undvika falska blå områden
         )
+        
+        # Om linear interpolation lämnar för många NaN-värden, prova nearest som fallback
+        nan_count = np.sum(np.isnan(grid_magnitudes))
+        total_count = grid_magnitudes.size
+        nan_percentage = (nan_count / total_count) * 100
+        
+        print(f"   📊 Linear interpolation: {nan_percentage:.1f}% NaN-värden")
+        
+        # Om för många NaN-värden (>50%), använd nearest som fallback för de saknade områdena
+        if nan_percentage > 50:
+            print(f"   🔄 För många NaN-värden, använder nearest som fallback...")
+            grid_magnitudes_nearest = griddata(
+                (lons, lats), 
+                magnitudes, 
+                (lon_mesh, lat_mesh), 
+                method='nearest',
+                fill_value=np.nan
+            )
+            
+            # Fyll bara de områden som är NaN i linear interpolation
+            nan_mask = np.isnan(grid_magnitudes)
+            grid_magnitudes[nan_mask] = grid_magnitudes_nearest[nan_mask]
+            
+            final_nan_count = np.sum(np.isnan(grid_magnitudes))
+            final_nan_percentage = (final_nan_count / total_count) * 100
+            print(f"   ✅ Efter nearest fallback: {final_nan_percentage:.1f}% NaN-värden")
+            
     except Exception as e:
         print(f"❌ Interpolation misslyckades för {timestamp}: {e}")
         return False
@@ -143,8 +172,25 @@ def create_interpolated_image(lons, lats, magnitudes, water_mask_grid, output_pa
     # Applicera vattenmask (sätt land-områden till NaN för transparens)
     grid_magnitudes[~water_mask_grid] = np.nan
     
+    # DEBUG: Analysera värdena som plottas
+    valid_values = grid_magnitudes[~np.isnan(grid_magnitudes)]
+    if len(valid_values) > 0:
+        print(f"   📊 Värdestatistik (efter konvertering till knop):")
+        print(f"      Min: {np.min(valid_values):.3f} knop")
+        print(f"      Max: {np.max(valid_values):.3f} knop") 
+        print(f"      Medel: {np.mean(valid_values):.3f} knop")
+        print(f"      Antal pixlar med data: {len(valid_values)}")
+        
+        # Visa fördelning i colormap-intervaller
+        ranges = [(0.0, 0.5), (0.5, 1.0), (1.0, 1.5), (1.5, 2.0), (2.0, 2.5), (2.5, 5.0)]
+        for r_min, r_max in ranges:
+            count = np.sum((valid_values >= r_min) & (valid_values < r_max))
+            if count > 0:
+                print(f"      {r_min}-{r_max} knop: {count} pixlar")
+    
     # Skapa figur och plot
     cmap, vmin, vmax = create_colormap()
+    print(f"   🎨 Colormap range: {vmin:.2f} - {vmax:.2f} knop")
     
     fig, ax = plt.subplots(figsize=(12, 12), dpi=150)
     ax.set_xlim(lon_min, lon_max)
@@ -252,6 +298,8 @@ def main():
                        help='Maximal antal bilder att generera (för testning)')
     parser.add_argument('--resolution', type=int, default=1200,
                        help='Grid-upplösning för interpolation (default: 1200x1200)')
+    parser.add_argument('--force', action='store_true',
+                       help='Skriv över befintliga bilder (standard: hoppa över befintliga)')
     
     args = parser.parse_args()
     
@@ -297,11 +345,13 @@ def main():
         safe_timestamp = timestamp.replace(':', '-').replace('+', 'plus')
         output_path = output_dir / f"current_magnitude_{safe_timestamp}.png"
         
-        # Hoppa över om filen redan existerar
-        if output_path.exists():
+        # Hoppa över om filen redan existerar (såvida inte --force används)
+        if output_path.exists() and not args.force:
             print(f"⏭️ Hoppar över befintlig fil: {output_path}")
             successful_count += 1
             continue
+        elif output_path.exists() and args.force:
+            print(f"🔄 Skriver över befintlig fil: {output_path}")
         
         # Extrahera strömdata för denna tidsstämpel (använd cache)
         lons, lats, magnitudes = extract_current_data_for_timestamp(
