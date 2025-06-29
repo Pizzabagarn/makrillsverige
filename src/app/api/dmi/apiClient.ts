@@ -7,7 +7,7 @@ export async function dmiFetch(endpoint: string, params: Record<string, string>)
     url.searchParams.set(key, value);
   });
 
-  console.log("Fetching:", url.toString()); // 👈 Lägg till denna rad
+  // console.log("Fetching:", url.toString()); // 👈 Lägg till denna rad
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`DMI API error: ${res.status} ${res.statusText}`);

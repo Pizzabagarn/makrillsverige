@@ -37,7 +37,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
       
-      console.log('🌊 Fetching area-parameters (centralized)...');
+      // console.log('🌊 Fetching area-parameters (centralized)...');
       const startTime = Date.now();
       
       const response = await fetch('/api/area-parameters');
@@ -48,7 +48,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       const areaData = await response.json();
       
       const loadTime = Date.now() - startTime;
-      console.log(`✅ Area-parameters loaded in ${loadTime}ms (${areaData.points?.length || 0} points)`);
+      // console.log(`✅ Area-parameters loaded in ${loadTime}ms (${areaData.points?.length || 0} points)`);
       
       setData(areaData);
     } catch (err: any) {

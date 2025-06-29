@@ -38,7 +38,7 @@ async function loadAreaData() {
     throw new Error('Area parameters file not found');
   }
 
-  console.log('📥 Loading area-parameters from disk...');
+        // console.log('📥 Loading area-parameters from disk...');
   const startTime = Date.now();
   
   const data = await new Promise<any>((resolve, reject) => {
@@ -60,10 +60,10 @@ async function loadAreaData() {
           const jsonString = buffer.toString('utf8');
           const jsonData = JSON.parse(jsonString);
           const loadTime = Date.now() - startTime;
-          console.log(`✅ Area data loaded in ${loadTime}ms (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+          // console.log(`✅ Area data loaded in ${loadTime}ms (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
           resolve(jsonData);
         } catch (parseError) {
-          console.error('❌ JSON parsing error:', parseError);
+          // console.error('❌ JSON parsing error:', parseError);
           reject(parseError);
         }
       })
@@ -92,7 +92,7 @@ export async function GET() {
       const fileStat = await fs.stat(filePath);
       fileModified = fileStat.mtime.getTime();
     } catch (error) {
-      console.error('❌ Could not check file modification time:', error);
+      // console.error('❌ Could not check file modification time:', error);
       return NextResponse.json({ error: 'Area parameters file not found' }, { status: 404 });
     }
 
@@ -120,7 +120,7 @@ export async function GET() {
     
     return NextResponse.json(data);
   } catch (error) {
-    console.error('❌ Failed to load area-parameters:', error);
+    // console.error('❌ Failed to load area-parameters:', error);
     return NextResponse.json(
       { error: 'Failed to load area parameters data' }, 
       { status: 500 }

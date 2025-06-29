@@ -87,16 +87,16 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
         const minHour = availableHours[0]; // First available hour (most negative)
         const maxHour = availableHours[availableHours.length - 1]; // Last available hour (most positive)
         
-        console.log(`📊 Dynamic time bounds calculated:
-          Base time (current hour UTC): ${new Date(baseTime).toISOString()}
-          Current time (local): ${new Date().toLocaleString('sv-SE')}
-          First available data: ${firstTimestamp} (UTC)
-          Last available data: ${lastTimestamp} (UTC)
-          Available time steps: ${availableHours.length}
-          Range: ${minHour} to ${maxHour} hours (current UTC hour = 0)
-          First 5 available hours: [${availableHours.slice(0, 5).join(', ')}]
-          Last 5 available hours: [${availableHours.slice(-5).join(', ')}]
-          Note: Hour 0 = current UTC hour, UI shows local time but data is UTC-based`);
+        // console.log(`📊 Dynamic time bounds calculated:
+        //   Base time (current hour UTC): ${new Date(baseTime).toISOString()}
+        //   Current time (local): ${new Date().toLocaleString('sv-SE')}
+        //   First available data: ${firstTimestamp} (UTC)
+        //   Last available data: ${lastTimestamp} (UTC)
+        //   Available time steps: ${availableHours.length}
+        //   Range: ${minHour} to ${maxHour} hours (current UTC hour = 0)
+        //   First 5 available hours: [${availableHours.slice(0, 5).join(', ')}]
+        //   Last 5 available hours: [${availableHours.slice(-5).join(', ')}]
+        //   Note: Hour 0 = current UTC hour, UI shows local time but data is UTC-based`);
         
         // Set calculated bounds
         setMinHour(minHour);
@@ -110,14 +110,21 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
         setDisplayHour(startHour);
         
       } catch (error) {
-        console.error('❌ Failed to calculate time bounds:', error);
+        // console.error('❌ Failed to calculate time bounds:', error);
+        
+        const fallbackBaseTime = new Date();
+        fallbackBaseTime.setHours(fallbackBaseTime.getHours(), 0, 0, 0);
+        
+        // console.warn('⚠️ Using fallback time bounds due to data processing error');
+        
         // Fallback to current time if data processing fails
-        setBaseTime(Date.now());
+        setBaseTime(fallbackBaseTime.getTime());
         setMinHour(-48); // 2 days back as fallback
         setMaxHour(120); // 5 days forward as fallback
         setSelectedHour(0); // Start at "now"
         setDisplayHour(0);
-        console.warn('⚠️ Using fallback time bounds due to data processing error');
+        setAvailableHours([]);
+        
       }
       
       setIsLoadingBounds(false);
@@ -156,10 +163,13 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
     
     const closestAvailableHour = findClosestAvailableHour(h);
     
-    console.log(`🎯 setSelectedHour: requested=${h}, closest=${closestAvailableHour}, current=${selectedHour}`);
-    console.log(`   Requested time (UTC): ${new Date(baseTime + h * 3600 * 1000).toISOString()}`);
-    console.log(`   Requested time (local): ${new Date(baseTime + h * 3600 * 1000).toLocaleString('sv-SE')}`);
-    console.log(`   Closest data time (UTC): ${new Date(baseTime + closestAvailableHour * 3600 * 1000).toISOString()}`);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      // console.log(`🎯 setSelectedHour: requested=${h}, closest=${closestAvailableHour}, current=${selectedHour}`);
+      // console.log(`   Requested time (UTC): ${new Date(baseTime + h * 3600 * 1000).toISOString()}`);
+      // console.log(`   Requested time (local): ${new Date(baseTime + h * 3600 * 1000).toLocaleString('sv-SE')}`);
+      // console.log(`   Closest data time (UTC): ${new Date(baseTime + closestAvailableHour * 3600 * 1000).toISOString()}`);
+    }
     
     if (closestAvailableHour !== selectedHour) {
       setSelectedHour(closestAvailableHour);

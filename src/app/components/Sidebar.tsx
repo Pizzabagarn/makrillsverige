@@ -172,11 +172,10 @@ export default function Sidebar({
                     </div>
                     
                     <button
-                      onClick={(e) => {
-                        console.log('🔘 Magnitude toggle clicked, current state:', showCurrentMagnitude);
-                        e.stopPropagation();
+                      onClick={() => {
+                        // console.log('🔘 Magnitude toggle clicked, current state:', showCurrentMagnitude);
                         onToggleCurrentMagnitude(!showCurrentMagnitude);
-                        console.log('🔘 Magnitude toggle should be:', !showCurrentMagnitude);
+                        // console.log('🔘 Magnitude toggle should be:', !showCurrentMagnitude);
                       }}
                       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg ${
                         showCurrentMagnitude 
@@ -227,11 +226,10 @@ export default function Sidebar({
                     </div>
                     
                     <button
-                      onClick={(e) => {
-                        console.log('🔘 Vectors toggle clicked, current state:', showCurrentVectors);
-                        e.stopPropagation();
+                      onClick={() => {
+                        // console.log('🔘 Vectors toggle clicked, current state:', showCurrentVectors);
                         onToggleCurrentVectors(!showCurrentVectors);
-                        console.log('🔘 Vectors toggle should be:', !showCurrentVectors);
+                        // console.log('🔘 Vectors toggle should be:', !showCurrentVectors);
                       }}
                       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg ${
                         showCurrentVectors 

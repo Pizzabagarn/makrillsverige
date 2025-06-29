@@ -8,34 +8,34 @@ export function getLayoutType(): LayoutType {
   const isLandscape = width > height;
   const isPortrait = height > width;
   
-  console.log(`Layout Debug: ${width}x${height}, landscape: ${isLandscape}, portrait: ${isPortrait}`);
-  
+  // console.log(`Layout Debug: ${width}x${height}, landscape: ${isLandscape}, portrait: ${isPortrait}`);
+
   // 1. Desktop: Stora skärmar (≥1200px bredd)
   if (width >= 1200) {
-    console.log('-> desktop');
+    // console.log('-> desktop');
     return 'desktop';
   }
   
   // 2. Tablet med sidebar: Större enheter som iPads (≥768px bredd ELLER ≥768px höjd)
   if (Math.max(width, height) >= 720 && Math.min(width, height) >= 500) {
-    console.log('-> tabletLandscape');
+    // console.log('-> tabletLandscape');
     return 'tabletLandscape';
   }
   
   // 3. Små mobiler i landscape: Kompakt layout för små landscape-enheter
   if (isLandscape && height <= 500) {
-    console.log('-> mobileLandscape');
+    // console.log('-> mobileLandscape');
     return 'mobileLandscape';
   }
   
   // 4. Små mobiler i portrait: Smal bredd OCH portrait
   if (isPortrait && width <= 600) {
-    console.log('-> mobilePortrait');
+    // console.log('-> mobilePortrait');
     return 'mobilePortrait';
   }
   
   // 5. Allt annat: Mellanstorlekar som inte passar ovan
-  console.log('-> tablet');
+  // console.log('-> tablet');
   return 'tablet';
 }
 

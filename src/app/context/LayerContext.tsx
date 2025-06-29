@@ -11,28 +11,28 @@ interface LayerContextType {
 
 const LayerContext = createContext<LayerContextType | undefined>(undefined);
 
-export function LayerProvider({ children }: { children: ReactNode }) {
-  const [showCurrentMagnitude, setShowCurrentMagnitude] = useState(true);
-  const [showCurrentVectors, setShowCurrentVectors] = useState(true);
+export function LayerProvider({ children }: { children: React.ReactNode }) {
+  const [showCurrentMagnitude, setShowCurrentMagnitudeState] = useState(true);
+  const [showCurrentVectors, setShowCurrentVectorsState] = useState(true);
 
-  const setShowCurrentMagnitudeWithDebug = (show: boolean) => {
-    console.log('🔄 LayerContext: setShowCurrentMagnitude called with:', show);
-    setShowCurrentMagnitude(show);
+  const setShowCurrentMagnitude = (show: boolean) => {
+    // console.log('🔄 LayerContext: setShowCurrentMagnitude called with:', show);
+    setShowCurrentMagnitudeState(show);
   };
 
-  const setShowCurrentVectorsWithDebug = (show: boolean) => {
-    console.log('🔄 LayerContext: setShowCurrentVectors called with:', show);
-    setShowCurrentVectors(show);
+  const setShowCurrentVectors = (show: boolean) => {
+    // console.log('🔄 LayerContext: setShowCurrentVectors called with:', show);
+    setShowCurrentVectorsState(show);
   };
 
   const value = {
     showCurrentMagnitude,
     showCurrentVectors,
-    setShowCurrentMagnitude: setShowCurrentMagnitudeWithDebug,
-    setShowCurrentVectors: setShowCurrentVectorsWithDebug,
+    setShowCurrentMagnitude,
+    setShowCurrentVectors,
   };
 
-  console.log('🔍 LayerContext render:', { showCurrentMagnitude, showCurrentVectors });
+  // console.log('🔍 LayerContext render:', { showCurrentMagnitude, showCurrentVectors });
 
   return (
     <LayerContext.Provider value={value}>
@@ -45,6 +45,14 @@ export function useLayer() {
   const context = useContext(LayerContext);
   if (context === undefined) {
     throw new Error('useLayer must be used within a LayerProvider');
+  }
+  return context;
+}
+
+export function useLayerVisibility() {
+  const context = useContext(LayerContext);
+  if (context === undefined) {
+    throw new Error('useLayerVisibility must be used within a LayerProvider');
   }
   return context;
 } 

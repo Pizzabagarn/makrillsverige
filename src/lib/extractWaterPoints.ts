@@ -11,9 +11,9 @@ export function generateSamplePointsFromWaterMask(
     const bbox = getBoundingBox(geojson);
     const points: { lat: number; lon: number }[] = [];
 
-    console.log("🧭 Bounding Box:");
-    console.log("  Lat:", bbox.minLat, "→", bbox.maxLat);
-    console.log("  Lon:", bbox.minLon, "→", bbox.maxLon);
+      // console.log("🧭 Bounding Box:");
+  // console.log("  Lat:", bbox.minLat, "→", bbox.maxLat);
+  // console.log("  Lon:", bbox.minLon, "→", bbox.maxLon);
 
     let attempts = 0;
     for (let lat = bbox.minLat; lat <= bbox.maxLat; lat += step) {
@@ -32,8 +32,8 @@ export function generateSamplePointsFromWaterMask(
         }
     }
 
-    console.log(`💧 Antal punkter inuti masken: ${points.length}`);
-    console.log(`🔎 Totalt testade punkter: ${attempts}`);
+      // console.log(`💧 Antal punkter inuti masken: ${points.length}`);
+  // console.log(`🔎 Totalt testade punkter: ${attempts}`);
 
     return points;
 }

@@ -65,8 +65,8 @@ export async function fetchCurrentVectors(lat: number, lon: number): Promise<Cur
 function extractValues(data: any, paramName: string): number[] {
   try {
     return data?.ranges?.[paramName]?.values ?? [];
-  } catch (err) {
-    console.warn(`⚠️ Kunde inte extrahera ${paramName}`, err);
+      } catch (err) {
+      // console.warn(`⚠️ Kunde inte extrahera ${paramName}`, err);
     return [];
   }
 }
@@ -75,7 +75,7 @@ function extractTimestamps(data: any): string[] {
   try {
     return data?.domain?.axes?.t?.values ?? [];
   } catch (err) {
-    console.warn("⚠️ Kunde inte extrahera timestamps", err);
+    // console.warn("⚠️ Kunde inte extrahera timestamps", err);
     return [];
   }
 }

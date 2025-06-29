@@ -135,11 +135,11 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
           })).filter((v: any) => v.u !== null && v.v !== null) : []
         }));
         
-        console.log(`🌊 CurrentVectors: Processed ${gridPoints.length} grid points from context`);
+        // console.log(`🌊 CurrentVectors: Processed ${gridPoints.length} grid points from context`);
         setGridData(gridPoints);
       }
     } catch (error) {
-      console.error('❌ Could not process grid data:', error);
+      // console.error('❌ Could not process grid data:', error);
     }
   }, [areaData, areaDataLoading]);
 
@@ -163,12 +163,12 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
             map.addImage('arrow', img);
             setArrowImageLoaded(true);
           } catch (error) {
-            console.error('❌ Failed to add image to map:', error);
+            // console.error('❌ Failed to add image to map:', error);
           }
         };
         
         img.onerror = (error) => {
-          console.error('❌ Failed to load arrow image:', error);
+          // console.error('❌ Failed to load arrow image:', error);
           // Try alternative method
           loadImageAlternative();
         };
@@ -176,7 +176,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         img.src = '/images/arrow.png';
         
       } catch (error) {
-        console.error('❌ Image loading error:', error);
+        // console.error('❌ Image loading error:', error);
         loadImageAlternative();
       }
     };
@@ -200,20 +200,20 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
             map.addImage('arrow', img);
             setArrowImageLoaded(true);
           } catch (error) {
-            console.error('❌ Failed to add blob image to map:', error);
+            // console.error('❌ Failed to add blob image to map:', error);
           }
           URL.revokeObjectURL(imageUrl);
         };
         
         img.onerror = (error) => {
-          console.error('❌ Failed to load arrow image via blob:', error);
+          // console.error('❌ Failed to load arrow image via blob:', error);
           URL.revokeObjectURL(imageUrl);
         };
         
         img.src = imageUrl;
         
       } catch (error) {
-        console.error('❌ Alternative image loading failed:', error);
+        // console.error('❌ Alternative image loading failed:', error);
       }
     };
     
@@ -229,14 +229,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     // Detect mobile devices
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     
-    // Debug logging
-    console.log('🔍 Debug:', { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
-    
-    // Performance optimization: skip points during dragging for smoother experience
-    const skipRatio = performanceMode ? (isMobile ? 2 : 3) : 1;
-    let pointIndex = 0;
-    
-    // First pass: collect all valid points with their vectors
+    // Collect all valid points with their vectors
     const validPoints: Array<{
       pt: GridPoint;
       vector: CurrentVector;
@@ -246,11 +239,6 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     }> = [];
     
     for (const pt of gridData) {
-      pointIndex++;
-      
-      // Skip points in performance mode
-      if (performanceMode && pointIndex % skipRatio !== 0) continue;
-      
       const v = pt.vectors.find(v => v.time.startsWith(timestampPrefix));
       if (!v || v.u == null || v.v == null) continue;
 
@@ -266,125 +254,50 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
       });
     }
     
-    console.log('📊 Valid points found:', validPoints.length);
+    // Performance mode: Keep only 15% of arrows (remove 85%) based on geographic position
+    const pointsToRender = performanceMode 
+      ? validPoints.filter((point) => {
+          // Create deterministic hash from lat/lon coordinates 
+          // This ensures same geographic points are always kept/removed
+          const hash = Math.floor(point.lat * 1000) + Math.floor(point.lon * 1000);
+          return hash % 20 === 0; // Keep every 20th point (15% remaining, 85% removed)
+        })
+      : validPoints; // Keep all arrows when not in performance mode
     
-    // Smart density-aware filtering - ENDAST för mobile enheter
-    const shouldApplyDensityFiltering = isMobile && zoomLevel < 7; // Endast mobile filtrering
-    console.log('🎯 Apply density filtering:', shouldApplyDensityFiltering, { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
-    
-    if (shouldApplyDensityFiltering) {
-      // EXTREME filtering - only keep strongest currents with minimum distance
-      const used: Array<{ lat: number; lon: number }> = [];
-      let filteredCount = 0;
+    // Generate arrow features
+    for (const point of pointsToRender) {
+      const color = colorScale(point.magnitude).toString();
+      const rotation = calculateRotation(point.vector.u, point.vector.v);
       
-      // Calculate minDistance once outside the loop
-      const minDistance = isMobile 
-        ? (zoomLevel < 6 ? 15.0 : 10.0)  // Mobile: same as before
-        : (zoomLevel < 6 ? 15.0 : zoomLevel < 7 ? 10.0 : zoomLevel < 8 ? 7.0 : 5.0); // Desktop: graduated
-      
-      // Sort points by magnitude (keep strongest currents)
-      const sortedPoints = [...validPoints].sort((a, b) => b.magnitude - a.magnitude);
-      
-      for (let i = 0; i < sortedPoints.length; i++) {
-        const point = sortedPoints[i];
-        let shouldInclude = true;
-        
-        // Check if too close to any already included point
-        for (const usedPoint of used) {
-          const distance = haversineDistance(usedPoint.lat, usedPoint.lon, point.lat, point.lon);
-          if (distance < minDistance) {
-            shouldInclude = false;
-            filteredCount++;
-            break;
-          }
-        }
-        
-        if (shouldInclude) {
-          used.push({ lat: point.lat, lon: point.lon });
-          
-          const color = colorScale(point.magnitude).toString();
-          const rotation = calculateRotation(point.vector.u, point.vector.v);
-          
-          // Adjust arrow size based on device - mindre pilar på mobile
-          let baseSize = 0.03;
-          if (isMobile) {
-            if (zoomLevel < 6) {
-              baseSize = 0.015;  // Mindre på låg zoom
-            } else if (zoomLevel < 7) {
-              baseSize = 0.02;   // Mindre på medium zoom
-            } else {
-              baseSize = 0.025;  // Mindre på hög zoom
-            }
-          } else {
-            // Desktop: alla pilar samma storlek oberoende av zoom
-            baseSize = 0.025;
-          }
-          
-          const arrowFeature: GeoJSON.Feature = {
-            type: 'Feature',
-            properties: {
-              color: color,
-              magnitude: point.magnitude,
-              opacity: performanceMode ? (isMobile ? 0.8 : 0.7) : 1,
-              rotation: rotation,
-              size: baseSize
-            },
-            geometry: {
-              type: 'Point',
-              coordinates: [point.lon, point.lat]
-            }
-          };
-          arrowsFeatures.push(arrowFeature);
-        }
-      }
-      
-      console.log('🔥 EXTREME Filtering results:', { 
-        total: validPoints.length, 
-        filtered: filteredCount, 
-        remaining: arrowsFeatures.length,
-        percentage: Math.round((filteredCount / validPoints.length) * 100) + '%',
-        minDistance: minDistance,
-        device: isMobile ? 'mobile' : 'desktop',
-        zoomLevel: zoomLevel.toFixed(1)
-      });
-      
-    } else {
-      // No filtering - include all points
-      for (const point of validPoints) {
-        const color = colorScale(point.magnitude).toString();
-        const rotation = calculateRotation(point.vector.u, point.vector.v);
-        
-        // Adjust arrow size based on device - mindre pilar på mobile
-        let baseSize = 0.03;
-        if (isMobile) {
-          if (zoomLevel < 6) {
-            baseSize = 0.015;  // Mindre på låg zoom
-          } else if (zoomLevel < 7) {
-            baseSize = 0.02;   // Mindre på medium zoom
-          } else {
-            baseSize = 0.025;  // Mindre på hög zoom
-          }
+      // Adjust arrow size based on device
+      let baseSize = 0.03;
+      if (isMobile) {
+        if (zoomLevel < 6) {
+          baseSize = 0.010;
+        } else if (zoomLevel < 7) {
+          baseSize = 0.013;
         } else {
-          // Desktop: alla pilar samma storlek oberoende av zoom
-          baseSize = 0.025;
+          baseSize = 0.016;
         }
-        
-        const arrowFeature: GeoJSON.Feature = {
-          type: 'Feature',
-          properties: {
-            color: color,
-            magnitude: point.magnitude,
-            opacity: performanceMode ? (isMobile ? 0.8 : 0.7) : 1,
-            rotation: rotation,
-            size: baseSize
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: [point.lon, point.lat]
-          }
-        };
-        arrowsFeatures.push(arrowFeature);
+      } else {
+        baseSize = 0.025;
       }
+      
+      const arrowFeature: GeoJSON.Feature = {
+        type: 'Feature',
+        properties: {
+          color: color,
+          magnitude: point.magnitude,
+          opacity: performanceMode ? 0.8 : 1, // Slightly transparent during performance mode
+          rotation: rotation,
+          size: baseSize
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [point.lon, point.lat]
+        }
+      };
+      arrowsFeatures.push(arrowFeature);
     }
 
     return {
@@ -421,7 +334,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         if (arrowLayerExists) {
           // Move arrows layer to the very top (no beforeId = top)
           map.moveLayer('current-arrows-layer');
-          console.log('🏹 Arrows forced to TOP of all layers');
+          // console.log('🏹 Arrows forced to TOP of all layers');
         }
       } catch (error) {
         // Ignore errors if layer doesn't exist yet

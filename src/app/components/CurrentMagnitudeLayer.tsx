@@ -223,16 +223,16 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         const response = await fetch('/data/current-magnitude-images/metadata.json');
         
         if (!response.ok) {
-          console.warn('⚠️ Current magnitude metadata inte tillgänglig än');
+          // console.warn('⚠️ Current magnitude metadata inte tillgänglig än');
           return;
         }
         
         const data = await response.json();
         setMetadata(data);
-        console.log('✅ Current magnitude metadata laddad');
+        // console.log('✅ Current magnitude metadata laddad');
         
-      } catch (error) {
-        console.warn('⚠️ Kunde inte ladda current magnitude metadata:', error);
+          } catch (error) {
+      // console.warn('⚠️ Kunde inte ladda current magnitude metadata:', error);
       }
     };
     
@@ -244,7 +244,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
-      console.log(`🚀 Bakgrundspreloading av ${availableImages.length} bilder...`);
+      // console.log(`🚀 Bakgrundspreloading av ${availableImages.length} bilder...`);
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -257,14 +257,14 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
           imageMap.set(safeTimestamp, img);
           loadedCount++;
           if (loadedCount % 10 === 0) {
-            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} bilder`);
+            // console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} bilder`);
           }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
         };
         
         img.onerror = () => {
-          console.log(`⚠️ Kunde inte preload: ${safeTimestamp}`);
+          // console.log(`⚠️ Kunde inte preload: ${safeTimestamp}`);
         };
         
         img.src = imageUrl;
@@ -273,7 +273,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         await new Promise(resolve => setTimeout(resolve, 10));
       }
       
-      console.log(`🎉 Alla ${loadedCount} bilder preloadade!`);
+      // console.log(`🎉 Alla ${loadedCount} bilder preloadade!`);
     };
     
     // Start preloading after a short delay to let initial render complete
@@ -300,7 +300,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.png`;
       
-      console.log('🎯 Laddar initial magnitude bild:', safeTimestamp);
+      // console.log('🎯 Laddar initial magnitude bild:', safeTimestamp);
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
@@ -312,10 +312,10 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          console.log('✅ Initial magnitude bild laddad');
+          // console.log('✅ Initial magnitude bild laddad');
         };
         img.onerror = () => {
-          console.log('❌ Kunde inte ladda initial magnitude bild');
+          // console.log('❌ Kunde inte ladda initial magnitude bild');
         };
         img.src = imageUrl;
       }
@@ -378,7 +378,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
             }
           };
           img.onerror = () => {
-            console.log('❌ Kunde inte ladda magnitude bild:', safeTimestamp);
+            // console.log('❌ Kunde inte ladda magnitude bild:', safeTimestamp);
           };
           img.src = imageUrl;
         }

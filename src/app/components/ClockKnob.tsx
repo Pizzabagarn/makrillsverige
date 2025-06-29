@@ -200,7 +200,7 @@ function getSunMoonState(currentHour: number, currentDate: Date) {
   
   // Minimal loggning endast under utveckling
   if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) {
-    console.log(`🌞 Sol/måne: ${formatTime(timeOfDay)} | Upp: ${formatTime(sunrise)} | Ner: ${formatTime(sunset)}`);
+    // console.log(`🌞 Sol/måne: ${formatTime(timeOfDay)} | Upp: ${formatTime(sunrise)} | Ner: ${formatTime(sunset)}`);
   }
   
   // Kolla om vi är i någon transition-period
@@ -527,7 +527,9 @@ const ClockKnob = React.memo(() => {
                 width: responsiveDimensions.radius * 0.6, // Större för att fylla mer av mitten
                 height: responsiveDimensions.radius * 0.6,
               }}
-              onMouseEnter={() => console.log(`🎨 SOL RENDER: opacity=${sunMoonState.sunOpacity}, displayHour=${displayHour}`)}
+                             onMouseEnter={() => {
+                 // console.log(`🎨 SOL RENDER: opacity=${sunMoonState.sunOpacity}, displayHour=${displayHour}`)
+               }}
             >
               <Image
                 src="/images/sun.png"
@@ -549,7 +551,9 @@ const ClockKnob = React.memo(() => {
                 width: responsiveDimensions.radius * 0.55, // Lite mindre än solen
                 height: responsiveDimensions.radius * 0.55,
               }}
-              onMouseEnter={() => console.log(`🎨 MÅNE RENDER: opacity=${sunMoonState.moonOpacity}, displayHour=${displayHour}`)}
+                             onMouseEnter={() => {
+                 // console.log(`🎨 MÅNE RENDER: opacity=${sunMoonState.moonOpacity}, displayHour=${displayHour}`)
+               }}
             >
                 <Image
                   src="/images/moon.png"

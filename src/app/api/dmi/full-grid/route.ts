@@ -18,14 +18,14 @@ export async function GET() {
 
     // 2. Generera punkter inuti polygonen
     const allPoints = generateSamplePointsFromWaterMask(geojson, 0.05); // ~5km avstånd
-    console.log(`💧 Antal punkter inuti masken: ${allPoints.length}`);
+    // console.log(`💧 Antal punkter inuti masken: ${allPoints.length}`);
 
     // 3. Filtrera bort punkter utanför DMI:s täckning (säkerhetsfilter)
     const validPoints = allPoints.filter(p =>
       p.lat >= 54.5 && p.lat <= 58.0 &&
       p.lon >= 7.5 && p.lon <= 13.5
     );
-    console.log(`✅ Punkter inom DMI-område: ${validPoints.length}`);
+    // console.log(`✅ Punkter inom DMI-område: ${validPoints.length}`);
 
     // 4. Begränsa antal (valfritt)
     const points = validPoints.slice(0, 100); // throttlad mängd

@@ -12,8 +12,8 @@ export async function fetchFullGrid(): Promise<Record<string, CurrentVector[]>> 
       const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
       result[key] = vectors;
       await new Promise((r) => setTimeout(r, 200)); // throttling
-    } catch (err) {
-      console.warn(`Misslyckades för punkt ${lat},${lon}`, err);
+          } catch (err) {
+        // console.warn(`Misslyckades för punkt ${lat},${lon}`, err);
     }
   }
 
