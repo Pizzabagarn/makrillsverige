@@ -5,6 +5,7 @@ import { useMap } from 'react-map-gl/maplibre';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import chroma from 'chroma-js';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import { useAreaParameters } from '../context/AreaParametersContext';
 
 // Interface definitions for area parameters data (temperature, salinity, etc)
 interface CurrentData { u: number; v: number; }
@@ -84,9 +85,8 @@ function useDraggingDetection(selectedHour: number): boolean {
 const AreaParametersLayer = React.memo(() => {
   const { current: map } = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
+  const { data: areaData, isLoading: areaDataLoading } = useAreaParameters();
   
-  // State for area parameters data (temperature, salinity, etc) - NO ARROWS
-  const [areaData, setAreaData] = useState<AreaParametersData | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(8);
   
   // Performance optimization states
@@ -94,66 +94,7 @@ const AreaParametersLayer = React.memo(() => {
   const isDragging = useDraggingDetection(throttledSelectedHour);
   const effectiveSelectedHour = isDragging ? throttledSelectedHour : selectedHour;
 
-  // Load area parameters data
-  useEffect(() => {
-    const loadAreaData = async () => {
-      try {
-        const cacheKey = 'area-parameters-cache';
-        const cacheTimeKey = 'area-parameters-cache-time';
-        
-        // Check cache first
-        try {
-          const cachedData = localStorage.getItem(cacheKey);
-          const cacheTime = localStorage.getItem(cacheTimeKey);
-          
-                     if (cachedData && cacheTime) {
-             const cacheAge = Date.now() - parseInt(cacheTime);
-             if (cacheAge < 30 * 60 * 1000) { // 30 minutes
-               setAreaData(JSON.parse(cachedData));
-               return;
-             }
-           }
-         } catch (e) {
-           // Cache read failed, will fetch fresh data
-         }
-        
-        // Fetch fresh data if no valid cache
-        await fetchAndCacheData(cacheKey, cacheTimeKey, true);
-        
-      } catch (error) {
-        console.error('❌ Could not load area data:', error);
-      }
-    };
-
-    const fetchAndCacheData = async (cacheKey: string, cacheTimeKey: string, updateUI: boolean) => {
-      try {
-        const response = await fetch('/api/area-parameters');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        
-        if (updateUI) {
-          setAreaData(data);
-        }
-        
-        // Try to cache (might fail if quota exceeded)
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(data));
-          localStorage.setItem(cacheTimeKey, Date.now().toString());
-        } catch (error) {
-          console.log('⚠️ Could not cache data in localStorage - quota exceeded');
-          // Clear old cache data to make space
-          localStorage.removeItem(cacheKey);
-          localStorage.removeItem(cacheTimeKey);
-        }
-        
-      } catch (error) {
-        console.error('❌ Failed to fetch area-parameters data:', error);
-      }
-    };
-
-    loadAreaData();
-  }, []);
+  // Data now comes from centralized AreaParametersContext
 
   // Track zoom level changes
   useEffect(() => {

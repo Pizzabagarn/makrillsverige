@@ -28,7 +28,6 @@ export const DMI_GRID_POINTS = [
     { lat: 56.039273, lon: 12.626807 },
     { lat: 56.003968, lon: 12.651527 },
     { lat: 56.002912, lon: 12.607066 },
-    // --- NYA koordinater börjar här ---
     { lat: 56.038503, lon: 12.627307 },
     { lat: 56.039462, lon: 12.635204 },
     { lat: 56.040229, lon: 12.646533 },

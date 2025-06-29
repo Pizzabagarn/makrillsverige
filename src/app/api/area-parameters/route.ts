@@ -6,6 +6,7 @@ import path from 'path';
 
 // Global memory cache for area parameters data
 let cachedAreaData: any = null;
+let cachedResponseJson: string = '';  // Pre-serialized JSON string
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache
 
@@ -73,6 +74,7 @@ async function loadAreaData() {
   });
 
   cachedAreaData = data;
+  cachedResponseJson = JSON.stringify(data);  // Pre-serialize for faster responses
   cacheTimestamp = Date.now();
   return data;
 }
@@ -96,13 +98,15 @@ export async function GET() {
 
     // Check if we have cached data and file hasn't been updated
     const now = Date.now();
-    const cacheValid = cachedAreaData && 
+    const cacheValid = cachedAreaData && cachedResponseJson &&
                       (now - cacheTimestamp) < CACHE_DURATION && 
                       fileModified <= cacheTimestamp;
 
     if (cacheValid) {
-      console.log('⚡ Serving area-parameters from memory cache (instant)');
-      return NextResponse.json(cachedAreaData);
+      console.log('⚡ Serving area-parameters from memory cache (pre-serialized)');
+      return new NextResponse(cachedResponseJson, {
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // Cache expired, missing, or file updated - reload data

@@ -1,6 +1,7 @@
 // src/app/context/TimeSliderContext.tsx
 'use client';
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useAreaParameters } from './AreaParametersContext';
 
 const TimeSliderContext = createContext<{
   selectedHour: number;
@@ -26,106 +27,97 @@ const TimeSliderContext = createContext<{
   availableHours: [],
 });
 
-// Function to calculate time bounds from area-parameters data
-async function calculateTimeBounds(): Promise<{ minHour: number; maxHour: number; baseTime: number; availableHours: number[] } | null> {
-  try {
-    const response = await fetch('/api/area-parameters');
-    if (!response.ok) throw new Error('Failed to load area-parameters data');
-    
-    const areaData = await response.json();
-    
-    if (!areaData.metadata?.timestamps || areaData.metadata.timestamps.length === 0) return null;
-    
-    // Get timestamps from metadata (all points should have same time series)
-    const timestamps = areaData.metadata.timestamps;
-    if (timestamps.length === 0) return null;
-    
-    // First timestamp is oldest, last timestamp is newest (as per your description)
-    const firstTimestamp = timestamps[0];
-    const lastTimestamp = timestamps[timestamps.length - 1];
-    
-    // Set baseTime to CURRENT TIME UTC (rounded to nearest hour for consistency with data)
-    const now = new Date();
-    const currentHourUTC = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(), 
-      now.getUTCDate(),
-      now.getUTCHours(),
-      0, 0, 0
-    ));
-    const baseTime = currentHourUTC.getTime();
-    
-    // Calculate exact hours relative to CURRENT HOUR UTC for precise time alignment
-    const availableHours: number[] = [];
-    for (const ts of timestamps) {
-      const dataTime = new Date(ts).getTime();
-      const hour = Math.round((dataTime - baseTime) / (1000 * 60 * 60));
-      availableHours.push(hour);
-    }
-    
-    // Use exact first and last available hours as bounds
-    // This ensures minHour/maxHour match exactly with availableHours array
-    const minHour = availableHours[0]; // First available hour (most negative)
-    const maxHour = availableHours[availableHours.length - 1]; // Last available hour (most positive)
-    
-    console.log(`📊 Dynamic time bounds calculated:
-      Base time (current hour UTC): ${new Date(baseTime).toISOString()}
-      Current time (local): ${new Date().toLocaleString('sv-SE')}
-      First available data: ${firstTimestamp} (UTC)
-      Last available data: ${lastTimestamp} (UTC)
-      Available time steps: ${availableHours.length}
-      Range: ${minHour} to ${maxHour} hours (current UTC hour = 0)
-      First 5 available hours: [${availableHours.slice(0, 5).join(', ')}]
-      Last 5 available hours: [${availableHours.slice(-5).join(', ')}]
-      Note: Hour 0 = current UTC hour, UI shows local time but data is UTC-based`);
-    
-    return { minHour, maxHour, baseTime, availableHours };
-  } catch (error) {
-    console.error('❌ Failed to calculate time bounds:', error);
-    return null;
-  }
-}
-
 export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) => {
+  const { data: areaData, isLoading: areaDataLoading } = useAreaParameters();
   const [selectedHour, setSelectedHour] = useState(0);
   const [displayHour, setDisplayHour] = useState(0); // For immediate UI updates
   const [minHour, setMinHour] = useState(0); // Will be set dynamically from data
   const [maxHour, setMaxHour] = useState(0); // Will be set dynamically from data  
   const [baseTime, setBaseTime] = useState(0);
   const [isLoadingBounds, setIsLoadingBounds] = useState(true);
+  
+  // Update loading state based on area data loading
+  useEffect(() => {
+    if (areaDataLoading) {
+      setIsLoadingBounds(true);
+    }
+  }, [areaDataLoading]);
   const [availableHours, setAvailableHours] = useState<number[]>([]);
   const initializedRef = useRef(false);
 
-  // Calculate dynamic bounds on client mount
+  // Calculate dynamic bounds when area data is available
   useEffect(() => {
-    if (initializedRef.current) return; // Prevent multiple initializations
+    if (initializedRef.current || areaDataLoading || !areaData) return;
     
-    const initializeBounds = async () => {
+    const initializeBounds = () => {
       setIsLoadingBounds(true);
       
-      const dynamicBounds = await calculateTimeBounds();
-      
-      if (dynamicBounds) {
-        // Use dynamic bounds from actual data
-        setMinHour(dynamicBounds.minHour);
-        setMaxHour(dynamicBounds.maxHour);
-        setBaseTime(dynamicBounds.baseTime);
-        setAvailableHours(dynamicBounds.availableHours);
+      try {
+        if (!areaData.metadata?.timestamps || areaData.metadata.timestamps.length === 0) {
+          throw new Error('No timestamps in area data');
+        }
+        
+        // Get timestamps from metadata (all points should have same time series)
+        const timestamps = areaData.metadata.timestamps;
+        
+        // First timestamp is oldest, last timestamp is newest
+        const firstTimestamp = timestamps[0];
+        const lastTimestamp = timestamps[timestamps.length - 1];
+        
+        // Set baseTime to CURRENT TIME UTC (rounded to nearest hour for consistency with data)
+        const now = new Date();
+        const currentHourUTC = new Date(Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(), 
+          now.getUTCDate(),
+          now.getUTCHours(),
+          0, 0, 0
+        ));
+        const baseTime = currentHourUTC.getTime();
+        
+        // Calculate exact hours relative to CURRENT HOUR UTC for precise time alignment
+        const availableHours: number[] = [];
+        for (const ts of timestamps) {
+          const dataTime = new Date(ts).getTime();
+          const hour = Math.round((dataTime - baseTime) / (1000 * 60 * 60));
+          availableHours.push(hour);
+        }
+        
+        // Use exact first and last available hours as bounds
+        const minHour = availableHours[0]; // First available hour (most negative)
+        const maxHour = availableHours[availableHours.length - 1]; // Last available hour (most positive)
+        
+        console.log(`📊 Dynamic time bounds calculated:
+          Base time (current hour UTC): ${new Date(baseTime).toISOString()}
+          Current time (local): ${new Date().toLocaleString('sv-SE')}
+          First available data: ${firstTimestamp} (UTC)
+          Last available data: ${lastTimestamp} (UTC)
+          Available time steps: ${availableHours.length}
+          Range: ${minHour} to ${maxHour} hours (current UTC hour = 0)
+          First 5 available hours: [${availableHours.slice(0, 5).join(', ')}]
+          Last 5 available hours: [${availableHours.slice(-5).join(', ')}]
+          Note: Hour 0 = current UTC hour, UI shows local time but data is UTC-based`);
+        
+        // Set calculated bounds
+        setMinHour(minHour);
+        setMaxHour(maxHour);
+        setBaseTime(baseTime);
+        setAvailableHours(availableHours);
         
         // Start at current time (hour 0 = now), but clamp to available data bounds
-        // If current time is within available data range, start at 0 (now)
-        // Otherwise start at the closest available time
-        const startHour = Math.max(Math.min(0, dynamicBounds.maxHour), dynamicBounds.minHour);
+        const startHour = Math.max(Math.min(0, maxHour), minHour);
         setSelectedHour(startHour);
         setDisplayHour(startHour);
-      } else {
-        // Fallback to current time if data loading fails
+        
+      } catch (error) {
+        console.error('❌ Failed to calculate time bounds:', error);
+        // Fallback to current time if data processing fails
         setBaseTime(Date.now());
         setMinHour(-48); // 2 days back as fallback
         setMaxHour(120); // 5 days forward as fallback
         setSelectedHour(0); // Start at "now"
         setDisplayHour(0);
-        console.warn('⚠️ Using fallback time bounds due to data loading error');
+        console.warn('⚠️ Using fallback time bounds due to data processing error');
       }
       
       setIsLoadingBounds(false);
@@ -133,7 +125,7 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
     };
 
     initializeBounds();
-  }, []); // Empty dependency array to run only once
+  }, [areaData, areaDataLoading]); // Depend on area data
 
   // Sync displayHour with selectedHour when not actively changing
   useEffect(() => {

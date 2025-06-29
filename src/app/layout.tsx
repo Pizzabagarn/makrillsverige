@@ -7,6 +7,7 @@ import "./globals.css";
 import SidebarWithToggle from "./components/SidebarLayout";
 import { TimeSliderProvider } from "./context/TimeSliderContext";
 import { LayerProvider } from "./context/LayerContext";
+import { AreaParametersProvider } from "./context/AreaParametersContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,13 +29,15 @@ export default function RootLayout({
   return (
     <html lang="sv">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <TimeSliderProvider>
-          <LayerProvider>
-            <SidebarWithToggle>
-              {children}
-            </SidebarWithToggle>
-          </LayerProvider>
-        </TimeSliderProvider>
+        <AreaParametersProvider>
+          <TimeSliderProvider>
+            <LayerProvider>
+              <SidebarWithToggle>
+                {children}
+              </SidebarWithToggle>
+            </LayerProvider>
+          </TimeSliderProvider>
+        </AreaParametersProvider>
       </body>
     </html>
   );

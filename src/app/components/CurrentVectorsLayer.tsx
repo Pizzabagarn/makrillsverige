@@ -7,6 +7,7 @@ import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
 import chroma from 'chroma-js';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import { useAreaParameters } from '../context/AreaParametersContext';
 import type { GeoJSON } from 'geojson';
 
 interface CurrentVector { u: number; v: number; time: string }
@@ -78,6 +79,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
 }) => {
   const { current: map } = useMap();
   const { selectedHour, baseTime } = useTimeSlider();
+  const { data: areaData, isLoading: areaDataLoading } = useAreaParameters();
   
   const [arrowImageLoaded, setArrowImageLoaded] = useState(false);
   const [gridData, setGridData] = useState<GridPoint[]>([]);
@@ -117,37 +119,29 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     };
   }, [map]);
 
-  // Load grid data
+  // Process grid data from context
   useEffect(() => {
-    const loadGridData = async () => {
-      try {
-        const response = await fetch('/api/area-parameters');
-        if (!response.ok) {
-          console.error('❌ Failed to fetch grid data:', response.status);
-          return;
-        }
-        
-        const data = await response.json();
-        if (data.points) {
-          const gridPoints: GridPoint[] = data.points.map((point: any) => ({
-            lat: point.lat,
-            lon: point.lon,
-            vectors: point.data ? point.data.map((timeData: any) => ({
-              time: timeData.time,
-              u: timeData.current?.u || null,
-              v: timeData.current?.v || null
-            })).filter((v: any) => v.u !== null && v.v !== null) : []
-          }));
-          
-          setGridData(gridPoints);
-        }
-      } catch (error) {
-        console.error('❌ Could not load grid data:', error);
-      }
-    };
+    if (areaDataLoading || !areaData) return;
     
-    loadGridData();
-  }, []);
+    try {
+      if (areaData.points) {
+        const gridPoints: GridPoint[] = areaData.points.map((point: any) => ({
+          lat: point.lat,
+          lon: point.lon,
+          vectors: point.data ? point.data.map((timeData: any) => ({
+            time: timeData.time,
+            u: timeData.current?.u || null,
+            v: timeData.current?.v || null
+          })).filter((v: any) => v.u !== null && v.v !== null) : []
+        }));
+        
+        console.log(`🌊 CurrentVectors: Processed ${gridPoints.length} grid points from context`);
+        setGridData(gridPoints);
+      }
+    } catch (error) {
+      console.error('❌ Could not process grid data:', error);
+    }
+  }, [areaData, areaDataLoading]);
 
   // Load arrow image - IMPROVED VERSION
   useEffect(() => {
@@ -274,8 +268,8 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     
     console.log('📊 Valid points found:', validPoints.length);
     
-    // Smart density-aware filtering - activate at higher zoom levels on desktop
-    const shouldApplyDensityFiltering = zoomLevel < (isMobile ? 7 : 9); // Desktop activates earlier
+    // Smart density-aware filtering - ENDAST för mobile enheter
+    const shouldApplyDensityFiltering = isMobile && zoomLevel < 7; // Endast mobile filtrering
     console.log('🎯 Apply density filtering:', shouldApplyDensityFiltering, { isMobile, zoomLevel, windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR' });
     
     if (shouldApplyDensityFiltering) {
@@ -311,22 +305,19 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
           const color = colorScale(point.magnitude).toString();
           const rotation = calculateRotation(point.vector.u, point.vector.v);
           
-          // Adjust arrow size based on zoom level and device
+          // Adjust arrow size based on device - mindre pilar på mobile
           let baseSize = 0.03;
           if (isMobile) {
             if (zoomLevel < 6) {
-              baseSize = 0.025;
+              baseSize = 0.015;  // Mindre på låg zoom
             } else if (zoomLevel < 7) {
-              baseSize = 0.03;
+              baseSize = 0.02;   // Mindre på medium zoom
             } else {
-              baseSize = 0.035;
+              baseSize = 0.025;  // Mindre på hög zoom
             }
           } else {
-            if (zoomLevel < 6) {
-              baseSize = 0.02;
-            } else if (zoomLevel < 7) {
-              baseSize = 0.025;
-            }
+            // Desktop: alla pilar samma storlek oberoende av zoom
+            baseSize = 0.025;
           }
           
           const arrowFeature: GeoJSON.Feature = {
@@ -363,22 +354,19 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         const color = colorScale(point.magnitude).toString();
         const rotation = calculateRotation(point.vector.u, point.vector.v);
         
-        // Adjust arrow size based on zoom level and device
+        // Adjust arrow size based on device - mindre pilar på mobile
         let baseSize = 0.03;
         if (isMobile) {
           if (zoomLevel < 6) {
-            baseSize = 0.025;
+            baseSize = 0.015;  // Mindre på låg zoom
           } else if (zoomLevel < 7) {
-            baseSize = 0.03;
+            baseSize = 0.02;   // Mindre på medium zoom
           } else {
-            baseSize = 0.035;
+            baseSize = 0.025;  // Mindre på hög zoom
           }
         } else {
-          if (zoomLevel < 6) {
-            baseSize = 0.02;
-          } else if (zoomLevel < 7) {
-            baseSize = 0.025;
-          }
+          // Desktop: alla pilar samma storlek oberoende av zoom
+          baseSize = 0.025;
         }
         
         const arrowFeature: GeoJSON.Feature = {
@@ -417,6 +405,45 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     setArrowsGeoJSON(geoJSON);
 
   }, [visible, generateArrows, isDragging]);
+
+  // FORCE ARROWS TO TOP - guarantees arrows are always above everything
+  useEffect(() => {
+    if (!map || !arrowsGeoJSON || !arrowImageLoaded || !visible) return;
+    
+    const forceArrowsToTop = () => {
+      try {
+        // Get all layers in the map
+        const layers = map.getStyle().layers || [];
+        
+        // Check if our arrow layer exists
+        const arrowLayerExists = layers.some(layer => layer.id === 'current-arrows-layer');
+        
+        if (arrowLayerExists) {
+          // Move arrows layer to the very top (no beforeId = top)
+          map.moveLayer('current-arrows-layer');
+          console.log('🏹 Arrows forced to TOP of all layers');
+        }
+      } catch (error) {
+        // Ignore errors if layer doesn't exist yet
+      }
+    };
+    
+    // Force to top immediately
+    setTimeout(forceArrowsToTop, 100);
+    
+    // Also force to top whenever any new layer is added
+    const handleDataChange = () => {
+      setTimeout(forceArrowsToTop, 50);
+    };
+    
+    map.on('data', handleDataChange);
+    map.on('styledata', handleDataChange);
+    
+    return () => {
+      map.off('data', handleDataChange);
+      map.off('styledata', handleDataChange);
+    };
+  }, [map, arrowsGeoJSON, arrowImageLoaded, visible]);
 
   // Don't render anything if not visible
   if (!visible) {

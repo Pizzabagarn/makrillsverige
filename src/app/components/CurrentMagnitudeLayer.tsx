@@ -412,7 +412,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     };
   }, [currentImageUrl, imageLoaded, metadata]);
 
-  // 6) Layer configuration - enkelt utan z-order problem
+  // 6) Layer configuration - säkerställ att magnitude hamnar UNDER pilar  
   const rasterLayer = useMemo(() => {
     if (!visible) return null;
     
