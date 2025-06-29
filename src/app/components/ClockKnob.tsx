@@ -109,13 +109,13 @@ function calculateSunTimes(date: Date) {
   const midsummer = new Date(date.getFullYear(), 5, 21);
   const daysSinceMidsummer = Math.floor((date.getTime() - midsummer.getTime()) / (1000 * 60 * 60 * 24));
   
-  // Debug-loggning endast under utveckling
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🌅 ASTRONOMISK BERÄKNING för Malmö ${date.toDateString()}:
-      Soluppgång: ${Math.floor(sunrise_hours)}:${Math.floor((sunrise_hours % 1) * 60).toString().padStart(2, '0')}
-      Solnedgång: ${Math.floor(sunset_hours)}:${Math.floor((sunset_hours % 1) * 60).toString().padStart(2, '0')}
-      Daglängd: ${dayLengthHours}h ${dayLengthMinutes}min`);
-  }
+  // Debug-loggning endast under utveckling - tyst för prestanda
+  // if (process.env.NODE_ENV === 'development') {
+  //   console.log(`🌅 ASTRONOMISK BERÄKNING för Malmö ${date.toDateString()}:
+  //     Soluppgång: ${Math.floor(sunrise_hours)}:${Math.floor((sunrise_hours % 1) * 60).toString().padStart(2, '0')}
+  //     Solnedgång: ${Math.floor(sunset_hours)}:${Math.floor((sunset_hours % 1) * 60).toString().padStart(2, '0')}
+  //     Daglängd: ${dayLengthHours}h ${dayLengthMinutes}min`);
+  // }
   
   return {
     sunrise: sunrise_hours,
@@ -123,30 +123,31 @@ function calculateSunTimes(date: Date) {
   };
 }
 
-// TESTFUNKTION: Visa hur soltider förändras över året
+// TESTFUNKTION: Visa hur soltider förändras över året - avstängd för prestanda
 function testSunTimesOverYear(currentDate: Date) {
-  console.log(`📊 ÅRLIG SOLCYKEL TEST för ${currentDate.getFullYear()}:`);
+  // Avstängd för bättre prestanda - endast vid utveckling
+  // console.log(`📊 ÅRLIG SOLCYKEL TEST för ${currentDate.getFullYear()}:`);
   
-  const testDates = [
-    { name: 'Vinterdagjämning', date: new Date(currentDate.getFullYear(), 11, 21) }, // 21 dec
-    { name: 'Januari', date: new Date(currentDate.getFullYear(), 0, 15) }, // 15 jan
-    { name: 'Vårdagjämning', date: new Date(currentDate.getFullYear(), 2, 20) }, // 20 mars
-    { name: 'Maj', date: new Date(currentDate.getFullYear(), 4, 15) }, // 15 maj
-    { name: 'Midsommar', date: new Date(currentDate.getFullYear(), 5, 21) }, // 21 juni
-    { name: 'Juli', date: new Date(currentDate.getFullYear(), 6, 15) }, // 15 juli
-    { name: 'Augusti', date: new Date(currentDate.getFullYear(), 7, 15) }, // 15 aug
-    { name: 'Höstdagjämning', date: new Date(currentDate.getFullYear(), 8, 22) }, // 22 sept
-    { name: 'Oktober', date: new Date(currentDate.getFullYear(), 9, 15) }, // 15 okt
-  ];
+  // const testDates = [
+  //   { name: 'Vinterdagjämning', date: new Date(currentDate.getFullYear(), 11, 21) }, // 21 dec
+  //   { name: 'Januari', date: new Date(currentDate.getFullYear(), 0, 15) }, // 15 jan
+  //   { name: 'Vårdagjämning', date: new Date(currentDate.getFullYear(), 2, 20) }, // 20 mars
+  //   { name: 'Maj', date: new Date(currentDate.getFullYear(), 4, 15) }, // 15 maj
+  //   { name: 'Midsommar', date: new Date(currentDate.getFullYear(), 5, 21) }, // 21 juni
+  //   { name: 'Juli', date: new Date(currentDate.getFullYear(), 6, 15) }, // 15 juli
+  //   { name: 'Augusti', date: new Date(currentDate.getFullYear(), 7, 15) }, // 15 aug
+  //   { name: 'Höstdagjämning', date: new Date(currentDate.getFullYear(), 8, 22) }, // 22 sept
+  //   { name: 'Oktober', date: new Date(currentDate.getFullYear(), 9, 15) }, // 15 okt
+  // ];
   
-  testDates.forEach(({ name, date }) => {
-    const times = calculateSunTimes(date);
-    const dayLength = times.sunset - times.sunrise;
-    console.log(`  ${name} (${date.toDateString()}): 
-    Upp: ${Math.floor(times.sunrise)}:${Math.floor((times.sunrise % 1) * 60).toString().padStart(2, '0')} 
-    Ner: ${Math.floor(times.sunset)}:${Math.floor((times.sunset % 1) * 60).toString().padStart(2, '0')} 
-    Daglängd: ${Math.floor(dayLength)}h ${Math.floor((dayLength % 1) * 60)}min`);
-  });
+  // testDates.forEach(({ name, date }) => {
+  //   const times = calculateSunTimes(date);
+  //   const dayLength = times.sunset - times.sunrise;
+  //   console.log(`  ${name} (${date.toDateString()}): 
+  //   Upp: ${Math.floor(times.sunrise)}:${Math.floor((times.sunrise % 1) * 60).toString().padStart(2, '0')} 
+  //   Ner: ${Math.floor(times.sunset)}:${Math.floor((times.sunset % 1) * 60).toString().padStart(2, '0')} 
+  //   Daglängd: ${Math.floor(dayLength)}h ${Math.floor((dayLength % 1) * 60)}min`);
+  // });
 }
 
 // Hjälpfunktion för att avgöra sommartid i Sverige
@@ -169,12 +170,12 @@ function getSunMoonState(currentHour: number, currentDate: Date) {
   const sunTimes = calculateSunTimes(currentDate);
   const { sunrise, sunset } = sunTimes;
   
-  // Kör årlig test första gången (en gång per dag)
-  const today = new Date().toDateString();
-  if (!(window as any).lastSunTestDate || (window as any).lastSunTestDate !== today) {
-    testSunTimesOverYear(currentDate);
-    (window as any).lastSunTestDate = today;
-  }
+  // Kör årlig test första gången (en gång per dag) - avstängd för prestanda
+  // const today = new Date().toDateString();
+  // if (!(window as any).lastSunTestDate || (window as any).lastSunTestDate !== today) {
+  //   testSunTimesOverYear(currentDate);
+  //   (window as any).lastSunTestDate = today;
+  // }
   
   // Konvertera från timmar från midnatt till verklig tid
   const timeOfDay = (currentHour % 24 + 24) % 24;
@@ -347,12 +348,13 @@ const ClockKnob = React.memo(() => {
       parseInt(swedishDateInfo.second)
     );
     
-    console.log(`🌞 Sol/måne debug (realtid):
-      UTC tid: ${utcDateTime.toISOString()}
-      Svensk tid: ${swedishDate.toLocaleString('sv-SE')}
-      Svensk timme: ${currentHourSwedish.toFixed(2)}
-      displayHour: ${displayHour} (timmar från baseTime)
-      baseTime: ${new Date(baseTime).toISOString()}`);
+    // Avstängd för bättre prestanda
+    // console.log(`🌞 Sol/måne debug (realtid):
+    //   UTC tid: ${utcDateTime.toISOString()}
+    //   Svensk tid: ${swedishDate.toLocaleString('sv-SE')}
+    //   Svensk timme: ${currentHourSwedish.toFixed(2)}
+    //   displayHour: ${displayHour} (timmar från baseTime)
+    //   baseTime: ${new Date(baseTime).toISOString()}`);
     
     return getSunMoonState(currentHourSwedish, swedishDate);
   }, [displayHour, baseTime]); // Använd displayHour istället för clampedHour

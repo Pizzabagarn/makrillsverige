@@ -1,94 +1,25 @@
-// src/lib/points.ts
+// src/lib/points.ts - Användarens specifika koordinater för Öresund
 
-export const DMI_GRID_POINTS = [
-    { lat: 55.788350, lon: 12.613017 }, // Centralt i Öresund
-    { lat: 55.789856, lon: 12.916707 }, // Väster om Barsebäck
-    { lat: 56.039091, lon: 12.648793 }, // Norr om Ven
-    { lat: 55.962299, lon: 12.655660 }, // Öster om Ven
-    { lat: 56.134866, lon: 12.493612 }, // Ute i Kattegatt
-    { lat: 55.699621, lon: 12.866924 }, // Öresund vid Köpenhamn
-    { lat: 55.638833, lon: 12.932249 }, // Sydöst om Saltholm
-    { lat: 55.541006, lon: 12.824463 }, // Längre söderut i Öresund
-    { lat: 55.484650, lon: 12.395566 }, // Sydväst om Köge, Kattegatt
-    { lat: 55.793953, lon: 12.742530 }, // Generell punkt i Öresund
-    { lat: 55.654009, lon: 12.675558 },  // Öresund öster om Köpenhamn
-    { lat: 55.376614, lon: 12.749274 },  // Söder om Saltholm
-    { lat: 55.372902, lon: 12.481441 },  // Syd om Själland
-    { lat: 56.101938, lon: 12.500313 },  // Kattegatt norr om Helsingborg
-    { lat: 56.363815, lon: 11.728910 },  // Kattegatt västerut
-    { lat: 56.434113, lon: 12.477218 },  // Kattegatt nordväst
-    { lat: 56.231117, lon: 12.460260 },  // Kattegatt central punkt
-    { lat: 56.208441, lon: 12.367038 },  // Kattegatt öster om Gilleleje
-    { lat: 56.183589, lon: 12.291295 },  // Kattegatt nära gräns Danmark/Sverige
-    { lat: 55.9966337, lon: 12.60389 },
-    { lat: 56.086676, lon: 12.60389 },
-    { lat: 56.080716, lon: 12.584469 },
-    { lat: 56.046369, lon: 12.679508 },
-    { lat: 56.045602, lon: 12.659766 },
-    { lat: 56.039273, lon: 12.626807 },
-    { lat: 56.003968, lon: 12.651527 },
-    { lat: 56.002912, lon: 12.607066 },
-    { lat: 56.038503, lon: 12.627307 },
-    { lat: 56.039462, lon: 12.635204 },
-    { lat: 56.040229, lon: 12.646533 },
-    { lat: 56.040229, lon: 12.655460 },
-    { lat: 56.040613, lon: 12.664386 },
-    { lat: 56.041572, lon: 12.675373 },
-    { lat: 56.020087, lon: 12.613574 },
-    { lat: 56.068467, lon: 12.595103 },
-    { lat: 56.077354, lon: 12.649404 },
-    { lat: 56.071657, lon: 12.620825 },
-    { lat: 56.101954, lon: 12.499973 },
-    { lat: 56.126311, lon: 12.580405 },
-    { lat: 56.120351, lon: 12.530395 },
-    { lat: 55.897520, lon: 12.797215 },
-    { lat: 55.920613, lon: 12.725461 },
-    { lat: 55.933884, lon: 12.664006 },
-    { lat: 55.882503, lon: 12.710011 },
-    { lat: 55.864606, lon: 12.809479 },
-    { lat: 55.857334, lon: 12.827724 },
-    { lat: 55.871590, lon: 12.817081 },
-    { lat: 55.856756, lon: 12.846607 },
-    { lat: 55.858779, lon: 12.848495 },
-    { lat: 55.863079, lon: 12.825824 },
-    { lat: 55.894849, lon: 12.798615 },
-    { lat: 55.826873, lon: 12.857321 },
-    { lat: 55.814222, lon: 12.879840 },
-    { lat: 56.037347, lon: 12.687263 },
-    { lat: 56.043435, lon: 12.684015 },
-    { lat: 56.041419, lon: 12.689284 },
-    { lat: 56.028633, lon: 12.691151 },
-    { lat: 56.018543, lon: 12.694212 },
-    { lat: 56.022951, lon: 12.685925 },
-    { lat: 55.662259, lon: 13.011386 },
-    { lat: 55.664600, lon: 12.983974 },
-    { lat: 55.646619, lon: 13.003855 },
-    { lat: 55.630321, lon: 12.978401 },
-    { lat: 55.628223, lon: 12.971253 },
-    { lat: 55.624349, lon: 12.981545 },
-    { lat: 55.622089, lon: 12.987263 },
-    { lat: 55.617811, lon: 12.991644 },
-    { lat: 55.620208, lon: 12.985580 },
-    { lat: 55.619352, lon: 12.972136 },
-    { lat: 55.610176, lon: 12.963843 },
-    { lat: 55.605769, lon: 12.923234 },
-    { lat: 55.599657, lon: 12.915061 },
-    { lat: 55.593613, lon: 12.911455 },
-    { lat: 55.589266, lon: 12.911455 },
-    { lat: 55.599118, lon: 12.932293 },
-    { lat: 55.596263, lon: 12.930705 },
-    { lat: 55.593898, lon: 12.927963 },
-    { lat: 55.591084, lon: 12.926519 },
-    { lat: 55.586107, lon: 12.911218 },
-    { lat: 58.363638, lon: 11.171165 },
-    { lat: 58.284090, lon: 11.243023 },
-    { lat: 58.254469, lon: 11.322651 },
-    { lat: 58.270559, lon: 11.397361 },
-    { lat: 58.288673, lon: 11.501838 },
-    { lat: 58.339704, lon: 11.559329 },
-    { lat: 57.770891, lon: 10.779652 },
-    { lat: 57.587844, lon: 11.877506 },
-    // --- NYA koordinater SLUT ---
+export interface ManualGridPoint {
+  lat: number;
+  lon: number;
+  name: string;
+  isManualPoint: true;
+}
+
+export const DMI_GRID_POINTS: ManualGridPoint[] = [
+  // 🌊 ÖRESUND - Specifika koordinater för bättre datatäckning
+  { lat: 56.030646, lon: 12.676845, name: 'Öresund Nord', isManualPoint: true },
+  { lat: 56.075782, lon: 12.571651, name: 'Öresund Väst', isManualPoint: true },
+  { lat: 56.050565, lon: 12.611470, name: 'Öresund Central 1', isManualPoint: true },
+  { lat: 56.020683, lon: 12.685760, name: 'Öresund Öst', isManualPoint: true },
+  { lat: 56.089047, lon: 12.629894, name: 'Öresund Central 2', isManualPoint: true },
+  { lat: 56.006397, lon: 12.602555, name: 'Öresund Syd', isManualPoint: true },
+  { lat: 55.995430, lon: 12.656638, name: 'Öresund Sydöst', isManualPoint: true },
+  { lat: 56.092031, lon: 12.584726, name: 'Öresund Nordväst', isManualPoint: true },
+  { lat: 56.047029, lon: 12.677629, name: 'Öresund Central 3', isManualPoint: true },
+  { lat: 56.066859, lon: 12.659960, name: 'Öresund Central 4', isManualPoint: true },
+  { lat: 56.095156, lon: 12.615138, name: 'Öresund Central 5', isManualPoint: true },
 ];
 
 

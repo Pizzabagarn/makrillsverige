@@ -9,26 +9,28 @@ import { useEffect, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import AreaParametersLayer from './AreaParametersLayer';
 import CurrentMagnitudeLayer from './CurrentMagnitudeLayer';
+import TemperatureLayer from './TemperatureLayer';
+import SalinityLayer from './SalinityLayer';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
 import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
+import TemperatureLegend from './TemperatureLegend';
+import SalinityLegend from './SalinityLegend';
 import { useLayerVisibility } from '../context/LayerContext';
+import { useImageLayer } from '../context/ImageLayerContext';
 
 interface MapViewProps {
   showZoom?: boolean;
-  // Layer visibility controls
-  showCurrentMagnitude?: boolean;
+  // Layer visibility controls - removed showCurrentMagnitude since it's managed by ImageLayerContext
   showCurrentVectors?: boolean;
 }
 
 export default function MapView({ 
   showZoom = true,
-  showCurrentMagnitude = true,
   showCurrentVectors = true
 }: MapViewProps) {
-  const { showCurrentMagnitude: contextShowCurrentMagnitude, showCurrentVectors: contextShowCurrentVectors } = useLayerVisibility();
+  const { showCurrentVectors: contextShowCurrentVectors } = useLayerVisibility();
+  const { activeLayer } = useImageLayer();
   
-  // console.log('🗺️ MapView render:', { showCurrentMagnitude, showCurrentVectors });
-
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [isDesktop, setIsDesktop] = useState(true);
   
@@ -112,21 +114,41 @@ export default function MapView({
         {/* Grundlager */}
         <AreaParametersLayer />
         
-        {/* Ström-lager - strömstyrka kommer först (under pilar) */}
+        {/* Bildlager - bara ett kan vara aktivt åt gången */}
         <CurrentMagnitudeLayer 
-          visible={contextShowCurrentMagnitude}
+          visible={activeLayer === 'current'}
           opacity={1.0}
         />
         
-        {/* PILAR MÅSTE RENDERAS EFTER MAGNITUDE FÖR ATT VARA OVANPÅ */}
+        <TemperatureLayer 
+          visible={activeLayer === 'temperature'}
+          opacity={1.0}
+        />
+        
+        <SalinityLayer 
+          visible={activeLayer === 'salinity'}
+          opacity={1.0}
+        />
+        
+        {/* PILAR MÅSTE RENDERAS EFTER BILDLAGER FÖR ATT VARA OVANPÅ */}
         <CurrentVectorsLayer 
           visible={contextShowCurrentVectors}
         />
       </Map>
       
-      {/* Legend för strömstyrka - FLYTTAD TILL ÖVRE HÖGRA HÖRNET, kompakt design */}
+      {/* Legender - bara en synlig åt gången baserat på aktivt lager */}
       <CurrentMagnitudeLegend 
-        visible={contextShowCurrentMagnitude}
+        visible={activeLayer === 'current'}
+        className="absolute top-4 right-4 z-10"
+      />
+      
+      <TemperatureLegend 
+        visible={activeLayer === 'temperature'}
+        className="absolute top-4 right-4 z-10"
+      />
+      
+      <SalinityLegend 
+        visible={activeLayer === 'salinity'}
         className="absolute top-4 right-4 z-10"
       />
     </div>

@@ -2,18 +2,18 @@
 
 import { useMemo } from 'react';
 
-// Samma färgskala som i Python-scriptet
+// Samma färgskala som i Python-scriptet (0-1.2+ m/s, motsvarar 0-2.3+ knop)
 const CURRENT_COLORMAP = [
-  { value: 0.0, color: '#000080', label: '0' },
-  { value: 0.25, color: '#0080FF', label: '0.25' },
-  { value: 0.5, color: '#00FF80', label: '0.5' },
-  { value: 0.75, color: '#80FF00', label: '0.75' },
-  { value: 1.0, color: '#FFFF00', label: '1.0' },
-  { value: 1.25, color: '#FF8000', label: '1.25' },
-  { value: 1.5, color: '#FF4000', label: '1.5' },
-  { value: 1.75, color: '#FF0000', label: '1.75' },
-  { value: 2.0, color: '#800000', label: '2.0' },
-  { value: 2.5, color: '#400000', label: '2.5+' }
+  { value: 0.0, color: '#000080', label: '0.0' },
+  { value: 0.1, color: '#0080FF', label: '0.1' },
+  { value: 0.2, color: '#00FF80', label: '0.2' },
+  { value: 0.4, color: '#80FF00', label: '0.4' },
+  { value: 0.6, color: '#FFFF00', label: '0.6' },
+  { value: 0.8, color: '#FF8000', label: '0.8' },
+  { value: 1.0, color: '#FF4000', label: '1.0' },
+  { value: 1.1, color: '#FF0000', label: '1.1' },
+  { value: 1.2, color: '#800000', label: '1.2' },
+  { value: 1.3, color: '#400000', label: '1.2+' }
 ];
 
 interface CurrentMagnitudeLegendProps {
@@ -61,10 +61,10 @@ export default function CurrentMagnitudeLegend({
           <div className="flex justify-between items-start text-xs">
             {/* Bara 4 viktiga värden för att spara plats */}
             {[
-              { label: '0' },
-              { label: '1.0' },
-              { label: '2.0' },
-              { label: '2.5+' }
+              { label: '0.0' },
+              { label: '0.4' },
+              { label: '0.8' },
+              { label: '1.2+' }
             ].map((item, index) => (
               <div key={item.label} className="flex flex-col items-center">
                 {/* Mindre tick mark */}
@@ -80,7 +80,7 @@ export default function CurrentMagnitudeLegend({
         
         {/* Kompakt enhet */}
         <div className="text-center mt-1">
-          <span className="text-xs text-gray-500">knop</span>
+          <span className="text-xs text-gray-500">m/s</span>
         </div>
       </div>
     </div>

@@ -3,22 +3,14 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface LayerContextType {
-  showCurrentMagnitude: boolean;
   showCurrentVectors: boolean;
-  setShowCurrentMagnitude: (show: boolean) => void;
   setShowCurrentVectors: (show: boolean) => void;
 }
 
 const LayerContext = createContext<LayerContextType | undefined>(undefined);
 
 export function LayerProvider({ children }: { children: React.ReactNode }) {
-  const [showCurrentMagnitude, setShowCurrentMagnitudeState] = useState(true);
   const [showCurrentVectors, setShowCurrentVectorsState] = useState(true);
-
-  const setShowCurrentMagnitude = (show: boolean) => {
-    // console.log('🔄 LayerContext: setShowCurrentMagnitude called with:', show);
-    setShowCurrentMagnitudeState(show);
-  };
 
   const setShowCurrentVectors = (show: boolean) => {
     // console.log('🔄 LayerContext: setShowCurrentVectors called with:', show);
@@ -26,13 +18,9 @@ export function LayerProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = {
-    showCurrentMagnitude,
-    showCurrentVectors,
-    setShowCurrentMagnitude,
+    showCurrentVectors, 
     setShowCurrentVectors,
   };
-
-  // console.log('🔍 LayerContext render:', { showCurrentMagnitude, showCurrentVectors });
 
   return (
     <LayerContext.Provider value={value}>

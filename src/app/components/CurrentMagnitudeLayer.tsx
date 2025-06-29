@@ -5,6 +5,7 @@ import { useMap } from 'react-map-gl/maplibre';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
 
 interface CurrentMagnitudeMetadata {
   bbox: [number, number, number, number]; // [lon_min, lon_max, lat_min, lat_max]
@@ -15,56 +16,7 @@ interface CurrentMagnitudeMetadata {
   generated_at: string;
 }
 
-// Throttle function för att hantera dragging-prestanda
-function useHeavyThrottle<T>(value: T, delay: number): T {
-  const [throttledValue, setThrottledValue] = useState<T>(value);
-  const lastExecuted = useRef<number>(0);
 
-  useEffect(() => {
-    const now = Date.now();
-    if (now >= lastExecuted.current + delay) {
-      lastExecuted.current = now;
-      setThrottledValue(value);
-    } else {
-      const timer = setTimeout(() => {
-        lastExecuted.current = Date.now();
-        setThrottledValue(value);
-      }, delay - (now - lastExecuted.current));
-
-      return () => clearTimeout(timer);
-    }
-  }, [value, delay]);
-
-  return throttledValue;
-}
-
-// Dragging detection hook
-function useDraggingDetection(selectedHour: number): boolean {
-  const [isDragging, setIsDragging] = useState(false);
-  const lastChangeTime = useRef<number>(0);
-  const dragTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  useEffect(() => {
-    setIsDragging(true);
-    lastChangeTime.current = Date.now();
-    
-    if (dragTimer.current) {
-      clearTimeout(dragTimer.current);
-    }
-    
-    dragTimer.current = setTimeout(() => {
-      setIsDragging(false);
-    }, 300) as any;
-
-    return () => {
-      if (dragTimer.current) {
-        clearTimeout(dragTimer.current);
-      }
-    };
-  }, [selectedHour]);
-
-  return isDragging;
-}
 
 interface CurrentMagnitudeLayerProps {
   visible?: boolean; // För att kunna toggla lagret on/off
@@ -91,130 +43,15 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
 
-  // Lista över faktiska tillgängliga bilder (för att undvika 404)
-  const availableImages = useMemo(() => [
-    '2025-06-28T18-00-00.000Z',
-    '2025-06-28T19-00-00.000Z',
-    '2025-06-28T20-00-00.000Z',
-    '2025-06-28T21-00-00.000Z',
-    '2025-06-28T22-00-00.000Z',
-    '2025-06-28T23-00-00.000Z',
-    '2025-06-29T00-00-00.000Z',
-    '2025-06-29T01-00-00.000Z',
-    '2025-06-29T02-00-00.000Z',
-    '2025-06-29T03-00-00.000Z',
-    '2025-06-29T04-00-00.000Z',
-    '2025-06-29T05-00-00.000Z',
-    '2025-06-29T06-00-00.000Z',
-    '2025-06-29T07-00-00.000Z',
-    '2025-06-29T08-00-00.000Z',
-    '2025-06-29T09-00-00.000Z',
-    '2025-06-29T10-00-00.000Z',
-    '2025-06-29T11-00-00.000Z',
-    '2025-06-29T12-00-00.000Z',
-    '2025-06-29T13-00-00.000Z',
-    '2025-06-29T14-00-00.000Z',
-    '2025-06-29T15-00-00.000Z',
-    '2025-06-29T16-00-00.000Z',
-    '2025-06-29T17-00-00.000Z',
-    '2025-06-29T18-00-00.000Z',
-    '2025-06-29T19-00-00.000Z',
-    '2025-06-29T20-00-00.000Z',
-    '2025-06-29T21-00-00.000Z',
-    '2025-06-29T22-00-00.000Z',
-    '2025-06-29T23-00-00.000Z',
-    '2025-06-30T00-00-00.000Z',
-    '2025-06-30T01-00-00.000Z',
-    '2025-06-30T02-00-00.000Z',
-    '2025-06-30T03-00-00.000Z',
-    '2025-06-30T04-00-00.000Z',
-    '2025-06-30T05-00-00.000Z',
-    '2025-06-30T06-00-00.000Z',
-    '2025-06-30T07-00-00.000Z',
-    '2025-06-30T08-00-00.000Z',
-    '2025-06-30T09-00-00.000Z',
-    '2025-06-30T10-00-00.000Z',
-    '2025-06-30T11-00-00.000Z',
-    '2025-06-30T12-00-00.000Z',
-    '2025-06-30T13-00-00.000Z',
-    '2025-06-30T14-00-00.000Z',
-    '2025-06-30T15-00-00.000Z',
-    '2025-06-30T16-00-00.000Z',
-    '2025-06-30T17-00-00.000Z',
-    '2025-06-30T18-00-00.000Z',
-    '2025-06-30T19-00-00.000Z',
-    '2025-06-30T20-00-00.000Z',
-    '2025-06-30T21-00-00.000Z',
-    '2025-06-30T22-00-00.000Z',
-    '2025-06-30T23-00-00.000Z',
-    '2025-07-01T00-00-00.000Z',
-    '2025-07-01T01-00-00.000Z',
-    '2025-07-01T02-00-00.000Z',
-    '2025-07-01T03-00-00.000Z',
-    '2025-07-01T04-00-00.000Z',
-    '2025-07-01T05-00-00.000Z',
-    '2025-07-01T06-00-00.000Z',
-    '2025-07-01T07-00-00.000Z',
-    '2025-07-01T08-00-00.000Z',
-    '2025-07-01T09-00-00.000Z',
-    '2025-07-01T10-00-00.000Z',
-    '2025-07-01T11-00-00.000Z',
-    '2025-07-01T12-00-00.000Z',
-    '2025-07-01T13-00-00.000Z',
-    '2025-07-01T14-00-00.000Z',
-    '2025-07-01T15-00-00.000Z',
-    '2025-07-01T16-00-00.000Z',
-    '2025-07-01T17-00-00.000Z',
-    '2025-07-01T18-00-00.000Z',
-    '2025-07-01T19-00-00.000Z',
-    '2025-07-01T20-00-00.000Z',
-    '2025-07-01T21-00-00.000Z',
-    '2025-07-01T22-00-00.000Z',
-    '2025-07-01T23-00-00.000Z',
-    '2025-07-02T00-00-00.000Z',
-    '2025-07-02T01-00-00.000Z',
-    '2025-07-02T02-00-00.000Z',
-    '2025-07-02T03-00-00.000Z',
-    '2025-07-02T04-00-00.000Z',
-    '2025-07-02T05-00-00.000Z',
-    '2025-07-02T06-00-00.000Z',
-    '2025-07-02T07-00-00.000Z',
-    '2025-07-02T08-00-00.000Z',
-    '2025-07-02T09-00-00.000Z',
-    '2025-07-02T10-00-00.000Z',
-    '2025-07-02T11-00-00.000Z',
-    '2025-07-02T12-00-00.000Z',
-    '2025-07-02T13-00-00.000Z',
-    '2025-07-02T14-00-00.000Z',
-    '2025-07-02T15-00-00.000Z',
-    '2025-07-02T16-00-00.000Z',
-    '2025-07-02T17-00-00.000Z',
-    '2025-07-02T18-00-00.000Z',
-    '2025-07-02T19-00-00.000Z',
-    '2025-07-02T20-00-00.000Z',
-    '2025-07-02T21-00-00.000Z',
-    '2025-07-02T22-00-00.000Z',
-    '2025-07-02T23-00-00.000Z',
-    '2025-07-03T00-00-00.000Z',
-    '2025-07-03T01-00-00.000Z',
-    '2025-07-03T02-00-00.000Z',
-    '2025-07-03T03-00-00.000Z',
-    '2025-07-03T04-00-00.000Z',
-    '2025-07-03T05-00-00.000Z',
-    '2025-07-03T06-00-00.000Z',
-    '2025-07-03T07-00-00.000Z',
-    '2025-07-03T08-00-00.000Z',
-    '2025-07-03T09-00-00.000Z',
-    '2025-07-03T10-00-00.000Z',
-    '2025-07-03T11-00-00.000Z',
-    '2025-07-03T12-00-00.000Z',
-    '2025-07-03T13-00-00.000Z',
-    '2025-07-03T14-00-00.000Z',
-    '2025-07-03T15-00-00.000Z',
-    '2025-07-03T16-00-00.000Z',
-    '2025-07-03T17-00-00.000Z',
-    '2025-07-03T18-00-00.000Z'
-  ], []);
+  // Dynamisk upptäckt av tillgängliga bilder från metadata
+  const availableImages = useMemo(() => {
+    if (!metadata?.timestamps) return [];
+    
+    // Konvertera metadata timestamps till safe filenames
+    return metadata.timestamps.map(timestamp => 
+      timestamp.replaceAll(':', '-').replaceAll('+', 'plus')
+    );
+  }, [metadata?.timestamps]);
 
   // 1) Ladda metadata FÖRST, sedan preload bilder i bakgrunden
   useEffect(() => {

@@ -13,9 +13,7 @@ interface SidebarLayoutProps {
 
 export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
   const {
-    showCurrentMagnitude,
     showCurrentVectors,
-    setShowCurrentMagnitude,
     setShowCurrentVectors
   } = useLayer();
   const [open, setOpen] = useState(false);
@@ -62,9 +60,7 @@ export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
             }}
           >
             <Sidebar 
-              showCurrentMagnitude={showCurrentMagnitude}
               showCurrentVectors={showCurrentVectors}
-              onToggleCurrentMagnitude={setShowCurrentMagnitude}
               onToggleCurrentVectors={setShowCurrentVectors}
             />
           </div>
@@ -142,9 +138,7 @@ export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
           <div className="h-full pt-16 pb-6 px-4">
             <Sidebar 
               isHamburgerMenu={true}
-              showCurrentMagnitude={showCurrentMagnitude}
               showCurrentVectors={showCurrentVectors}
-              onToggleCurrentMagnitude={setShowCurrentMagnitude}
               onToggleCurrentVectors={setShowCurrentVectors}
             />
                     </div>

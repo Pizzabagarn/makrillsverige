@@ -8,6 +8,7 @@ import SidebarWithToggle from "./components/SidebarLayout";
 import { TimeSliderProvider } from "./context/TimeSliderContext";
 import { LayerProvider } from "./context/LayerContext";
 import { AreaParametersProvider } from "./context/AreaParametersContext";
+import { ImageLayerProvider } from "./context/ImageLayerContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,9 +33,11 @@ export default function RootLayout({
         <AreaParametersProvider>
           <TimeSliderProvider>
             <LayerProvider>
-              <SidebarWithToggle>
-                {children}
-              </SidebarWithToggle>
+              <ImageLayerProvider>
+                <SidebarWithToggle>
+                  {children}
+                </SidebarWithToggle>
+              </ImageLayerProvider>
             </LayerProvider>
           </TimeSliderProvider>
         </AreaParametersProvider>

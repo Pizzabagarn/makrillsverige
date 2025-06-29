@@ -41,24 +41,17 @@ function haversineDistance(lat1:number,lon1:number,lat2:number,lon2:number) {
   return R*2*Math.asin(Math.sqrt(a));
 }
 
-// Heavy throttle for performance
+// Heavy throttle for performance - fixed to avoid infinite loop
 function useHeavyThrottle<T>(value: T, delay: number): T {
   const [throttledValue, setThrottledValue] = useState<T>(value);
-  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
   useEffect(() => {
-    const now = Date.now();
-    if (now - lastUpdate < delay) {
-      const timer = setTimeout(() => {
-        setThrottledValue(value);
-        setLastUpdate(Date.now());
-      }, delay - (now - lastUpdate));
-      return () => clearTimeout(timer);
-    } else {
+    const timer = setTimeout(() => {
       setThrottledValue(value);
-      setLastUpdate(now);
-    }
-  }, [value, delay, lastUpdate]);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [value, delay]);
 
   return throttledValue;
 }

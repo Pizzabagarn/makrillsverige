@@ -8,6 +8,7 @@ import React from 'react';
 import chroma from 'chroma-js';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useAreaParameters } from '../context/AreaParametersContext';
+import { DMI_GRID_POINTS } from '../../lib/points';
 import type { GeoJSON } from 'geojson';
 
 interface CurrentVector { u: number; v: number; time: string }
@@ -18,6 +19,13 @@ function calculateRotation(u: number, v: number): number {
   const angleRad = Math.atan2(v, u);
   const angleDeg = (angleRad * 180) / Math.PI;
   return (90 - angleDeg) % 360;
+}
+
+// Check if a point is a manual point (used for calculations but not rendered)
+function isManualPoint(lat: number, lon: number): boolean {
+  return DMI_GRID_POINTS.some(point => 
+    Math.abs(point.lat - lat) < 0.001 && Math.abs(point.lon - lon) < 0.001
+  );
 }
 
 // Simple haversine distance function
@@ -229,7 +237,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     // Detect mobile devices
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     
-    // Collect all valid points with their vectors
+    // Collect all valid points with their vectors, excluding manual points
     const validPoints: Array<{
       pt: GridPoint;
       vector: CurrentVector;
@@ -239,6 +247,11 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     }> = [];
     
     for (const pt of gridData) {
+      // Skip manual points - they're used for calculations but not rendered as arrows
+      if (isManualPoint(pt.lat, pt.lon)) {
+        continue;
+      }
+      
       const v = pt.vectors.find(v => v.time.startsWith(timestampPrefix));
       if (!v || v.u == null || v.v == null) continue;
 
