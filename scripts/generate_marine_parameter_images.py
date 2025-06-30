@@ -35,59 +35,23 @@ CURRENT_COLORMAP = [
     (1.3, '#400000'),    # Mycket mörk röd för 1.3+ m/s
 ]
 
-# Vattentemperatur (-1 till 25°C, detaljerad färgskala för bättre synlighet)
+# Vattentemperatur - Enklare färgschema: mörkblå → ljusblå → grön → gul → orange → röd
 TEMPERATURE_COLORMAP = [
-    (-1.0, '#000040'),   # Mycket mörkblå för fryst
-    (-0.5, '#000060'),   # Mörkblå
-    (0.0,  '#000080'),   # Blå för fryspunkt
-    (1.0,  '#0000A0'),   # Blå
-    (2.0,  '#0000FF'),   # Ren blå
-    (3.0,  '#0040FF'),   # Blå-lila
-    (4.0,  '#0080FF'),   # Ljusblå
-    (5.0,  '#00A0FF'),   # Ljusare blå
-    (6.0,  '#00C0FF'),   # Mycket ljusblå
-    (7.0,  '#00E0FF'),   # Cyan-blå
-    (8.0,  '#00FFFF'),   # Cyan
-    (9.0,  '#00FFE0'),   # Cyan-grön
-    (10.0, '#00FFC0'),   # Ljus cyan-grön
-    (11.0, '#00FFA0'),   # Grön-cyan
-    (12.0, '#40FF80'),   # Ljusgrön
-    (13.0, '#80FF60'),   # Grön
-    (14.0, '#A0FF40'),   # Gul-grön
-    (15.0, '#C0FF20'),   # Ljus gul-grön
-    (16.0, '#E0FF00'),   # Gul-grön
-    (17.0, '#FFFF00'),   # Gul
-    (18.0, '#FFE000'),   # Mörkare gul
-    (19.0, '#FFC000'),   # Gul-orange
-    (20.0, '#FFA000'),   # Orange
-    (21.0, '#FF8000'),   # Djupare orange
-    (22.0, '#FF6000'),   # Röd-orange
-    (23.0, '#FF4000'),   # Röd-orange
-    (24.0, '#FF2000'),   # Röd
-    (25.0, '#FF0000'),   # Ren röd för mycket varmt
+    (-1.0, '#000080'),   # Mörkblå
+    (2.0,  '#0066FF'),   # Ljusblå  
+    (8.0,  '#00AA00'),   # Grön
+    (12.0, '#FFFF00'),   # Gul
+    (16.0, '#FF8800'),   # Orange
+    (24.0, '#FF0000'),   # Röd
 ]
 
-# Salthalt (0-36 PSU, detaljerad färgskala från sötvatten till salt havsvatten)
+# Salthalt - Enklare färgschema: mörkgrön → ljusgrön → gul → ljusblå → mörkblå
 SALINITY_COLORMAP = [
-    (0.0,  '#004000'),   # Mycket mörkgrön för rent sötvatten
-    (2.0,  '#006400'),   # Mörkgrön för sötvatten
-    (4.0,  '#008000'),   # Grön
-    (6.0,  '#228B22'),   # Skoggrön
-    (8.0,  '#32CD32'),   # Ljusgrön
-    (10.0, '#7CFC00'),   # Gräsgrön
-    (12.0, '#90EE90'),   # Ljus mintgrön
-    (14.0, '#98FB98'),   # Blekgrön
-    (16.0, '#F0E68C'),   # Khaki
-    (18.0, '#FFFF00'),   # Gul
-    (20.0, '#FFD700'),   # Guldbrun
-    (22.0, '#FFA500'),   # Orange
-    (24.0, '#FF8C00'),   # Mörk orange
-    (26.0, '#87CEEB'),   # Himmelblå
-    (28.0, '#4169E1'),   # Kornblommblå
-    (30.0, '#0000FF'),   # Blå
-    (32.0, '#0000CD'),   # Mediumblå
-    (34.0, '#000080'),   # Marinblå
-    (36.0, '#191970'),   # Midnattsblå för extremt salt
+    (0.0,  '#004400'),   # Mörkgrön
+    (8.0,  '#00BB00'),   # Ljusgrön
+    (16.0, '#FFFF00'),   # Gul (mittenvärdet)
+    (24.0, '#66CCFF'),   # Ljusblå
+    (36.0, '#000066'),   # Mörkblå
 ]
 
 def get_parameter_config(parameter):
@@ -111,7 +75,7 @@ def get_parameter_config(parameter):
     elif parameter == 'salinity':
         return {
             'colormap': SALINITY_COLORMAP,
-            'unit': 'PSU',
+            'unit': 'g/kg',
             'name': 'salthalt',
             'name_en': 'salinity',
             'output_dir': 'salinity-images'
@@ -224,47 +188,142 @@ def create_interpolated_image(lons, lats, values, water_mask_grid, output_path, 
     lon_min, lon_max, lat_min, lat_max = bbox
     grid_resolution = water_mask_grid.shape[0]  # Matcha cachad mask-storlek
     
+    # Använd NORMAL grid (ingen margin - edge enhancement räcker!)
     lon_grid = np.linspace(lon_min, lon_max, grid_resolution)
     lat_grid = np.linspace(lat_min, lat_max, grid_resolution)
     lon_mesh, lat_mesh = np.meshgrid(lon_grid, lat_grid)
     
-    print(f"🔄 Interpolerar {len(values)} {param_name}-punkter till {grid_resolution}x{grid_resolution} grid...")
+    # EDGE ENHANCEMENT: Lägg till extrapolerade punkter vid bbox-kanter
+    print(f"🔧 Skapar edge-points för full bbox-täckning...")
     
-    # Interpolera med scipy.griddata (cubic metod för mest accurate data)
+    # Skapa edge points längs bbox-kanterna
+    edge_lons = []
+    edge_lats = []
+    edge_values = []
+    
+    # Antal edge points per kant (mer för bättre täckning)
+    n_edge_points = 25
+    
+    # Vänster kant (lon_min)
+    for lat in np.linspace(lat_min, lat_max, n_edge_points):
+        # Hitta närmaste punkt för extrapolation
+        distances = np.sqrt((lons - lon_min)**2 + (lats - lat)**2)
+        nearest_idx = np.argmin(distances)
+        edge_lons.append(lon_min)
+        edge_lats.append(lat)
+        edge_values.append(values[nearest_idx])
+    
+    # Höger kant (lon_max)
+    for lat in np.linspace(lat_min, lat_max, n_edge_points):
+        distances = np.sqrt((lons - lon_max)**2 + (lats - lat)**2)
+        nearest_idx = np.argmin(distances)
+        edge_lons.append(lon_max)
+        edge_lats.append(lat)
+        edge_values.append(values[nearest_idx])
+    
+    # Botten kant (lat_min)
+    for lon in np.linspace(lon_min, lon_max, n_edge_points):
+        distances = np.sqrt((lons - lon)**2 + (lats - lat_min)**2)
+        nearest_idx = np.argmin(distances)
+        edge_lons.append(lon)
+        edge_lats.append(lat_min)
+        edge_values.append(values[nearest_idx])
+    
+    # Topp kant (lat_max)
+    for lon in np.linspace(lon_min, lon_max, n_edge_points):
+        distances = np.sqrt((lons - lon)**2 + (lats - lat_max)**2)
+        nearest_idx = np.argmin(distances)
+        edge_lons.append(lon)
+        edge_lats.append(lat_max)
+        edge_values.append(values[nearest_idx])
+    
+    # Kombinera original data med edge points
+    enhanced_lons = np.concatenate([lons, edge_lons])
+    enhanced_lats = np.concatenate([lats, edge_lats])
+    enhanced_values = np.concatenate([values, edge_values])
+    
+    print(f"🔄 Interpolerar {len(enhanced_values)} punkter (inkl. {len(edge_values)} edge-points) till {grid_resolution}x{grid_resolution} grid...")
+    
+    # Interpolera med scipy.griddata (cubic för bästa kvalitet nu när vi inte har gigantisk grid)
     try:
         grid_values = griddata(
-            (lons, lats), 
-            values, 
+            (enhanced_lons, enhanced_lats), 
+            enhanced_values, 
             (lon_mesh, lat_mesh), 
-            method='cubic',
-            fill_value=np.nan  # Använd NaN istället för 0 för att undvika falska värden
+            method='cubic',  # Bästa kvalitet
+            fill_value=np.nan
         )
         
-        # Om cubic interpolation lämnar för många NaN-värden, prova nearest som fallback
-        nan_count = np.sum(np.isnan(grid_values))
-        total_count = grid_values.size
-        nan_percentage = (nan_count / total_count) * 100
-        
-        print(f"   📊 Cubic interpolation: {nan_percentage:.1f}% NaN-värden")
-        
-        # Om för många NaN-värden (>50%), använd nearest som fallback för de saknade områdena
-        if nan_percentage > 50:
-            print(f"   🔄 För många NaN-värden, använder nearest som fallback...")
+        # För att nå längre ut till kanterna, fyll NaN-områden med nearest neighbor
+        nan_mask = np.isnan(grid_values)
+        if np.any(nan_mask):
             grid_values_nearest = griddata(
-                (lons, lats), 
-                values, 
+                (enhanced_lons, enhanced_lats), 
+                enhanced_values, 
                 (lon_mesh, lat_mesh), 
                 method='nearest',
                 fill_value=np.nan
             )
-            
-            # Fyll bara de områden som är NaN i cubic interpolation
-            nan_mask = np.isnan(grid_values)
+            # Fyll bara NaN-områden med nearest neighbor
             grid_values[nan_mask] = grid_values_nearest[nan_mask]
+        
+        # PADDING STEP: Fyll eventuella NaN-områden vid kanterna med extrapolation
+        if np.any(np.isnan(grid_values)):
+            print("🔧 Applicerar kant-padding för att fylla gap till bbox-kanter...")
             
-            final_nan_count = np.sum(np.isnan(grid_values))
-            final_nan_percentage = (final_nan_count / total_count) * 100
-            print(f"   ✅ Efter nearest fallback: {final_nan_percentage:.1f}% NaN-värden")
+            # Hitta alla NaN-positioner
+            nan_mask = np.isnan(grid_values)
+            
+            # Använd nearest neighbor för att extrapolera till kanter
+            from scipy.ndimage import binary_dilation
+            
+            # Iterativt fyll NaN-värden med grannvärden
+            iterations = 0
+            max_iterations = 20  # Säkerhetsgräns
+            
+            while np.any(nan_mask) and iterations < max_iterations:
+                # Skapa en dilated mask för att hitta gränsen
+                dilated = binary_dilation(~nan_mask)
+                
+                # Fyll NaN-värden vid gränsen med genomsnitt av grannar
+                for i in range(grid_values.shape[0]):
+                    for j in range(grid_values.shape[1]):
+                        if nan_mask[i, j] and dilated[i, j]:
+                            # Samla värden från grannar som inte är NaN
+                            neighbors = []
+                            for di in [-1, 0, 1]:
+                                for dj in [-1, 0, 1]:
+                                    ni, nj = i + di, j + dj
+                                    if (0 <= ni < grid_values.shape[0] and 
+                                        0 <= nj < grid_values.shape[1] and 
+                                        not np.isnan(grid_values[ni, nj])):
+                                        neighbors.append(grid_values[ni, nj])
+                            
+                            if neighbors:
+                                grid_values[i, j] = np.mean(neighbors)
+                                nan_mask[i, j] = False
+                
+                iterations += 1
+            
+            remaining_nan = np.sum(nan_mask)
+            print(f"   ✅ Padding klar efter {iterations} iterationer. {remaining_nan} NaN kvar.")
+            
+            # Om det fortfarande finns NaN, använd global nearest neighbor som backup
+            if remaining_nan > 0:
+                print("   🔄 Final backup med nearest neighbor...")
+                grid_values_backup = griddata(
+                    (lons, lats), 
+                    values, 
+                    (lon_mesh, lat_mesh), 
+                    method='nearest'
+                )
+                grid_values[nan_mask] = grid_values_backup[nan_mask]
+        
+        # Kolla slutresultat
+        nan_count = np.sum(np.isnan(grid_values))
+        total_count = grid_values.size
+        nan_percentage = (nan_count / total_count) * 100
+        print(f"   📊 Interpolation slutresultat: {nan_percentage:.1f}% NaN-värden")
     
     except Exception as e:
         print(f"❌ Interpolation misslyckades för {param_name} {timestamp}: {e}")
@@ -318,8 +377,8 @@ def create_interpolated_image(lons, lats, values, water_mask_grid, output_path, 
     plt.savefig(
         output_path,
         format='png',
-        dpi=100,  # Lägre DPI för mindre memory usage
-        bbox_inches='tight',
+        dpi=100,
+        bbox_inches='tight',  # Återställ tight cropping
         pad_inches=0,
         transparent=True,
         facecolor='none'
@@ -528,9 +587,9 @@ def main():
     water_polygons = load_water_mask(args.water_mask)
     area_data = load_area_parameters(args.input)
     
-    # Beräkna bounding box
-    bbox = get_bbox_from_water_mask(water_polygons)
-    print(f"🗺️ Bounding box: {bbox}")
+    # Använd EXAKT samma bbox som frontend Map.tsx maxBounds för perfect alignment
+    bbox = (10.3, 16.6, 54.9, 59.6)  # (lon_min, lon_max, lat_min, lat_max)
+    print(f"🗺️ Bounding box (hårdkodad för frontend alignment): {bbox}")
     
     # OPTIMERING: Skapa cachade strukturer EN GÅNG
     print("⚡ Förbearbetar för maximal prestanda...")

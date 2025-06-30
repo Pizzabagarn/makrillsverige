@@ -6,6 +6,7 @@ import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
+import { getLayerOffsetForBbox } from '../../lib/layerOffsets';
 
 interface SalinityMetadata {
   bbox: [number, number, number, number]; // [lon_min, lon_max, lat_min, lat_max]
@@ -221,9 +222,9 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
     
     const [lon_min, lon_max, lat_min, lat_max] = metadata.bbox;
     
-    // Använd samma offset som CurrentMagnitudeLayer för korrekt positionering
-    const lat_offset = -0.052;   
-    const lon_offset = 0.00;   
+    // Använd regionspecifik offset baserat på bbox
+    const offset = getLayerOffsetForBbox(lon_min, lon_max, lat_min, lat_max);
+    const { lat_offset, lon_offset } = offset;   
     
     return {
       type: 'image' as const,

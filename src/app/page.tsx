@@ -14,7 +14,7 @@ export default function Home() {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
   
   // Layer state från LayerContext - kontrolleras nu från sidebaren
-  const { showCurrentMagnitude, showCurrentVectors } = useLayer();
+  const { showCurrentVectors } = useLayer();
 
   useEffect(() => {
     const checkLayout = () => {
@@ -42,7 +42,6 @@ export default function Home() {
       >
         <MapView 
           showZoom={false}
-          showCurrentMagnitude={showCurrentMagnitude}
           showCurrentVectors={showCurrentVectors}
         />
         

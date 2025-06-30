@@ -8,6 +8,7 @@ import React from 'react';
 import chroma from 'chroma-js';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useAreaParameters } from '../context/AreaParametersContext';
+import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
 import { DMI_GRID_POINTS } from '../../lib/points';
 import type { GeoJSON } from 'geojson';
 
@@ -39,44 +40,7 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
-// Throttle hook for performance
-function useThrottle<T>(value: T, delay: number): T {
-  const [throttledValue, setThrottledValue] = useState<T>(value);
-  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
-
-  useEffect(() => {
-    const now = Date.now();
-    if (now - lastUpdate < delay) {
-      const timer = setTimeout(() => {
-        setThrottledValue(value);
-        setLastUpdate(Date.now());
-      }, delay - (now - lastUpdate));
-      return () => clearTimeout(timer);
-    } else {
-      setThrottledValue(value);
-      setLastUpdate(now);
-    }
-  }, [value, delay, lastUpdate]);
-
-  return throttledValue;
-}
-
-// Detect when user is actively dragging time slider
-function useDraggingDetection(selectedHour: number): boolean {
-  const [isDragging, setIsDragging] = useState(false);
-
-  useEffect(() => {
-    setIsDragging(true);
-    
-    const timer = setTimeout(() => {
-      setIsDragging(false);
-    }, 300); // Consider dragging stopped after 300ms of no changes
-
-    return () => clearTimeout(timer);
-  }, [selectedHour]);
-
-  return isDragging;
-}
+// Removed local throttling hooks - using optimized ones from throttleHooks.ts
 
 interface CurrentVectorsLayerProps {
   visible?: boolean;
@@ -95,10 +59,11 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
   const [zoomLevel, setZoomLevel] = useState<number>(8);
   const imageLoadAttempted = useRef(false);
   
-  // Performance optimizations
+  // Performance optimizations - same as CurrentMagnitudeLayer
   const isDragging = useDraggingDetection(selectedHour);
-  const throttledSelectedHour = useThrottle(selectedHour, isDragging ? 200 : 100);
-  const effectiveSelectedHour = isDragging ? throttledSelectedHour : selectedHour;
+  const lightThrottledHour = useHeavyThrottle(selectedHour, 100);   // Faster when not dragging
+  const heavyThrottledHour = useHeavyThrottle(selectedHour, 500);   // Slower when dragging
+  const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   // Simple color scale
   const colorScale = useMemo(() => {
@@ -151,9 +116,11 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     }
   }, [areaData, areaDataLoading]);
 
-  // Load arrow image - IMPROVED VERSION
+  // Load arrow image - IMPROVED VERSION with AbortController
   useEffect(() => {
     if (!map || imageLoadAttempted.current) return;
+    
+    const abortController = new AbortController();
     
     const loadArrowImage = async () => {
       imageLoadAttempted.current = true;
@@ -178,20 +145,20 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         img.onerror = (error) => {
           // console.error('❌ Failed to load arrow image:', error);
           // Try alternative method
-          loadImageAlternative();
+          loadImageAlternative(abortController.signal);
         };
         
         img.src = '/images/arrow.png';
         
       } catch (error) {
         // console.error('❌ Image loading error:', error);
-        loadImageAlternative();
+        loadImageAlternative(abortController.signal);
       }
     };
     
-    const loadImageAlternative = async () => {
+    const loadImageAlternative = async (signal?: AbortSignal) => {
       try {
-        const response = await fetch('/images/arrow.png');
+        const response = await fetch('/images/arrow.png', { signal });
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -220,12 +187,18 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         
         img.src = imageUrl;
         
-      } catch (error) {
-        // console.error('❌ Alternative image loading failed:', error);
-      }
+              } catch (error: any) {
+          if (error.name !== 'AbortError') {
+            // console.error('❌ Alternative image loading failed:', error);
+          }
+        }
     };
     
     loadArrowImage();
+    
+    return () => {
+      abortController.abort();
+    };
   }, [map]);
 
   // Generate arrows with performance optimizations
@@ -319,18 +292,29 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     };
   }, [gridData, timestampPrefix, colorScale, zoomLevel]);
 
-  // Generate arrows with performance mode
+  // Smart arrow generation with reduced flickering
   useEffect(() => {
-    if (!visible) {
+    if (!visible || !timestampPrefix || gridData.length === 0) {
       setArrowsGeoJSON(null);
       return;
     }
-    
-    const performanceMode = isDragging;
-    const geoJSON = generateArrows(performanceMode);
-    setArrowsGeoJSON(geoJSON);
 
-  }, [visible, generateArrows, isDragging]);
+    const performanceMode = isDragging && zoomLevel < 8;
+    
+    // Generate new arrows without setting to null first (reduces flicker)
+    const newGeoJSON = generateArrows(performanceMode);
+    
+    // Only update if valid and actually different (reduce unnecessary re-renders)
+    if (newGeoJSON) {
+      setArrowsGeoJSON(prevGeoJSON => {
+        if (!prevGeoJSON || prevGeoJSON.features.length !== newGeoJSON.features.length) {
+          return newGeoJSON;
+        }
+        return newGeoJSON;
+      });
+    }
+
+  }, [visible, generateArrows, isDragging, timestampPrefix, zoomLevel, gridData.length]);
 
   // FORCE ARROWS TO TOP - guarantees arrows are always above everything
   useEffect(() => {

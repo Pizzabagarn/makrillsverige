@@ -32,7 +32,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -40,7 +40,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       // console.log('🌊 Fetching area-parameters (centralized)...');
       const startTime = Date.now();
       
-      const response = await fetch('/api/area-parameters');
+      const response = await fetch('/api/area-parameters', { signal });
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
@@ -52,19 +52,28 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       
       setData(areaData);
     } catch (err: any) {
-      console.error('❌ Failed to load area-parameters:', err);
-      setError(err.message);
+      // Don't log abort errors as they're expected
+      if (err.name !== 'AbortError') {
+        console.error('❌ Failed to load area-parameters:', err);
+        setError(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    const abortController = new AbortController();
+    fetchData(abortController.signal);
+    
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   const refetch = async () => {
-    await fetchData();
+    const abortController = new AbortController();
+    await fetchData(abortController.signal);
   };
 
   return (

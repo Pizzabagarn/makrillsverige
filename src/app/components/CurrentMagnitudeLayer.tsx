@@ -6,6 +6,7 @@ import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
+import { getLayerOffsetForBbox } from '../../lib/layerOffsets';
 
 interface CurrentMagnitudeMetadata {
   bbox: [number, number, number, number]; // [lon_min, lon_max, lat_min, lat_max]
@@ -233,9 +234,9 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     
     const [lon_min, lon_max, lat_min, lat_max] = metadata.bbox;
     
-    // Finjustera koordinaterna för exakt alignment baserat på visuell inspektion
-    const lat_offset = -0.052;   // Flytta bilden mer söderut  
-    const lon_offset = 0.00;   // Flytta bilden västerut istället
+    // Använd regionspecifik offset baserat på bbox
+    const offset = getLayerOffsetForBbox(lon_min, lon_max, lat_min, lat_max);
+    const { lat_offset, lon_offset } = offset;
     
     return {
       type: 'image' as const,

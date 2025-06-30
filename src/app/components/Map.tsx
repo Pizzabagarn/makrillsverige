@@ -15,6 +15,7 @@ import CurrentVectorsLayer from './CurrentVectorsLayer';
 import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
 import TemperatureLegend from './TemperatureLegend';
 import SalinityLegend from './SalinityLegend';
+import OffsetDebugger from './OffsetDebugger';
 import { useLayerVisibility } from '../context/LayerContext';
 import { useImageLayer } from '../context/ImageLayerContext';
 
@@ -33,12 +34,26 @@ export default function MapView({
   
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [isDesktop, setIsDesktop] = useState(true);
+  const [showOffsetDebugger, setShowOffsetDebugger] = useState(false);
   
   useEffect(() => {
     const check = () => setIsDesktop(window.matchMedia('(min-width: 768px)').matches);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Keyboard shortcut för offset debugger (Ctrl+Shift+O)
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'O') {
+        e.preventDefault();
+        setShowOffsetDebugger(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
   
   // Beräkna maximal utzoomning för att visa hela maxBounds-området
@@ -150,6 +165,12 @@ export default function MapView({
       <SalinityLegend 
         visible={activeLayer === 'salinity'}
         className="absolute top-4 right-4 z-10"
+      />
+
+      {/* Offset Debugger - aktiveras med Ctrl+Shift+O */}
+      <OffsetDebugger 
+        visible={showOffsetDebugger}
+        className="absolute bottom-4 left-4 z-20 max-w-md"
       />
     </div>
   );
