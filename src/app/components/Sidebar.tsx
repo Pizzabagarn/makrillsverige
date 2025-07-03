@@ -147,7 +147,7 @@ export default function Sidebar({
           <circle cx="18" cy="19" r="1"/>
         </svg>
       ),
-      description: 'Salthalt från 0 PSU (mörkgrön) till 36 PSU (mörkblå). Gul visar mittenvärde (16 PSU).',
+              description: 'Salthalt från 0 g/kg (röd) till 30 g/kg (mörkblå). Östersjön har låg salthalt (7-15 g/kg).',
       color: 'amber'
     }
   };

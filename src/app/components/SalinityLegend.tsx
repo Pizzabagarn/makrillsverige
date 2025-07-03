@@ -2,13 +2,26 @@
 
 import { useMemo } from 'react';
 
-// Salthalt färgskala - Enklare färgschema: mörkgrön → ljusgrön → gul → ljusblå → mörkblå
-const SALINITY_COLORMAP = [
-  { value: 0.0, color: '#004400', label: '0' },     // Mörkgrön
-  { value: 8.0, color: '#00BB00', label: '8' },     // Ljusgrön
-  { value: 16.0, color: '#FFFF00', label: '16' },   // Gul (mittenvärdet)
-  { value: 24.0, color: '#66CCFF', label: '24' },   // Ljusblå
-  { value: 36.0, color: '#000066', label: '36' }    // Mörkblå
+// REVOLUTIONÄR SALTHALT FÄRGSKALA - RdBu för naturliga övergångar (0.000-30.188 g/kg, 18 färgsteg)
+const REVOLUTIONARY_SALINITY_COLORMAP = [
+  { value: 0.000, color: '#67001F', label: '' },     // Sötvatten - mörk röd
+  { value: 2.000, color: '#B2182B', label: '' },     // Mycket bräckt - röd
+  { value: 4.000, color: '#D6604D', label: '' },     // Bräckt - ljusare röd
+  { value: 6.000, color: '#F4A582', label: '' },     // Svagt bräckt - ljus röd/orange
+  { value: 7.094, color: '#FDDBC7', label: '' },     // 5:e percentilen - mycket ljus röd
+  { value: 7.250, color: '#F7F7F7', label: '' },     // 10:e percentilen - vit
+  { value: 7.391, color: '#D1E5F0', label: '' },     // 25:e percentilen - mycket ljus blå
+  { value: 10.000, color: '#92C5DE', label: '' },    // Låg salthalt - ljus blå
+  { value: 12.375, color: '#4393C3', label: '' },    // Median area - blå
+  { value: 15.000, color: '#2166AC', label: '' },    // Medel salthalt - mörkare blå
+  { value: 17.359, color: '#053061', label: '' },    // Median - mörk blå
+  { value: 20.000, color: '#042A50', label: '' },    // Hög salthalt - mycket mörk blå
+  { value: 20.234, color: '#032441', label: '' },    // 75:e percentilen - extremt mörk blå
+  { value: 23.109, color: '#021E32', label: '' },    // 90:e percentilen - nästan svart-blå
+  { value: 25.000, color: '#011823', label: '' },    // Mycket hög salthalt - svart-blå
+  { value: 28.312, color: '#001214', label: '' },    // 95:e percentilen - svart-blå
+  { value: 29.094, color: '#000C0F', label: '' },    // 99:e percentilen - mycket mörk
+  { value: 30.188, color: '#00060A', label: '' }     // Maximum - nästan svart
 ];
 
 interface SalinityLegendProps {
@@ -21,10 +34,10 @@ export default function SalinityLegend({
   className = "" 
 }: SalinityLegendProps) {
   
-  // Skapa gradient CSS från färgskalan
+  // Skapa gradient CSS från den revolutionära RdBu färgskalan
   const gradientStyle = useMemo(() => {
-    const gradientStops = SALINITY_COLORMAP.map((item, index) => {
-      const position = (index / (SALINITY_COLORMAP.length - 1)) * 100;
+    const gradientStops = REVOLUTIONARY_SALINITY_COLORMAP.map((item, index) => {
+      const position = (index / (REVOLUTIONARY_SALINITY_COLORMAP.length - 1)) * 100;
       return `${item.color} ${position}%`;
     }).join(', ');
     
@@ -37,46 +50,40 @@ export default function SalinityLegend({
 
   return (
     <div className={`bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border p-2.5 w-40 md:w-48 ${className}`}>
-      {/* Kompakt titel */}
+      {/* Revolutionär titel */}
       <div className="flex items-center mb-2">
-        <div className="w-2.5 h-2.5 mr-1.5 rounded-sm bg-gradient-to-r from-green-700 via-yellow-400 via-cyan-300 to-blue-700"></div>
+        <div className="w-2.5 h-2.5 mr-1.5 rounded-sm bg-gradient-to-r from-red-800 via-white to-blue-800"></div>
         <h3 className="text-xs md:text-sm font-semibold text-gray-800">Salthalt</h3>
       </div>
       
-      {/* Kompakt färgbar */}
-      <div className="relative">
-        {/* Gradient bar - smalare på mobil */}
+      {/* Revolutionär RdBu färgbar med 18 färgsteg */}
+      <div className="space-y-1">
+        {/* Gradient bar - naturliga övergångar */}
         <div 
-          className="w-full h-3 sm:h-3 h-2 rounded border border-gray-300"
+          className="w-full h-3 rounded border border-gray-300"
           style={gradientStyle}
         />
         
-        {/* Minimala tick marks och labels - bara viktiga värden */}
-        <div className="relative mt-0.5 sm:mt-0.5 mt-0">
+        {/* FÖRENKLAD tick marks och labels - bara 4 viktiga värden */}
+        <div className="relative mt-0.5">
           <div className="flex justify-between items-start text-xs">
-            {/* Salthalt på klara färger (inte mellan-färger) */}
-            {[
-              { label: '0' },
-              { label: '8' },
-              { label: '16' },
-              { label: '24' },
-              { label: '36' }
-            ].map((item, index) => (
-              <div key={item.label} className="flex flex-col items-center">
-                {/* Mindre tick mark - extra små på mobil */}
-                <div className="w-px h-1.5 sm:h-1.5 h-1 bg-gray-400 mb-0.5 sm:mb-0.5 mb-0" />
-                {/* Kompakt label */}
-                <span className="text-xs sm:text-xs text-[10px] text-gray-600 leading-none">
-                  {item.label}
+            {/* Endast 4 viktiga salthalt-värden för tydlighet */}
+            {['0', '10', '20', '30'].map((label, index) => (
+              <div key={label} className="flex flex-col items-center">
+                {/* Tick mark */}
+                <div className="w-px h-1.5 bg-gray-400 mb-0.5" />
+                {/* Label */}
+                <span className="text-xs text-gray-600 leading-none">
+                  {label}
                 </span>
               </div>
             ))}
           </div>
         </div>
         
-        {/* Kompakt enhet - mindre på mobil */}
-        <div className="text-center mt-1 sm:mt-1 mt-0.5">
-          <span className="text-xs sm:text-xs text-[10px] text-gray-500">g/kg</span>
+        {/* Enhet */}
+        <div className="text-center mt-1">
+          <span className="text-xs text-gray-500">g/kg</span>
         </div>
       </div>
     </div>
