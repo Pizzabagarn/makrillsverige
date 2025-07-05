@@ -117,3 +117,27 @@ body,
 .glow-ring {
   filter: drop-shadow(0 0 6px var(--glow-color));
 }
+
+/* Förhindra blinkning på kartan */
+.maplibregl-map {
+  transition: none !important;
+}
+
+.maplibregl-canvas-container,
+.maplibregl-canvas-container canvas,
+.maplibregl-canvas {
+  cursor: crosshair !important;
+}
+
+/* Förhindra flash/blink vid state-ändringar */
+.maplibregl-map *,
+.maplibregl-canvas-container *,
+.maplibregl-canvas * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Extra säkerhet för cursor */
+[class*="maplibre"] {
+  cursor: crosshair !important;
+}

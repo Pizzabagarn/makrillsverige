@@ -50,7 +50,7 @@ function readMetadata(parameterDir: string): Metadata | null {
  */
 function getSimplifiedLabels(parameterName: string): string[] {
   const labelMap: Record<string, string[]> = {
-    current: ['0.0', '0.25', '0.5', '1.0', '1.5+'],
+    current: ['0.0', '0.4', '0.5', '0.65', '0.9', '1.3+'],
     temperature: ['7°C', '12°C', '16°C', '21°C'],
     salinity: ['0', '10', '20', '30']
   };
