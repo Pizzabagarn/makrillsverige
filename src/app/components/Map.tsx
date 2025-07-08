@@ -12,6 +12,7 @@ import CurrentMagnitudeLayer from './CurrentMagnitudeLayer';
 import TemperatureLayer from './TemperatureLayer';
 import SalinityLayer from './SalinityLayer';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
+import MapPin from './MapPin';
 import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
 import TemperatureLegend from './TemperatureLegend';
 import SalinityLegend from './SalinityLegend';
@@ -23,11 +24,13 @@ interface MapViewProps {
   showZoom?: boolean;
   // Layer visibility controls - removed showCurrentMagnitude since it's managed by ImageLayerContext
   showCurrentVectors?: boolean;
+  showPin?: boolean;
 }
 
 export default function MapView({ 
   showZoom = true,
-  showCurrentVectors = true
+  showCurrentVectors = true,
+  showPin = true
 }: MapViewProps) {
   const { showCurrentVectors: contextShowCurrentVectors } = useLayerVisibility();
   const { activeLayer } = useImageLayer();
@@ -149,6 +152,9 @@ export default function MapView({
         <CurrentVectorsLayer 
           visible={contextShowCurrentVectors}
         />
+        
+        {/* PIN KOMPONENT - RENDERAS SIST FÖR ATT VARA OVANPÅ ALLT */}
+        <MapPin visible={showPin} />
       </Map>
       
       {/* Legender - bara en synlig åt gången baserat på aktivt lager */}
