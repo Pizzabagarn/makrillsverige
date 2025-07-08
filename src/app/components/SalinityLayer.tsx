@@ -199,7 +199,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
           const img = new Image();
           img.onload = () => {
             // Dubbelkolla att detta fortfarande är rätt bild
-            if (imageUrl === currentImageUrl) {
+            if (img.src === imageUrl) {
               setImageLoaded(true);
             }
           };
@@ -212,7 +212,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         setImageLoaded(false);
       }
     }
-  }, [timestampPrefix, metadata, findImageForTimestamp, currentImageUrl, preloadedImages]);
+  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages]);
 
   // Skapa MapLibre GL Source/Layer för raster - samma som CurrentMagnitudeLayer
   const rasterSource = useMemo(() => {

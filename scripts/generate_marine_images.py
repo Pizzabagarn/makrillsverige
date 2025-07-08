@@ -29,28 +29,29 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 # REVOLUTIONERADE FÄRGSKALOR (baserat på verklig dataanalys)
 
-# Strömstyrka - Optimerad för verklig range 0.000-1.526 m/s med 20 färgsteg
+# 🌊 BALANSERAD FÖRDELNING av färger från 0.0 till 1.3 m/s (20 steg)
+# Varje färgkategori får ungefär lika mycket utrymme
 REVOLUTIONARY_CURRENT_COLORMAP = [
-    [0.000, "#000033"],   # Absolut stillastående - mycket mörk blå
-    [0.006, "#000066"],   # 1:a percentilen - mörk blå  
-    [0.020, "#000099"],   # 5:e percentilen - blå
-    [0.033, "#0033CC"],   # 10:e percentilen - ljusare blå
-    [0.050, "#0066FF"],   # Låg ström - ännu ljusare blå
-    [0.067, "#0099FF"],   # 25:e percentilen - cyan-blå
-    [0.096, "#00CCFF"],   # Median area - cyan
-    [0.125, "#00FFCC"],   # Median - turkos
-    [0.150, "#33FF99"],   # Över median - grön-turkos
-    [0.200, "#66FF66"],   # Märkbar ström - ljusgrön
-    [0.250, "#99FF33"],   # Kraftig ström - gul-grön
-    [0.299, "#CCFF00"],   # 75:e percentilen - gul
-    [0.350, "#FFCC00"],   # Stark ström - orange-gul
-    [0.400, "#FF9900"],   # Mycket stark - orange
-    [0.500, "#FF6600"],   # Kraftfull - röd-orange
-    [0.650, "#FF3300"],   # Extrem - röd
-    [0.800, "#CC0000"],   # Kritisk - mörk röd
-    [1.000, "#990000"],   # Farlig - mycket mörk röd
-    [1.300, "#660000"],   # Maximum recorded - nästan svart röd
-    [1.526, "#330000"],   # Absolut maximum - svart-röd
+    [0.000, "#000066"], # Mörkblå
+    [0.068, "#0033CC"], # Blå
+    [0.137, "#0066CC"], # Ljusblå
+    [0.205, "#00CCFF"], # Cyan (0.2)
+    [0.274, "#00FFCC"], # Cyan-grön
+    [0.342, "#00FF66"], # Grön (0.3)
+    [0.411, "#33FF33"], # Ljusgrön (0.4)
+    [0.479, "#FFFF00"], # Gul börjar (0.5)
+    [0.547, "#FFFF00"], # Gul
+    [0.616, "#FFFF00"], # Gul
+    [0.684, "#FFFF00"], # Gul
+    [0.753, "#FFCC00"], # Gul-orange (0.7)
+    [0.821, "#FF9900"], # Orange (0.8)
+    [0.889, "#FF6600"], # Orange-röd
+    [0.958, "#FF3300"], # Röd (0.9)
+    [1.026, "#FF0066"], # Röd-magenta (1.0)
+    [1.095, "#FF00FF"], # Magenta (1.0)
+    [1.163, "#CC00FF"], # Magenta-lila (1.1)
+    [1.232, "#9900FF"], # Lila (1.2)
+    [1.300, "#000000"], # Extrem/Svart (1.3)
 ]
 
 # Temperatur - Optimerad för verklig range 6.974-20.980°C med 19 färgsteg
@@ -108,7 +109,7 @@ def get_parameter_config(parameter):
             'name_en': 'current_magnitude',
             'output_dir': 'current-magnitude-images',
             'smooth_factor': 0.5,  # Lätt smoothing för strömstyrka
-            'edge_enhancement': False  # Tillfälligt avstängt för naturligare resultat
+            'edge_enhancement': True   # Återaktiverat med förbättrad implementation
         },
         'temperature': {
             'colormap': REVOLUTIONARY_TEMPERATURE_COLORMAP,
@@ -117,7 +118,7 @@ def get_parameter_config(parameter):
             'name_en': 'temperature',
             'output_dir': 'temperature-images',
             'smooth_factor': 0.8,  # Mer smoothing för temperatur
-            'edge_enhancement': False  # Tillfälligt avstängt för naturligare resultat
+            'edge_enhancement': True   # Återaktiverat med förbättrad implementation
         },
         'salinity': {
             'colormap': REVOLUTIONARY_SALINITY_COLORMAP,
@@ -126,7 +127,7 @@ def get_parameter_config(parameter):
             'name_en': 'salinity',
             'output_dir': 'salinity-images',
             'smooth_factor': 0.7,  # Balanserad smoothing för salthalt
-            'edge_enhancement': False  # Tillfälligt avstängt för naturligare resultat
+            'edge_enhancement': True   # Återaktiverat med förbättrad implementation
         }
     }
     
@@ -228,57 +229,49 @@ def extract_parameter_data_for_timestamp(area_data, timestamp_prefix, water_poin
     return np.array(lons), np.array(lats), np.array(values)
 
 def create_edge_enhancement_points(lons, lats, values, bbox, enhancement_factor=2):
-    """Skapa förbättrade kantpunkter för bättre interpolation"""
+    """Skapa smarta kantpunkter exakt på bbox-gränserna men bara i vattenområden"""
     lon_min, lon_max, lat_min, lat_max = bbox
     
-    # Skapa mer sofistikerade kantpunkter
     edge_lons, edge_lats, edge_values = [], [], []
     
-    # Densitetsbaserad kantförstärkning
-    edge_density = len(lons) // 20  # Anpassa baserat på datamängd
+    # Anpassad densitet baserat på datamängd
+    edge_density = max(15, min(40, len(lons) // 25))  # Fler punkter för bättre täckning
     
-    for edge_points in [
-        np.linspace(lon_min, lon_max, edge_density),  # Nedre kant
-        np.linspace(lon_min, lon_max, edge_density),  # Övre kant
-        np.linspace(lat_min, lat_max, edge_density),  # Vänster kant
-        np.linspace(lat_min, lat_max, edge_density)   # Höger kant
-    ]:
-        
-        if len(edge_points) == edge_density:  # Horisontella kanter
-            for lon in edge_points:
-                # Nedre kant
-                distances = np.sqrt((lons - lon)**2 + (lats - lat_min)**2)
-                if len(distances) > 0:
-                    nearest_idx = np.argmin(distances)
-                    edge_lons.append(lon)
-                    edge_lats.append(lat_min)
-                    edge_values.append(values[nearest_idx])
-                
-                # Övre kant
-                distances = np.sqrt((lons - lon)**2 + (lats - lat_max)**2)
-                if len(distances) > 0:
-                    nearest_idx = np.argmin(distances)
-                    edge_lons.append(lon)
-                    edge_lats.append(lat_max)
-                    edge_values.append(values[nearest_idx])
-        else:  # Vertikala kanter
-            for lat in edge_points:
-                # Vänster kant
-                distances = np.sqrt((lons - lon_min)**2 + (lats - lat)**2)
-                if len(distances) > 0:
-                    nearest_idx = np.argmin(distances)
-                    edge_lons.append(lon_min)
-                    edge_lats.append(lat)
-                    edge_values.append(values[nearest_idx])
-                
-                # Höger kant
-                distances = np.sqrt((lons - lon_max)**2 + (lats - lat)**2)
-                if len(distances) > 0:
-                    nearest_idx = np.argmin(distances)
-                    edge_lons.append(lon_max)
-                    edge_lats.append(lat)
-                    edge_values.append(values[nearest_idx])
+    # Skapa kantpunkter EXAKT på bbox-gränserna
+    edges = [
+        # Nedre kant (exakt på lat_min)
+        [(lon, lat_min) for lon in np.linspace(lon_min, lon_max, edge_density)],
+        # Övre kant (exakt på lat_max)
+        [(lon, lat_max) for lon in np.linspace(lon_min, lon_max, edge_density)],
+        # Vänster kant (exakt på lon_min)
+        [(lon_min, lat) for lat in np.linspace(lat_min, lat_max, edge_density)],
+        # Höger kant (exakt på lon_max)
+        [(lon_max, lat) for lat in np.linspace(lat_min, lat_max, edge_density)]
+    ]
     
+    # För varje kantpunkt, kontrollera om det är rimligt och lägg till
+    for edge_points in edges:
+        for edge_lon, edge_lat in edge_points:
+            # Hitta de 3 närmsta datapunkterna för bättre interpolation
+            distances = np.sqrt((lons - edge_lon)**2 + (lats - edge_lat)**2)
+            
+            if len(distances) > 0:
+                # Använd bara kantpunkter som inte är alltför långt från verklig data
+                min_distance = np.min(distances)
+                if min_distance < 0.1:  # Bara om det finns data inom 0.1 grader
+                    # Använd de 3 närmsta punkterna för mer stabil interpolation
+                    nearest_indices = np.argsort(distances)[:min(3, len(distances))]
+                    
+                    # Viktad interpolation baserat på avstånd
+                    weights = 1.0 / (distances[nearest_indices] + 1e-10)
+                    weighted_value = np.sum(values[nearest_indices] * weights) / np.sum(weights)
+                    
+                    # Lägg till kantpunkten
+                    edge_lons.append(edge_lon)
+                    edge_lats.append(edge_lat)
+                    edge_values.append(weighted_value)
+    
+    print(f"   🔧 Skapade {len(edge_values)} kantpunkter exakt på bbox-gränserna")
     return np.array(edge_lons), np.array(edge_lats), np.array(edge_values)
 
 def create_feature_matrix(lons, lats, bbox):
@@ -602,18 +595,21 @@ def improved_traditional_interpolation(lons, lats, values, lon_mesh, lat_mesh, p
         )
         grid_values[nan_mask] = grid_values_nearest[nan_mask]
     
-    # Steg 4: EXTRA smoothing för naturligare resultat
-    # Lätt Gaussian smoothing som din gamla metod men med parameter-specifik styrka
+    # Steg 4: FÖRBÄTTRAD smoothing för naturligare resultat utan hårda kanter
+    # Anpassad smoothing för varje parameter
     smoothing_strength = {
-        'current': 0.8,      # Lite smoothing för strömstyrka
-        'temperature': 1.2,  # Mer smoothing för temperatur
-        'salinity': 1.0      # Balanserad smoothing för salthalt
+        'current': 0.1,      # Mer smoothing för strömstyrka (mjukare övergångar)
+        'temperature': 0.1,  # Starkare smoothing för temperatur (mycket mjuk)
+        'salinity': 0.1      # Balanserad smoothing för salthalt
     }
     
-    sigma = smoothing_strength.get(parameter, 0.8)
-    grid_values = gaussian_filter(grid_values, sigma=sigma)
+    sigma = smoothing_strength.get(parameter, 0.1)
     
-    print(f"   ✅ Förbättrad traditionell interpolation klar (σ={sigma})")
+    # Dubbelpassage smoothing för ännu mjukare resultat
+    grid_values = gaussian_filter(grid_values, sigma=sigma*0.6)  # Första passagen
+    grid_values = gaussian_filter(grid_values, sigma=sigma*0.4)  # Andra passagen för finare smoothing
+    
+    print(f"   ✅ Förbättrad traditionell interpolation klar (σ={sigma} dubbelpassage)")
     return grid_values
 
 def create_interpolated_image(lons, lats, values, water_mask_grid, output_path, timestamp, bbox, parameter):
@@ -691,13 +687,31 @@ def create_interpolated_image(lons, lats, values, water_mask_grid, output_path, 
         cmap, vmin, vmax = create_parameter_colormap(parameter)
         print(f"   🎨 Colormap: {vmin:.2f} - {vmax:.2f} {unit}")
         
-        # Optimerad figur-storlek baserat på upplösning
-        fig_size = max(8, min(12, grid_resolution / 100))
-        dpi = max(100, min(150, grid_resolution // 8))
+        # Beräkna aspektförhållande baserat på geografisk region
+        lon_range = actual_lon_max - actual_lon_min
+        lat_range = actual_lat_max - actual_lat_min
+        aspect_ratio = lon_range / lat_range
         
-        fig, ax = plt.subplots(figsize=(fig_size, fig_size), dpi=dpi)
+        # Optimerad figur-storlek för bästa kvalitet med bbox_inches='tight'
+        # Höjre upplösning för finare interpolation
+        target_width_pixels = max(800, grid_resolution // 2)  # Minst 800px bred
+        target_height_pixels = int(target_width_pixels / aspect_ratio)
+        
+        # Beräkna figur-storlek i tum (matplotlib använder tum)
+        fig_width_inches = 10  # Standard bredd
+        fig_height_inches = fig_width_inches / aspect_ratio
+        
+        # DPI för att nå target pixel-storlek
+        dpi = max(target_width_pixels / fig_width_inches, 150)
+        
+        print(f"   📐 Figur: {fig_width_inches:.1f}x{fig_height_inches:.1f} tum @ {dpi:.0f} DPI")
+        print(f"   🎯 Målstorlek: {target_width_pixels}x{target_height_pixels} pixlar")
+        print(f"   🗺️ Aspect ratio: {aspect_ratio:.3f} (lon_range: {lon_range:.2f}°, lat_range: {lat_range:.2f}°)")
+        
+        fig, ax = plt.subplots(figsize=(fig_width_inches, fig_height_inches), dpi=dpi)
         ax.set_xlim(actual_lon_min, actual_lon_max)
         ax.set_ylim(actual_lat_min, actual_lat_max)
+        ax.set_aspect('equal')  # Behåll geografisk precision
         ax.axis('off')
         
         # Plotta med exakta grid-koordinater
@@ -709,16 +723,15 @@ def create_interpolated_image(lons, lats, values, water_mask_grid, output_path, 
             vmin=vmin,
             vmax=vmax,
             alpha=0.85,
-            interpolation='bilinear'
+            interpolation='bicubic'  # Bättre interpolation för mjukare resultat
         )
         
-        # Spara med optimerade inställningar (UTAN bbox_inches='tight')
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # Spara med bbox_inches='tight' för bästa kvalitet
         plt.savefig(
             output_path,
             format='png',
             dpi=dpi,
-            bbox_inches=None,  # ✅ Bevara exakt pixelgräns
+            bbox_inches='tight',  # ✅ Trimma bort marginaler för bästa kvalitet
             pad_inches=0,
             transparent=True,
             facecolor='none'
@@ -910,8 +923,8 @@ def main():
                        help='Sökväg till vattenmask GeoJSON')
     parser.add_argument('--output-dir', default='public/data',
                        help='Bas-directory för output')
-    parser.add_argument('--resolution', type=int, default=1200,
-                       help='Grid-upplösning (default: 1200)')
+    parser.add_argument('--resolution', type=int, default=3000,
+                       help='Grid-upplösning (default: 3000 för bättre kvalitet)')
     parser.add_argument('--max-images', type=int, default=None,
                        help='Max antal bilder per parameter (för testning)')
     parser.add_argument('--force', action='store_true',
@@ -921,9 +934,11 @@ def main():
     
     print("🌊 REVOLUTIONÄR MARINA BILDGENERATOR")
     print("=" * 50)
-    print(f"🤖 ML + RBF interpolation för naturlig kvalitet")
+    print(f"🤖 Förbättrad traditionell interpolation för naturlig kvalitet")
     print(f"🎨 Revolutionerade colormaps (18-20 färgsteg)")
     print(f"⚡ Optimerad prestanda och minneshantering")
+    print(f"🔥 Högre upplösning för skarpare bilder")
+    print(f"✨ Använder bbox_inches='tight' för bästa bildkvalitet utan förstoring")
     
     # Bestäm parametrar
     if args.parameter == 'all':
@@ -936,7 +951,8 @@ def main():
     
     print(f"📦 Input: {args.input}")
     print(f"📁 Output: {args.output_dir}")
-    print(f"🔧 Upplösning: {args.resolution}x{args.resolution}")
+    print(f"🔧 Upplösning: {args.resolution}x{args.resolution} (grid) → optimerad bildstorlek med bbox_inches='tight'")
+    print(f"✨ Använder bbox_inches='tight' för bästa bildkvalitet utan förstoring")
     
     # Ladda data
     print("\n📦 Laddar data...")

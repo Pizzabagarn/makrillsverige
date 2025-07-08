@@ -146,7 +146,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         img.src = imageUrl;
       }
     }
-  }, [metadata?.timestamps, currentImageUrl, preloadedImages]);
+  }, [metadata?.timestamps, preloadedImages]);
 
   // Hitta rätt bild för nuvarande tidsstämpel - samma som CurrentMagnitudeLayer
   const findImageForTimestamp = useCallback((prefix: string) => {
@@ -198,8 +198,8 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
           setImageLoaded(false);
           const img = new Image();
           img.onload = () => {
-            // Dubbelkolla att detta fortfarande är rätt bild
-            if (imageUrl === currentImageUrl) {
+            // Dubbelkolla att detta fortfarande är rätt bild (använd img.src istället för currentImageUrl)
+            if (img.src === imageUrl) {
               setImageLoaded(true);
             }
           };
@@ -212,7 +212,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         setImageLoaded(false);
       }
     }
-  }, [timestampPrefix, metadata, findImageForTimestamp, currentImageUrl, preloadedImages]);
+  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages]);
 
   // Skapa MapLibre GL Source/Layer för raster - samma som CurrentMagnitudeLayer
   const rasterSource = useMemo(() => {
