@@ -127,42 +127,155 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     };
   }, [areaData, targetTimestamp]);
 
-  // Beräkna popup position för att hålla den inom skärmen
+  // Smart popup positionering som alltid håller popupen synlig
   const calculatePopupPosition = useCallback((longitude: number, latitude: number) => {
-    if (!map) return { longitude, latitude };
+    if (!map) return { longitude, latitude, anchor: 'top', offset: [0, 15] };
     
     const canvas = map.getCanvas();
     const rect = canvas.getBoundingClientRect();
     const point = map.project([longitude, latitude]);
     
-    // Popup dimensioner (responsiva) - uppdaterade för kompakt design
-    const isSmallScreen = window.innerWidth < 640;
-    const popupWidth = isSmallScreen ? 200 : 260;
-    const popupHeight = isSmallScreen ? 200 : 250; // Mindre höjd för kompakt design
-    const offset = 15; // Mindre offset för kompakt känsla
+    // Responsiva popup-dimensioner som matchar CSS
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
     
+    let popupWidth, popupHeight, baseOffset;
+    
+    if (screenWidth < 480) {
+      // Tiny mobile screens
+      popupWidth = 200;
+      popupHeight = 200; // Increased from 180 to show more content
+      baseOffset = 12;
+    } else if (screenWidth < 640) {
+      // Small mobile screens  
+      popupWidth = 220;
+      popupHeight = 220; // Increased from 200 to show more content
+      baseOffset = 15;
+    } else if (screenWidth < 1024) {
+      // Tablet screens
+      popupWidth = 260;
+      popupHeight = 260; // Increased from 240 to show more content
+      baseOffset = 18;
+    } else {
+      // Desktop screens
+      popupWidth = 280;
+      popupHeight = 280; // Increased from 260 to show more content
+      baseOffset = 20;
+    }
+    
+    // UI-element dimensioner (clock knob etc.)
+    const clockKnobHeight = screenWidth < 640 ? 120 : 150;
+    const sidebarWidth = screenWidth < 640 ? 0 : 300;
+    const safeMargin = 20;
+    
+    // Beräkna tillgängligt utrymme i alla riktningar
+    const spaceTop = point.y - safeMargin;
+    const spaceBottom = screenHeight - point.y - clockKnobHeight - safeMargin;
+    const spaceLeft = point.x - sidebarWidth - safeMargin;
+    const spaceRight = screenWidth - point.x - safeMargin;
+    
+    let anchor = 'top';
+    let offset = [0, baseOffset];
     let adjustedLng = longitude;
     let adjustedLat = latitude;
     
-    // Kolla om popupen skulle gå utanför höger kant
-    if (point.x + popupWidth + offset > rect.width) {
-      const newPoint = map.unproject([Math.max(offset, rect.width - popupWidth - offset), point.y]);
-      adjustedLng = newPoint.lng;
+    // Vertical positioning - prioritera under pinnen
+    if (spaceBottom >= popupHeight) {
+      // Tillräckligt utrymme under - placera under pinnen
+      anchor = 'top';
+      offset = [0, baseOffset];
+    } else if (spaceTop >= popupHeight) {
+      // Inte tillräckligt utrymme under men tillräckligt ovan - placera ovan
+      anchor = 'bottom';
+      offset = [0, -baseOffset];
+    } else {
+      // Inte tillräckligt utrymme i någon riktning - anpassa positionen
+      if (spaceBottom > spaceTop) {
+        // Mer utrymme under - placera under men justera position
+        anchor = 'top';
+        offset = [0, baseOffset];
+        if (spaceBottom < popupHeight) {
+          // Flytta pinnen uppåt så popupen får plats
+          const needsToMove = popupHeight - spaceBottom;
+          const newY = point.y - needsToMove;
+          const newPoint = map.unproject([point.x, newY]);
+          adjustedLat = newPoint.lat;
+        }
+      } else {
+        // Mer utrymme ovan - placera ovan men justera position
+        anchor = 'bottom';
+        offset = [0, -baseOffset];
+        if (spaceTop < popupHeight) {
+          // Flytta pinnen nedåt så popupen får plats
+          const needsToMove = popupHeight - spaceTop;
+          const newY = point.y + needsToMove;
+          const newPoint = map.unproject([point.x, newY]);
+          adjustedLat = newPoint.lat;
+        }
+      }
     }
     
-    // Kolla om popupen skulle gå utanför vänster kant
-    if (point.x - popupWidth/2 < offset) {
-      const newPoint = map.unproject([popupWidth/2 + offset, point.y]);
-      adjustedLng = newPoint.lng;
+    // Horizontal positioning - använd canvas-dimensioner istället för screen
+    const canvasWidth = rect.width;
+    const canvasHeight = rect.height;
+    
+    // Beräkna popup-position vid default centrering (relativt till canvas)
+    const popupLeftEdge = point.x - (popupWidth / 2);
+    const popupRightEdge = point.x + (popupWidth / 2);
+    
+    let horizontalOffset = 0;
+    
+    // Kontrollera vänster kant (ta hänsyn till sidebar bara på desktop)
+    const leftBoundary = screenWidth >= 640 ? sidebarWidth + safeMargin : safeMargin;
+    
+    if (popupLeftEdge < leftBoundary) {
+      // Flytta popupen åt höger
+      horizontalOffset = leftBoundary - popupLeftEdge;
+    }
+    // Kontrollera höger kant (använd canvas-bredd)
+    else if (popupRightEdge > canvasWidth - safeMargin) {
+      // Flytta popupen åt vänster
+      horizontalOffset = (canvasWidth - safeMargin) - popupRightEdge;
     }
     
-    // Kolla om popupen skulle gå utanför undre kant (nu prioriterat eftersom popup är under pinnen)
-    if (point.y + popupHeight + offset > rect.height) {
-      const newPoint = map.unproject([point.x, rect.height - popupHeight - offset]);
-      adjustedLat = newPoint.lat;
+    // Ytterligare säkerhetskontroll - se till att popupen inte går utanför efter justering
+    const adjustedLeft = point.x + horizontalOffset - (popupWidth / 2);
+    const adjustedRight = point.x + horizontalOffset + (popupWidth / 2);
+    
+    // Om den fortfarande skulle gå utanför, flytta pinnen själv
+    if (adjustedLeft < leftBoundary || adjustedRight > canvasWidth - safeMargin) {
+      // Flytta pinnen till en säker position
+      let safeX = point.x;
+      
+      if (adjustedLeft < leftBoundary) {
+        safeX = leftBoundary + (popupWidth / 2);
+      } else if (adjustedRight > canvasWidth - safeMargin) {
+        safeX = canvasWidth - safeMargin - (popupWidth / 2);
+      }
+      
+      // Omvandla tillbaka till lng/lat
+      const safePoint = map.unproject([safeX, point.y]);
+      adjustedLng = safePoint.lng;
+      
+      // Nollställ horizontal offset eftersom vi flyttat pinnen
+      horizontalOffset = 0;
     }
     
-    return { longitude: adjustedLng, latitude: adjustedLat };
+    // Uppdatera offset med horizontal justering
+    offset = [horizontalOffset, offset[1]];
+    
+    // Om vi fortfarande inte har tillräckligt utrymme, använd center anchor
+    if (spaceTop < popupHeight && spaceBottom < popupHeight) {
+      anchor = 'center';
+      offset = [horizontalOffset, 0];
+    }
+    
+    return { 
+      longitude: adjustedLng, 
+      latitude: adjustedLat, 
+      anchor, 
+      offset 
+    };
   }, [map]);
 
   // Rensa pin när popup stängs
@@ -379,152 +492,132 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       )}
 
       {/* Glasdesign popup med parametrar */}
-      {showPopup && pinLocation && pinData && (
-        <Popup
-          longitude={calculatePopupPosition(pinLocation.lon, pinLocation.lat).longitude}
-          latitude={calculatePopupPosition(pinLocation.lon, pinLocation.lat).latitude}
-          onClose={() => setShowPopup(false)}
-          closeButton={true}
-          closeOnClick={false}
-          anchor="top"
-          offset={[0, 15]}
-          className="marine-popup"
-        >
+      {showPopup && pinLocation && pinData && (() => {
+        const popupPos = calculatePopupPosition(pinLocation.lon, pinLocation.lat);
+        return (
+          <Popup
+            longitude={popupPos.longitude}
+            latitude={popupPos.latitude}
+            onClose={() => setShowPopup(false)}
+            closeButton={true}
+            closeOnClick={false}
+            anchor={popupPos.anchor as any}
+            offset={popupPos.offset as [number, number]}
+            className="marine-popup"
+          >
           <div 
             className="
               backdrop-blur-md
               rounded-xl shadow-2xl 
-              min-w-[220px] sm:min-w-[240px] 
-              max-w-[88vw] sm:max-w-[260px]
-              p-3 sm:p-3
-              text-white
+              p-1.5 xs:p-1.5 sm:p-2 lg:p-2.5
+              text-white text-xs xs:text-xs sm:text-sm lg:text-sm
             "
             data-no-close="true"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Kompakt header med Apple-design */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
-              <h3 className="text-base font-semibold text-white">Marina Data</h3>
+            <div className="flex items-center gap-1 mb-1 xs:mb-1 sm:mb-1.5">
+              <div className="w-1.5 h-1.5 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
+              <h3 className="text-xs xs:text-xs sm:text-sm font-semibold text-white">Marina Data</h3>
             </div>
             
             {/* Kompakt parametrars sektion med Apple-stil */}
-            <div className="space-y-2">
+            <div className="space-y-1 xs:space-y-1 sm:space-y-1.5">
               {/* Position och tid - Apple-stil */}
-              <div className="glass-card-apple p-2.5 text-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-white/70 font-medium">Position:</span>
-                  <span className="font-mono text-white/90 font-semibold">
-                    {pinData.lat.toFixed(3)}, {pinData.lon.toFixed(3)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70 font-medium">Tid:</span>
-                  <span className="text-white/90 font-semibold">
+              <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5 text-xs xs:text-xs sm:text-sm">
+                                  <div className="flex justify-between items-center mb-0.5 xs:mb-0.5 sm:mb-1">
+                    <span className="text-white/70 font-medium text-xs xs:text-xs sm:text-sm">Position:</span>
+                    <span className="font-mono text-white/90 font-semibold text-xs xs:text-xs sm:text-sm">
+                      {pinData.lat.toFixed(2)}, {pinData.lon.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/70 font-medium text-xs xs:text-xs sm:text-sm">Tid:</span>
+                    <span className="text-white/90 font-semibold text-xs xs:text-xs sm:text-sm">
                     {new Date(pinData.timestamp).toLocaleString('sv-SE', {
-                      month: 'short',
                       day: 'numeric',
+                      month: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }).replace(/\s/, ' ')}
                   </span>
                 </div>
               </div>
               
               {/* Temperatur med Apple-design */}
               {pinData.temperature !== undefined && pinData.temperature !== null && (
-                <div className="glass-card-apple p-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-white text-sm">🌡️</span>
+                <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5">
+                                      <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 xs:gap-1 sm:gap-2">
+                        <div className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                          <span className="text-white text-xs xs:text-xs sm:text-xs">🌡️</span>
+                        </div>
+                        <div>
+                          <div className="text-xs xs:text-xs sm:text-sm font-semibold text-white">Temperatur</div>
+                          <div className="text-xs xs:text-xs sm:text-xs text-white/60">Vattentemp</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-semibold text-white">Temperatur</div>
-                        <div className="text-xs text-white/60">Vattentemperatur</div>
+                      <div className="text-right">
+                        <div 
+                          className="text-xs xs:text-xs sm:text-sm font-bold text-outlined"
+                          style={{ color: getColorForValue('temperature', pinData.temperature) }}
+                        >
+                          {pinData.temperature.toFixed(1)}°C
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div 
-                        className="text-xl font-bold"
-                        style={{ color: getColorForValue('temperature', pinData.temperature) }}
-                      >
-                        {pinData.temperature.toFixed(1)}°C
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
               
               {/* Salthalt med Apple-design */}
               {pinData.salinity !== undefined && pinData.salinity !== null && (
-                <div className="glass-card-apple p-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-white text-sm">🧂</span>
+                <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5">
+                                      <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 xs:gap-1 sm:gap-2">
+                        <div className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                          <span className="text-white text-xs xs:text-xs sm:text-xs">🧂</span>
+                        </div>
+                        <div>
+                          <div className="text-xs xs:text-xs sm:text-sm font-semibold text-white">Salthalt</div>
+                          <div className="text-xs xs:text-xs sm:text-xs text-white/60">Koncentration</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-semibold text-white">Salthalt</div>
-                        <div className="text-xs text-white/60">Saltkoncentration</div>
+                      <div className="text-right">
+                        <div 
+                          className="text-xs xs:text-xs sm:text-sm font-bold text-outlined"
+                          style={{ color: getColorForValue('salinity', pinData.salinity) }}
+                        >
+                          {pinData.salinity.toFixed(1)} g/kg
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div 
-                        className="text-xl font-bold"
-                        style={{ color: getColorForValue('salinity', pinData.salinity) }}
-                      >
-                        {pinData.salinity.toFixed(1)} PSU
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
               
               {/* Ström med Apple-design */}
               {pinData.current && pinData.current.u !== undefined && pinData.current.v !== undefined && 
                pinData.current.u !== null && pinData.current.v !== null && (
-                <div className="space-y-2">
-                  <div className="glass-card-apple p-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                          <span className="text-white text-sm">🌊</span>
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-white">Strömstyrka</div>
-                          <div className="text-xs text-white/60">Hastighet</div>
-                        </div>
+                <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 xs:gap-1 sm:gap-2">
+                      <div className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                        <span className="text-white text-xs xs:text-xs sm:text-xs">🌊</span>
                       </div>
-                      <div className="text-right">
-                        <div 
-                          className="text-xl font-bold"
-                          style={{ color: getColorForValue('current', Math.hypot(pinData.current.u, pinData.current.v)) }}
-                        >
-                          {Math.hypot(pinData.current.u, pinData.current.v).toFixed(2)} m/s
-                        </div>
+                      <div>
+                        <div className="text-xs xs:text-xs sm:text-sm font-semibold text-white">Ström</div>
+                        <div className="text-xs xs:text-xs sm:text-xs text-white/60">Hastighet</div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="glass-card-apple p-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                          <span className="text-white text-sm">🧭</span>
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-white">Strömriktning</div>
-                          <div className="text-xs text-white/60">Kompassriktning</div>
-                        </div>
+                    <div className="text-right">
+                      <div 
+                        className="text-xs xs:text-xs sm:text-sm font-bold text-outlined"
+                        style={{ color: getColorForValue('current', Math.hypot(pinData.current.u, pinData.current.v)) }}
+                      >
+                        {Math.hypot(pinData.current.u, pinData.current.v).toFixed(2)} m/s
                       </div>
-                      <div className="text-right">
-                        <div className="text-xl font-bold text-indigo-300">
-                          {((Math.atan2(pinData.current.v, pinData.current.u) * 180 / Math.PI + 360) % 360).toFixed(0)}°
-                        </div>
-                        <div className="text-sm text-white/70 font-medium">
-                          {getCompassDirection(Math.atan2(pinData.current.v, pinData.current.u) * 180 / Math.PI)}
-                        </div>
+                      <div className="text-xs xs:text-xs sm:text-xs text-white/70 font-medium">
+                        {/* Konvertera från matematiska grader (0° = Öst) till kompassgrader (0° = Nord) */}
+                        {getCompassDirection(90 - Math.atan2(pinData.current.v, pinData.current.u) * 180 / Math.PI)}
                       </div>
                     </div>
                   </div>
@@ -533,8 +626,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
               
               {/* Visa meddelande om ingen data finns */}
               {(!pinData.temperature && !pinData.salinity && !pinData.current) && (
-                <div className="glass-card-apple p-3 text-center">
-                  <div className="text-white/80 font-medium">
+                <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5 text-center">
+                  <div className="text-white/80 font-medium text-xs xs:text-xs sm:text-sm">
                     Ingen data tillgänglig för denna position
                   </div>
                 </div>
@@ -542,7 +635,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
             </div>
           </div>
         </Popup>
-      )}
+        );
+      })()}
     </>
   );
 };

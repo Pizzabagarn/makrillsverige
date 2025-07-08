@@ -172,15 +172,17 @@ body,
     0 8px 30px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
     inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  padding: 0;
-  max-width: 260px;
-  min-width: 220px;
-  max-height: 60vh;
-  min-height: auto;
+  padding: 0 !important;
+  width: 280px !important;
+  max-width: 280px !important;
+  min-width: 280px !important;
+  height: auto !important;
+  max-height: 300px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
   animation: marine-popup-fade-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  transform-origin: top center;
-  overflow: hidden;
+  transform-origin: center center;
+  overflow-y: auto;
+  overflow-x: hidden;
   cursor: default;
   color: rgba(255, 255, 255, 0.95);
 }
@@ -228,29 +230,64 @@ body,
 }
 
 /* Responsive adjustments for marine popup */
-@media (max-width: 640px) {
+/* Tablet screens */
+@media (min-width: 640px) and (max-width: 1024px) {
   .marine-popup .maplibregl-popup-content {
-    max-width: 88vw;
-    min-width: 200px;
-    border-radius: 14px;
-    max-height: 60vh;
+    width: 260px !important;
+    max-width: 260px !important;
+    min-width: 260px !important;
+    max-height: 280px !important;
+    border-radius: 15px;
   }
   
   .marine-popup .maplibregl-popup-close-button {
-    font-size: 14px;
+    font-size: 15px;
     width: 26px;
     height: 26px;
-    right: 6px;
-    top: 6px;
+    right: 7px;
+    top: 7px;
     padding: 5px;
   }
 }
 
+/* Small mobile screens */
+@media (min-width: 480px) and (max-width: 640px) {
+  .marine-popup .maplibregl-popup-content {
+    width: 220px !important;
+    max-width: 220px !important;
+    min-width: 220px !important;
+    max-height: 240px !important;
+    border-radius: 14px;
+  }
+  
+  .marine-popup .maplibregl-popup-close-button {
+    font-size: 14px;
+    width: 24px;
+    height: 24px;
+    right: 6px;
+    top: 6px;
+    padding: 4px;
+  }
+}
+
+/* Tiny mobile screens */
 @media (max-width: 480px) {
   .marine-popup .maplibregl-popup-content {
-    max-width: 92vw;
-    min-width: 220px;
+    width: 200px !important;
+    max-width: 200px !important;
+    min-width: 200px !important;
+    max-height: 220px !important;
     border-radius: 12px;
+    font-size: 12px;
+  }
+  
+  .marine-popup .maplibregl-popup-close-button {
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    right: 4px;
+    top: 4px;
+    padding: 3px;
   }
 }
 
@@ -395,6 +432,25 @@ body,
   background: rgba(0, 0, 0, 0.5);
 }
 
+/* Marine popup scrollbar styling */
+.marine-popup .maplibregl-popup-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.marine-popup .maplibregl-popup-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.marine-popup .maplibregl-popup-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.marine-popup .maplibregl-popup-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 @keyframes marine-popup-fade-in {
   from {
     opacity: 0;
@@ -405,5 +461,27 @@ body,
     opacity: 1;
     transform: translateY(0) scale(1);
     filter: blur(0px);
+  }
+}
+
+/* Text outline for better visibility of colored text - subtle version */
+.text-outlined {
+  text-shadow: 
+    -0.5px -0.5px 0 rgba(255, 255, 255, 0.4),
+    0.5px -0.5px 0 rgba(255, 255, 255, 0.4),
+    -0.5px 0.5px 0 rgba(255, 255, 255, 0.4),
+    0.5px 0.5px 0 rgba(255, 255, 255, 0.4),
+    0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive text outline adjustments */
+@media (max-width: 640px) {
+  .text-outlined {
+    text-shadow: 
+      -0.5px -0.5px 0 rgba(255, 255, 255, 0.3),
+      0.5px -0.5px 0 rgba(255, 255, 255, 0.3),
+      -0.5px 0.5px 0 rgba(255, 255, 255, 0.3),
+      0.5px 0.5px 0 rgba(255, 255, 255, 0.3),
+      0 0 1px rgba(0, 0, 0, 0.15);
   }
 }
