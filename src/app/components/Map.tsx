@@ -105,6 +105,7 @@ export default function MapView({
         minZoom={6}
         maxZoom={12}
         style={{ width: '100%', height: '100%' }}
+        cursor="default"
         mapStyle={{
           version: 8,
           sources: {

@@ -5,6 +5,7 @@ import { useMap } from 'react-map-gl/maplibre';
 import { Source, Layer, Popup } from 'react-map-gl/maplibre';
 import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import { getColorForValue } from '../../lib/colormap-utils';
 
 interface PinData {
   lat: number;
@@ -72,6 +73,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   const [pinLocation, setPinLocation] = useState<{lat: number, lon: number} | null>(null);
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState<{x: number, y: number} | null>(null);
 
   // Beräkna aktuell tidsstämpel
   const targetTimestamp = useMemo(() => {
@@ -125,11 +127,63 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     };
   }, [areaData, targetTimestamp]);
 
+  // Beräkna popup position för att hålla den inom skärmen
+  const calculatePopupPosition = useCallback((longitude: number, latitude: number) => {
+    if (!map) return { longitude, latitude };
+    
+    const canvas = map.getCanvas();
+    const rect = canvas.getBoundingClientRect();
+    const point = map.project([longitude, latitude]);
+    
+    // Popup dimensioner (responsiva) - uppdaterade för kompakt design
+    const isSmallScreen = window.innerWidth < 640;
+    const popupWidth = isSmallScreen ? 200 : 260;
+    const popupHeight = isSmallScreen ? 200 : 250; // Mindre höjd för kompakt design
+    const offset = 15; // Mindre offset för kompakt känsla
+    
+    let adjustedLng = longitude;
+    let adjustedLat = latitude;
+    
+    // Kolla om popupen skulle gå utanför höger kant
+    if (point.x + popupWidth + offset > rect.width) {
+      const newPoint = map.unproject([Math.max(offset, rect.width - popupWidth - offset), point.y]);
+      adjustedLng = newPoint.lng;
+    }
+    
+    // Kolla om popupen skulle gå utanför vänster kant
+    if (point.x - popupWidth/2 < offset) {
+      const newPoint = map.unproject([popupWidth/2 + offset, point.y]);
+      adjustedLng = newPoint.lng;
+    }
+    
+    // Kolla om popupen skulle gå utanför undre kant (nu prioriterat eftersom popup är under pinnen)
+    if (point.y + popupHeight + offset > rect.height) {
+      const newPoint = map.unproject([point.x, rect.height - popupHeight - offset]);
+      adjustedLat = newPoint.lat;
+    }
+    
+    return { longitude: adjustedLng, latitude: adjustedLat };
+  }, [map]);
+
+  // Rensa pin när popup stängs
+  useEffect(() => {
+    if (!showPopup) {
+      setPinLocation(null);
+      setPinData(null);
+    }
+  }, [showPopup]);
+
   // Hantera klick på kartan
   useEffect(() => {
     if (!map || !visible) return;
 
     const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      // Om popup redan är öppen, stäng den istället för att skapa ny pin
+      if (showPopup) {
+        setShowPopup(false);
+        return;
+      }
+
       const { lngLat } = e;
       const clickedLocation = { lat: lngLat.lat, lon: lngLat.lng };
       
@@ -140,6 +194,18 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
         setPinLocation(clickedLocation);
         setPinData(nearestData);
         setShowPopup(true);
+      } else {
+        // Visa popup även om det inte finns data
+        setPinLocation(clickedLocation);
+        setPinData({
+          lat: clickedLocation.lat,
+          lon: clickedLocation.lon,
+          timestamp: targetTimestamp || new Date().toISOString(),
+          temperature: undefined,
+          salinity: undefined,
+          current: undefined
+        });
+        setShowPopup(true);
       }
     };
 
@@ -148,7 +214,81 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     return () => {
       map.off('click', handleMapClick);
     };
-  }, [map, visible, findNearestDataPoint]);
+  }, [map, visible, findNearestDataPoint, showPopup, targetTimestamp]);
+
+  // Hantera klick för att stänga popup (endast för UI-element)
+  useEffect(() => {
+    if (!showPopup) return;
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Lista över selektorer som INTE ska stänga popupen
+      const excludedSelectors = [
+        '.marine-popup',
+        '.maplibregl-popup',
+        '.maplibregl-popup-content',
+        '.maplibregl-popup-close-button',
+        '.maplibregl-canvas',
+        '.maplibregl-canvas-container',
+        // UI-element som inte ska stänga popupen
+        '.clock-knob',
+        '.clock-container',
+        '.time-slider',
+        '.slider',
+        '.sidebar',
+        '.layer-toggle',
+        '.legend',
+        '.controls',
+        '.hamburger-menu',
+        '.mobile-time-slider',
+        '.layer-toggle-controls',
+        // Alla element med data-no-close attribut
+        '[data-no-close]',
+        // Alla knappar och formulärelement
+        'button',
+        'input',
+        'select',
+        'textarea',
+        'svg',
+        // Alla element som är children till UI-komponenter
+        '.clock-knob *',
+        '.sidebar *',
+        '.layer-toggle *',
+        '.legend *',
+        '.controls *',
+        '.hamburger-menu *',
+        '.mobile-time-slider *',
+        '.layer-toggle-controls *',
+        // Specifika komponenter
+        '.maplibregl-ctrl',
+        '.maplibregl-ctrl *'
+      ];
+      
+      // Kolla om klicket var på eller i någon av de exkluderade elementen
+      const isExcluded = excludedSelectors.some(selector => {
+        try {
+          return target.closest(selector) !== null;
+        } catch (e) {
+          return false;
+        }
+      });
+      
+      if (!isExcluded) {
+        setShowPopup(false);
+      }
+    };
+
+    // Lägg till event listener efter en kort fördröjning
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleGlobalClick);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [showPopup]);
 
   // Uppdatera pin data när tiden ändras
   useEffect(() => {
@@ -189,12 +329,12 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
             id="pin-outer-pulse"
             type="circle"
             paint={{
-              'circle-radius': 30,
-              'circle-color': '#ff4444',
-              'circle-opacity': 0.1,
+              'circle-radius': 25,
+              'circle-color': '#3B82F6',
+              'circle-opacity': 0.15,
               'circle-stroke-width': 1,
-              'circle-stroke-color': '#ff4444',
-              'circle-stroke-opacity': 0.2
+              'circle-stroke-color': '#3B82F6',
+              'circle-stroke-opacity': 0.3
             }}
           />
           
@@ -203,12 +343,12 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
             id="pin-inner-pulse"
             type="circle"
             paint={{
-              'circle-radius': 20,
-              'circle-color': '#ff4444',
-              'circle-opacity': 0.2,
+              'circle-radius': 15,
+              'circle-color': '#3B82F6',
+              'circle-opacity': 0.25,
               'circle-stroke-width': 2,
-              'circle-stroke-color': '#ff4444',
-              'circle-stroke-opacity': 0.4
+              'circle-stroke-color': '#3B82F6',
+              'circle-stroke-opacity': 0.5
             }}
           />
           
@@ -217,9 +357,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
             id="pin-main"
             type="circle"
             paint={{
-              'circle-radius': 10,
-              'circle-color': '#ff4444',
-              'circle-stroke-width': 4,
+              'circle-radius': 8,
+              'circle-color': '#3B82F6',
+              'circle-stroke-width': 3,
               'circle-stroke-color': '#ffffff',
               'circle-opacity': 0.95
             }}
@@ -230,7 +370,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
             id="pin-center"
             type="circle"
             paint={{
-              'circle-radius': 4,
+              'circle-radius': 3,
               'circle-color': '#ffffff',
               'circle-opacity': 0.9
             }}
@@ -238,41 +378,49 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
         </Source>
       )}
 
-      {/* Popup med parametrar */}
+      {/* Glasdesign popup med parametrar */}
       {showPopup && pinLocation && pinData && (
         <Popup
-          longitude={pinLocation.lon}
-          latitude={pinLocation.lat}
+          longitude={calculatePopupPosition(pinLocation.lon, pinLocation.lat).longitude}
+          latitude={calculatePopupPosition(pinLocation.lon, pinLocation.lat).latitude}
           onClose={() => setShowPopup(false)}
           closeButton={true}
           closeOnClick={false}
-          offset={[0, -10]}
-          className="pin-popup"
+          anchor="top"
+          offset={[0, 15]}
+          className="marine-popup"
         >
-          <div className="p-4 min-w-[280px]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
-                Marin Data
-              </h3>
-              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                Live
-              </div>
+          <div 
+            className="
+              backdrop-blur-md
+              rounded-xl shadow-2xl 
+              min-w-[220px] sm:min-w-[240px] 
+              max-w-[88vw] sm:max-w-[260px]
+              p-3 sm:p-3
+              text-white
+            "
+            data-no-close="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Kompakt header med Apple-design */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
+              <h3 className="text-base font-semibold text-white">Marina Data</h3>
             </div>
             
-            <div className="space-y-3">
-              {/* Koordinater och tid */}
-              <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500 uppercase tracking-wide">Position</span>
-                  <span className="text-sm font-mono text-gray-700">
-                    {pinData.lat.toFixed(4)}, {pinData.lon.toFixed(4)}
+            {/* Kompakt parametrars sektion med Apple-stil */}
+            <div className="space-y-2">
+              {/* Position och tid - Apple-stil */}
+              <div className="glass-card-apple p-2.5 text-sm">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-white/70 font-medium">Position:</span>
+                  <span className="font-mono text-white/90 font-semibold">
+                    {pinData.lat.toFixed(3)}, {pinData.lon.toFixed(3)}
                   </span>
                 </div>
-                
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500 uppercase tracking-wide">Tid</span>
-                  <span className="text-sm text-gray-700">
+                  <span className="text-white/70 font-medium">Tid:</span>
+                  <span className="text-white/90 font-semibold">
                     {new Date(pinData.timestamp).toLocaleString('sv-SE', {
                       month: 'short',
                       day: 'numeric',
@@ -283,90 +431,114 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
                 </div>
               </div>
               
-              {/* Parametrar */}
-              <div className="space-y-3">
-                {pinData.temperature !== undefined && (
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+              {/* Temperatur med Apple-design */}
+              {pinData.temperature !== undefined && pinData.temperature !== null && (
+                <div className="glass-card-apple p-2.5">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
                         <span className="text-white text-sm">🌡️</span>
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-800">Temperatur</div>
-                        <div className="text-xs text-gray-600">Vattentemperatur</div>
+                        <div className="text-sm font-semibold text-white">Temperatur</div>
+                        <div className="text-xs text-white/60">Vattentemperatur</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-blue-600">
-                        {pinData.temperature.toFixed(1)}°
+                      <div 
+                        className="text-xl font-bold"
+                        style={{ color: getColorForValue('temperature', pinData.temperature) }}
+                      >
+                        {pinData.temperature.toFixed(1)}°C
                       </div>
-                      <div className="text-xs text-gray-500">Celsius</div>
                     </div>
                   </div>
-                )}
-                
-                {pinData.salinity !== undefined && (
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                </div>
+              )}
+              
+              {/* Salthalt med Apple-design */}
+              {pinData.salinity !== undefined && pinData.salinity !== null && (
+                <div className="glass-card-apple p-2.5">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
                         <span className="text-white text-sm">🧂</span>
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-800">Salthalt</div>
-                        <div className="text-xs text-gray-600">Saltkoncentration</div>
+                        <div className="text-sm font-semibold text-white">Salthalt</div>
+                        <div className="text-xs text-white/60">Saltkoncentration</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-green-600">
-                        {pinData.salinity.toFixed(1)}
+                      <div 
+                        className="text-xl font-bold"
+                        style={{ color: getColorForValue('salinity', pinData.salinity) }}
+                      >
+                        {pinData.salinity.toFixed(1)} PSU
                       </div>
-                      <div className="text-xs text-gray-500">PSU</div>
                     </div>
                   </div>
-                )}
-                
-                {pinData.current && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                </div>
+              )}
+              
+              {/* Ström med Apple-design */}
+              {pinData.current && pinData.current.u !== undefined && pinData.current.v !== undefined && 
+               pinData.current.u !== null && pinData.current.v !== null && (
+                <div className="space-y-2">
+                  <div className="glass-card-apple p-2.5">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                           <span className="text-white text-sm">🌊</span>
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-800">Strömstyrka</div>
-                          <div className="text-xs text-gray-600">Hastighet</div>
+                          <div className="text-sm font-semibold text-white">Strömstyrka</div>
+                          <div className="text-xs text-white/60">Hastighet</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold text-purple-600">
-                          {Math.hypot(pinData.current.u, pinData.current.v).toFixed(2)}
+                        <div 
+                          className="text-xl font-bold"
+                          style={{ color: getColorForValue('current', Math.hypot(pinData.current.u, pinData.current.v)) }}
+                        >
+                          {Math.hypot(pinData.current.u, pinData.current.v).toFixed(2)} m/s
                         </div>
-                        <div className="text-xs text-gray-500">m/s</div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200">
+                  </div>
+                  
+                  <div className="glass-card-apple p-2.5">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
                           <span className="text-white text-sm">🧭</span>
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-800">Strömriktning</div>
-                          <div className="text-xs text-gray-600">Kompassriktning</div>
+                          <div className="text-sm font-semibold text-white">Strömriktning</div>
+                          <div className="text-xs text-white/60">Kompassriktning</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold text-indigo-600">
+                        <div className="text-xl font-bold text-indigo-300">
                           {((Math.atan2(pinData.current.v, pinData.current.u) * 180 / Math.PI + 360) % 360).toFixed(0)}°
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-sm text-white/70 font-medium">
                           {getCompassDirection(Math.atan2(pinData.current.v, pinData.current.u) * 180 / Math.PI)}
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+              
+              {/* Visa meddelande om ingen data finns */}
+              {(!pinData.temperature && !pinData.salinity && !pinData.current) && (
+                <div className="glass-card-apple p-3 text-center">
+                  <div className="text-white/80 font-medium">
+                    Ingen data tillgänglig för denna position
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Popup>
