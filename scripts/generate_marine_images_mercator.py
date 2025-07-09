@@ -88,7 +88,7 @@ def get_parameter_config(parameter):
     return configs[parameter]
 
 def create_parameter_colormap(parameter):
-    """Parameter-specifik colormap-skapning för bästa visuella resultat"""
+    """Använd gamla färgsystemet (ListedColormap) för alla parametrar för konsekvent utseende"""
     config = get_parameter_config(parameter)
     colormap_data = config['colormap']
     
@@ -98,20 +98,9 @@ def create_parameter_colormap(parameter):
     
     min_val, max_val = min(values), max(values)
     
-    # Parameter-specifik colormap-hantering
-    if parameter == 'salinity':
-        # Salinity: Använd gamla systemet (ListedColormap) för bättre synlighet
-        cmap = colors.ListedColormap(colors_list)
-        print(f"   🎨 Salinity colormap (ListedColormap): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
-    else:
-        # Current & Temperature: Använd förbättrade systemet med gamma-korrektion
-        norm_values = [(v - min_val) / (max_val - min_val) for v in values]
-        cmap = colors.LinearSegmentedColormap.from_list(
-            f'{parameter}_revolutionary', 
-            list(zip(norm_values, colors_list)),
-            gamma=0.9  # Perceptuell optimering för bättre visuell separation
-        )
-        print(f"   🎨 {parameter.title()} colormap (LinearSegmented+gamma): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
+    # Använd gamla systemet (ListedColormap) för alla parametrar
+    cmap = colors.ListedColormap(colors_list)
+    print(f"   🎨 {parameter.title()} colormap (ListedColormap): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
     
     return cmap, min_val, max_val
 
