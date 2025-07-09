@@ -8,9 +8,9 @@ import { Map, NavigationControl } from 'react-map-gl/maplibre';
 import { useEffect, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import AreaParametersLayer from './AreaParametersLayer';
-import CurrentMagnitudeLayer from './CurrentMagnitudeLayer';
-import TemperatureLayer from './TemperatureLayer';
-import SalinityLayer from './SalinityLayer';
+import CurrentMagnitudeLayerMercator from './CurrentMagnitudeLayerMercator';
+import TemperatureLayerMercator from './TemperatureLayerMercator';
+import SalinityLayerMercator from './SalinityLayerMercator';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
 import MapPin from './MapPin';
 import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
@@ -134,17 +134,17 @@ export default function MapView({
         <AreaParametersLayer />
         
         {/* Bildlager - bara ett kan vara aktivt åt gången */}
-        <CurrentMagnitudeLayer 
+        <CurrentMagnitudeLayerMercator 
           visible={activeLayer === 'current'}
           opacity={1.0}
         />
         
-        <TemperatureLayer 
+        <TemperatureLayerMercator 
           visible={activeLayer === 'temperature'}
           opacity={1.0}
         />
         
-        <SalinityLayer 
+        <SalinityLayerMercator 
           visible={activeLayer === 'salinity'}
           opacity={1.0}
         />

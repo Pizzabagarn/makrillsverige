@@ -127,6 +127,103 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     };
   }, [areaData, targetTimestamp]);
 
+  // Lokal interpolation för mjukare övergångar
+  const findInterpolatedDataPoint = useCallback((lat: number, lon: number): PinData | null => {
+    if (!areaData?.points || !targetTimestamp) return null;
+
+    // Hitta punkter inom en radie (ca 10km)
+    const radius = 0.1; // ~11km radie
+    const nearbyPoints: Array<{
+      lat: number;
+      lon: number;
+      distance: number;
+      data: any;
+    }> = [];
+
+    for (const point of areaData.points) {
+      const distance = calculateDistance(lat, lon, point.lat, point.lon);
+      if (distance <= radius) {
+        const timeData = point.data.find(d => d.time === targetTimestamp);
+        if (timeData) {
+          nearbyPoints.push({
+            lat: point.lat,
+            lon: point.lon,
+            distance,
+            data: timeData
+          });
+        }
+      }
+    }
+
+    if (nearbyPoints.length === 0) {
+      // Fallback till närmaste punkt
+      return findNearestDataPoint(lat, lon);
+    }
+
+    if (nearbyPoints.length === 1) {
+      // Bara en punkt - använd den
+      const point = nearbyPoints[0];
+      return {
+        lat: point.lat,
+        lon: point.lon,
+        timestamp: targetTimestamp,
+        temperature: point.data.temperature,
+        salinity: point.data.salinity,
+        current: point.data.current
+      };
+    }
+
+    // Interpolera med viktad medelvärde baserat på avstånd
+    const interpolateParameter = (paramName: string) => {
+      const validPoints = nearbyPoints.filter(p => 
+        p.data[paramName] !== undefined && p.data[paramName] !== null
+      );
+
+      if (validPoints.length === 0) return undefined;
+      if (validPoints.length === 1) return validPoints[0].data[paramName];
+
+      // Beräkna vikter (närmare = högre vikt)
+      const weights = validPoints.map(p => 1 / (p.distance + 0.001)); // +0.001 för att undvika division med 0
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+
+      // Viktad interpolation
+      if (paramName === 'current') {
+        let weightedU = 0;
+        let weightedV = 0;
+        
+        for (let i = 0; i < validPoints.length; i++) {
+          const current = validPoints[i].data.current;
+          if (current && current.u !== undefined && current.v !== undefined) {
+            const weight = weights[i] / weightSum;
+            weightedU += current.u * weight;
+            weightedV += current.v * weight;
+          }
+        }
+        
+        return { u: weightedU, v: weightedV };
+      } else {
+        // För temperature och salinity
+        let weightedSum = 0;
+        
+        for (let i = 0; i < validPoints.length; i++) {
+          const weight = weights[i] / weightSum;
+          weightedSum += validPoints[i].data[paramName] * weight;
+        }
+        
+        return weightedSum;
+      }
+    };
+
+    return {
+      lat,
+      lon,
+      timestamp: targetTimestamp,
+      temperature: interpolateParameter('temperature'),
+      salinity: interpolateParameter('salinity'),
+      current: interpolateParameter('current')
+    };
+  }, [areaData, targetTimestamp, findNearestDataPoint]);
+
   // Smart popup positionering som alltid håller popupen synlig
   const calculatePopupPosition = useCallback((longitude: number, latitude: number) => {
     if (!map) return { longitude, latitude, anchor: 'top', offset: [0, 15] };
@@ -300,17 +397,19 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       const { lngLat } = e;
       const clickedLocation = { lat: lngLat.lat, lon: lngLat.lng };
       
-      // Hitta närmaste datapunkt
-      const nearestData = findNearestDataPoint(clickedLocation.lat, clickedLocation.lon);
+      // Hitta interpolerade datapunkt (med fallback till närmaste)
+      const nearestData = findInterpolatedDataPoint(clickedLocation.lat, clickedLocation.lon);
       
       if (nearestData) {
         setPinLocation(clickedLocation);
         setPinData(nearestData);
         setShowPopup(true);
       } else {
-        // Visa popup även om det inte finns data
+        // Visa popup även om det inte finns data - försök med närmaste punkt som fallback
+        const fallbackData = findNearestDataPoint(clickedLocation.lat, clickedLocation.lon);
+        
         setPinLocation(clickedLocation);
-        setPinData({
+        setPinData(fallbackData || {
           lat: clickedLocation.lat,
           lon: clickedLocation.lon,
           timestamp: targetTimestamp || new Date().toISOString(),
@@ -406,12 +505,12 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   // Uppdatera pin data när tiden ändras
   useEffect(() => {
     if (pinLocation && areaData) {
-      const updatedData = findNearestDataPoint(pinLocation.lat, pinLocation.lon);
+      const updatedData = findInterpolatedDataPoint(pinLocation.lat, pinLocation.lon);
       if (updatedData) {
         setPinData(updatedData);
       }
     }
-  }, [pinLocation, targetTimestamp, findNearestDataPoint, areaData]);
+  }, [pinLocation, targetTimestamp, findInterpolatedDataPoint, areaData]);
 
   // Skapa GeoJSON för pin
   const pinGeoJSON = useMemo(() => {
