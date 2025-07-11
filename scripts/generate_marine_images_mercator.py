@@ -32,10 +32,10 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 # IDENTISKA FÄRGSKALOR som i original-scriptet
 REVOLUTIONARY_CURRENT_COLORMAP = [
     [0.000, "#000066"], [0.068, "#0033CC"], [0.137, "#0066CC"], [0.205, "#00CCFF"],
-    [0.274, "#00FFCC"], [0.342, "#00FF66"], [0.411, "#33FF33"], [0.479, "#FFFF00"],
-    [0.547, "#FFFF00"], [0.616, "#FFFF00"], [0.684, "#FFFF00"], [0.753, "#FFCC00"],
-    [0.821, "#FF9900"], [0.889, "#FF6600"], [0.958, "#FF3300"], [1.026, "#FF0066"],
-    [1.095, "#FF00FF"], [1.163, "#CC00FF"], [1.232, "#9900FF"], [1.300, "#000000"],
+    [0.274, "#00FFCC"], [0.342, "#00FF66"], [0.411, "#33FF33"], [0.479, "#66FF00"],
+    [0.547, "#99FF00"], [0.616, "#CCFF00"], [0.684, "#FFFF00"], [0.753, "#FFCC00"],
+    [0.821, "#FF9900"], [0.889, "#FF6600"], [0.958, "#FF3300"], [1.026, "#CC0000"],
+    [1.095, "#990000"], [1.163, "#660000"], [1.232, "#330000"], [1.300, "#220000"],
 ]
 
 REVOLUTIONARY_TEMPERATURE_COLORMAP = [
@@ -98,20 +98,14 @@ def create_parameter_colormap(parameter):
     
     min_val, max_val = min(values), max(values)
     
-    # Parameter-specifik colormap-hantering
-    if parameter == 'salinity':
-        # Salinity: Använd gamla systemet (ListedColormap) för bättre synlighet
-        cmap = colors.ListedColormap(colors_list)
-        print(f"   🎨 Salinity colormap (ListedColormap): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
-    else:
-        # Current & Temperature: Använd förbättrade systemet med gamma-korrektion
-        norm_values = [(v - min_val) / (max_val - min_val) for v in values]
-        cmap = colors.LinearSegmentedColormap.from_list(
-            f'{parameter}_revolutionary', 
-            list(zip(norm_values, colors_list)),
-            gamma=0.9  # Perceptuell optimering för bättre visuell separation
-        )
-        print(f"   🎨 {parameter.title()} colormap (LinearSegmented+gamma): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
+    # Alla parametrar använder nu LinearSegmentedColormap med gamma-korrektion
+    norm_values = [(v - min_val) / (max_val - min_val) for v in values]
+    cmap = colors.LinearSegmentedColormap.from_list(
+        f'{parameter}_revolutionary', 
+        list(zip(norm_values, colors_list)),
+        gamma=0.9  # Perceptuell optimering för bättre visuell separation
+    )
+    print(f"   🎨 {parameter.title()} colormap (LinearSegmented+gamma): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
     
     return cmap, min_val, max_val
 

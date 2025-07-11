@@ -39,19 +39,19 @@ REVOLUTIONARY_CURRENT_COLORMAP = [
     [0.274, "#00FFCC"], # Cyan-grön
     [0.342, "#00FF66"], # Grön (0.3)
     [0.411, "#33FF33"], # Ljusgrön (0.4)
-    [0.479, "#FFFF00"], # Gul börjar (0.5)
-    [0.547, "#FFFF00"], # Gul
-    [0.616, "#FFFF00"], # Gul
-    [0.684, "#FFFF00"], # Gul
+    [0.479, "#66FF00"], # Gul-grön övergång (0.5)
+    [0.547, "#99FF00"], # Ljusare gul-grön
+    [0.616, "#CCFF00"], # Gul-grön
+    [0.684, "#FFFF00"], # Ren gul
     [0.753, "#FFCC00"], # Gul-orange (0.7)
     [0.821, "#FF9900"], # Orange (0.8)
     [0.889, "#FF6600"], # Orange-röd
     [0.958, "#FF3300"], # Röd (0.9)
-    [1.026, "#FF0066"], # Röd-magenta (1.0)
-    [1.095, "#FF00FF"], # Magenta (1.0)
-    [1.163, "#CC00FF"], # Magenta-lila (1.1)
-    [1.232, "#9900FF"], # Lila (1.2)
-    [1.300, "#000000"], # Extrem/Svart (1.3)
+    [1.026, "#CC0000"], # Mörkröd (1.0)
+    [1.095, "#990000"], # Mörkare röd (1.1)
+    [1.163, "#660000"], # Mycket mörkröd (1.1)
+    [1.232, "#330000"], # Extremt mörkröd (1.2)
+    [1.300, "#220000"], # Mycket mörk röd för extremvärden (1.3)
 ]
 
 # Temperatur - Optimerad för verklig range 6.974-20.980°C med 19 färgsteg

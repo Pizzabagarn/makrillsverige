@@ -12,19 +12,19 @@ const CURRENT_COLORS = [
   '#00FFCC', // 0.260 m/s - Cyan-grön
   '#00FF66', // 0.325 m/s - Grön (0.3)
   '#33FF33', // 0.390 m/s - Ljusgrön (0.4)
-  '#FFFF00', // 0.455 m/s - Gul börjar (0.5)
-  '#FFFF00', // 0.520 m/s - Gul
-  '#FFFF00', // 0.585 m/s - Gul
-  '#FFFF00', // 0.650 m/s - Gul
+  '#66FF00', // 0.455 m/s - Gul-grön övergång (0.5)
+  '#99FF00', // 0.520 m/s - Ljusare gul-grön
+  '#CCFF00', // 0.585 m/s - Gul-grön
+  '#FFFF00', // 0.650 m/s - Ren gul
   '#FFCC00', // 0.715 m/s - Gul-orange (0.7)
   '#FF9900', // 0.780 m/s - Orange (0.8)
   '#FF6600', // 0.845 m/s - Orange-röd
   '#FF3300', // 0.910 m/s - Röd (0.9)
-  '#FF0066', // 0.975 m/s - Röd-magenta (1.0)
-  '#FF00FF', // 1.040 m/s - Magenta (1.0)
-  '#CC00FF', // 1.105 m/s - Magenta-lila (1.1)
-  '#9900FF', // 1.170 m/s - Lila (1.2)
-  '#000000'  // 1.235-1.300 m/s - Extrem/Svart (1.3)
+  '#CC0000', // 0.975 m/s - Mörkröd (1.0)
+  '#990000', // 1.040 m/s - Mörkare röd (1.1)
+  '#660000', // 1.105 m/s - Mycket mörkröd (1.1)
+  '#330000', // 1.170 m/s - Extremt mörkröd (1.2)
+  '#220000'  // 1.235-1.300 m/s - Mycket mörk röd för extremvärden (1.3)
 ];
 
 const CURRENT_COLORMAP = [

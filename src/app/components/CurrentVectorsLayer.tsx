@@ -54,6 +54,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
   const { data: areaData, isLoading: areaDataLoading } = useAreaParameters();
   
   const [arrowImageLoaded, setArrowImageLoaded] = useState(false);
+  const [dotImageLoaded, setDotImageLoaded] = useState(false);
   const [gridData, setGridData] = useState<GridPoint[]>([]);
   const [arrowsGeoJSON, setArrowsGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(8);
@@ -126,7 +127,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
       imageLoadAttempted.current = true;
       
       try {
-        // Method 1: Try loading directly from public path
+        // Method 1: Try loading arrow directly from public path
         const img = new Image();
         img.crossOrigin = 'anonymous';
         
@@ -153,6 +154,38 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
       } catch (error) {
         // console.error('❌ Image loading error:', error);
         loadImageAlternative(abortController.signal);
+      }
+    };
+    
+    const loadDotImage = async () => {
+      try {
+        // Method 1: Try loading dot directly from public path
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+          try {
+            if (map.hasImage('dot')) {
+              map.removeImage('dot');
+            }
+            map.addImage('dot', img);
+            setDotImageLoaded(true);
+          } catch (error) {
+            // console.error('❌ Failed to add dot image to map:', error);
+          }
+        };
+        
+        img.onerror = (error) => {
+          // console.error('❌ Failed to load dot image:', error);
+          // Try alternative method
+          loadDotImageAlternative(abortController.signal);
+        };
+        
+        img.src = '/images/dot.png';
+        
+      } catch (error) {
+        // console.error('❌ Dot image loading error:', error);
+        loadDotImageAlternative(abortController.signal);
       }
     };
     
@@ -187,14 +220,53 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         
         img.src = imageUrl;
         
-              } catch (error: any) {
-          if (error.name !== 'AbortError') {
-            // console.error('❌ Alternative image loading failed:', error);
-          }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          // console.error('❌ Alternative image loading failed:', error);
         }
+      }
+    };
+    
+    const loadDotImageAlternative = async (signal?: AbortSignal) => {
+      try {
+        const response = await fetch('/images/dot.png', { signal });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        
+        const img = new Image();
+        img.onload = () => {
+          try {
+            if (map.hasImage('dot')) {
+              map.removeImage('dot');
+            }
+            map.addImage('dot', img);
+            setDotImageLoaded(true);
+          } catch (error) {
+            // console.error('❌ Failed to add blob dot image to map:', error);
+          }
+          URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.onerror = (error) => {
+          // console.error('❌ Failed to load dot image via blob:', error);
+          URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.src = imageUrl;
+        
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          // console.error('❌ Alternative dot image loading failed:', error);
+        }
+      }
     };
     
     loadArrowImage();
+    loadDotImage();
     
     return () => {
       abortController.abort();
@@ -206,12 +278,21 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     if (!gridData.length || !timestampPrefix) return null;
     
     const arrowsFeatures: GeoJSON.Feature[] = [];
+    const stillPointsFeatures: GeoJSON.Feature[] = [];
     
     // Detect mobile devices
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     
     // Collect all valid points with their vectors, excluding manual points
     const validPoints: Array<{
+      pt: GridPoint;
+      vector: CurrentVector;
+      magnitude: number;
+      lat: number;
+      lon: number;
+    }> = [];
+    
+    const stillPoints: Array<{
       pt: GridPoint;
       vector: CurrentVector;
       magnitude: number;
@@ -229,15 +310,21 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
       if (!v || v.u == null || v.v == null) continue;
 
       const mag = Math.hypot(v.u, v.v);
-      if (mag < 0.01) continue;
       
-      validPoints.push({
+      const pointData = {
         pt,
         vector: v,
         magnitude: mag,
         lat: pt.lat,
         lon: pt.lon
-      });
+      };
+      
+      // Dela upp i strömpilar och stillastående punkter
+      if (mag < 0.01) {
+        stillPoints.push(pointData);
+      } else {
+        validPoints.push(pointData);
+      }
     }
     
     // Performance mode: Keep only 15% of arrows (remove 85%) based on geographic position
@@ -250,7 +337,15 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         })
       : validPoints; // Keep all arrows when not in performance mode
     
-    // Generate arrow features
+    // Performance mode för stillastående punkter också
+    const stillPointsToRender = performanceMode 
+      ? stillPoints.filter((point) => {
+          const hash = Math.floor(point.lat * 1000) + Math.floor(point.lon * 1000);
+          return hash % 20 === 0; // Samma logik som för pilar
+        })
+      : stillPoints;
+    
+    // Generate arrow features för strömpilar
     for (const point of pointsToRender) {
       const color = colorScale(point.magnitude).toString();
       const rotation = calculateRotation(point.vector.u, point.vector.v);
@@ -276,7 +371,8 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
           magnitude: point.magnitude,
           opacity: performanceMode ? 0.8 : 1, // Slightly transparent during performance mode
           rotation: rotation,
-          size: baseSize
+          size: baseSize,
+          symbolType: 'arrow'
         },
         geometry: {
           type: 'Point',
@@ -285,10 +381,37 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
       };
       arrowsFeatures.push(arrowFeature);
     }
+    
+    // Generate point features för stillastående ström
+    for (const point of stillPointsToRender) {
+      // Stillastående punkter är lite mindre än pilar
+      let dotSize = 0.015;
+      if (isMobile) {
+        dotSize = 0.012;
+      }
+      
+      const stillPointFeature: GeoJSON.Feature = {
+        type: 'Feature',
+        properties: {
+          magnitude: point.magnitude,
+          opacity: performanceMode ? 0.6 : 0.8, // Lite genomskinlig
+          size: dotSize,
+          symbolType: 'dot'
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [point.lon, point.lat]
+        }
+      };
+      stillPointsFeatures.push(stillPointFeature);
+    }
+
+    // Kombinera alla features
+    const allFeatures = [...arrowsFeatures, ...stillPointsFeatures];
 
     return {
       type: 'FeatureCollection' as const,
-      features: arrowsFeatures
+      features: allFeatures
     };
   }, [gridData, timestampPrefix, colorScale, zoomLevel]);
 
@@ -318,7 +441,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
 
   // FORCE ARROWS TO TOP - guarantees arrows are always above everything
   useEffect(() => {
-    if (!map || !arrowsGeoJSON || !arrowImageLoaded || !visible) return;
+    if (!map || !arrowsGeoJSON || !arrowImageLoaded || !dotImageLoaded || !visible) return;
     
     const forceArrowsToTop = () => {
       try {
@@ -353,15 +476,15 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
       map.off('data', handleDataChange);
       map.off('styledata', handleDataChange);
     };
-  }, [map, arrowsGeoJSON, arrowImageLoaded, visible]);
+  }, [map, arrowsGeoJSON, arrowImageLoaded, dotImageLoaded, visible]);
 
   // Don't render anything if not visible
   if (!visible) {
     return null;
   }
 
-  // Don't render if no data or image not loaded
-  if (!arrowsGeoJSON || !arrowImageLoaded) {
+  // Don't render if no data or images not loaded
+  if (!arrowsGeoJSON || !arrowImageLoaded || !dotImageLoaded) {
     return null;
   }
 
@@ -375,15 +498,30 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         id="current-arrows-layer"
         type="symbol"
         layout={{
-          'icon-image': 'arrow',
+          'icon-image': [
+            'case',
+            ['==', ['get', 'symbolType'], 'arrow'],
+            'arrow',
+            'dot'
+          ],
           'icon-size': ['get', 'size'],
-          'icon-rotate': ['get', 'rotation'],
+          'icon-rotate': [
+            'case',
+            ['==', ['get', 'symbolType'], 'arrow'],
+            ['get', 'rotation'],
+            0
+          ],
           'icon-rotation-alignment': 'map',
           'icon-allow-overlap': true,
           'icon-ignore-placement': true
         }}
         paint={{
-          'icon-color': ['get', 'color'],
+          'icon-color': [
+            'case',
+            ['==', ['get', 'symbolType'], 'arrow'],
+            ['get', 'color'],
+            'white'
+          ],
           'icon-opacity': ['get', 'opacity']
         }}
       />
