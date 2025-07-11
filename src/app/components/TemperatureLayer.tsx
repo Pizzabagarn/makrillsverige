@@ -73,23 +73,57 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
     loadMetadata();
   }, []);
 
-  // Preload bilder i bakgrunden EFTER metadata laddats - samma som CurrentMagnitudeLayer
+  // Optimized preloading - prioritera första bilden, sedan resten i bakgrunden
   useEffect(() => {
-    if (availableImages.length === 0) return;
+    if (availableImages.length === 0 || !baseTime) return;
     
     const preloadImages = async () => {
+      console.log(`🚀 Optimerad preloading av ${availableImages.length} temperature bilder...`);
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
-      // Preload ALLA bilder gradvis för att inte blockera UI
+      // 1. Bestäm vilken bild som ska visas först (baserat på selectedHour)
+      const firstImageTime = new Date(baseTime + selectedHour * 3600_000);
+      const firstImagePrefix = firstImageTime.toISOString().slice(0, 13);
+      const firstImageTimestamp = metadata?.timestamps?.find(ts => ts.startsWith(firstImagePrefix));
+      const firstImageSafeTimestamp = firstImageTimestamp?.replaceAll(':', '-').replaceAll('+', 'plus');
+      
+      // 2. Ladda första bilden omedelbart (högsta prioritet)
+      if (firstImageSafeTimestamp && availableImages.includes(firstImageSafeTimestamp)) {
+        const img = new Image();
+        const imageUrl = `/data/temperature-images/temperature_${firstImageSafeTimestamp}.png`;
+        
+        img.onload = () => {
+          imageMap.set(firstImageSafeTimestamp, img);
+          loadedCount++;
+          setPreloadedImages(prev => new Map([...prev, [firstImageSafeTimestamp, img]]));
+          console.log('⚡ Första temperature bild preloaded:', firstImageSafeTimestamp);
+        };
+        
+        img.onerror = () => {
+          console.log('⚠️ Kunde inte preload första temperature bild:', firstImageSafeTimestamp);
+        };
+        
+        img.src = imageUrl;
+      }
+      
+      // 3. Vänta lite för att låta första bilden ladda, sedan ladda resten
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 4. Preload alla andra bilder i bakgrunden
       for (const safeTimestamp of availableImages) {
+        // Skippa första bilden som redan laddats
+        if (safeTimestamp === firstImageSafeTimestamp) continue;
+        
         const img = new Image();
         const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
         
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
           loadedCount++;
-          // Update preloaded images incrementally
+          if (loadedCount % 10 === 0) {
+            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} temperature bilder`);
+          }
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
         };
         
@@ -102,11 +136,13 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         // Small delay to prevent blocking the UI
         await new Promise(resolve => setTimeout(resolve, 10));
       }
+      
+      console.log(`🎉 Alla ${loadedCount} temperature bilder preloadade!`);
     };
     
-    // Start preloading after a short delay to let initial render complete
-    setTimeout(preloadImages, 1000);
-  }, [availableImages]);
+    // Start preloading immediately för första bilden, sedan resten i bakgrunden
+    setTimeout(preloadImages, 100);
+  }, [availableImages, baseTime, selectedHour, metadata?.timestamps]);
 
   // Memoized timestamp prefix - samma som CurrentMagnitudeLayer
   const timestampPrefix = useMemo(() => {
@@ -116,37 +152,48 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
       .toISOString().slice(0, 13);
   }, [effectiveSelectedHour, baseTime]);
 
-  // Ladda initial bild direkt när metadata finns - samma som CurrentMagnitudeLayer
+  // Ladda initial bild direkt när metadata finns eller när lagret blir synligt
   useEffect(() => {
-    if (!metadata?.timestamps || currentImageUrl) return;
+    if (!metadata?.timestamps || !baseTime || !visible) return;
     
-    // Hitta närmaste tidsstämpel till nuvarande tid
-    const now = new Date().toISOString().slice(0, 13);
-    const initialTimestamp = metadata.timestamps.find(ts => ts.startsWith(now)) || metadata.timestamps[0];
+    // Använd selectedHour för att bestämma initial bild (inte nuvarande tid)
+    const initialTime = new Date(baseTime + selectedHour * 3600_000);
+    const initialTimePrefix = initialTime.toISOString().slice(0, 13);
+    const initialTimestamp = metadata.timestamps.find(ts => ts.startsWith(initialTimePrefix)) || metadata.timestamps[0];
     
     if (initialTimestamp) {
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
       
+      // Kolla om vi redan har denna bild laddad
+      if (currentImageUrl === imageUrl && imageLoaded) {
+        console.log('⚡ Temperature bild redan laddad:', safeTimestamp);
+        return;
+      }
+      
+      console.log('🎯 Laddar initial temperature bild för selectedHour:', selectedHour, 'timestamp:', safeTimestamp, 'visible:', visible);
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
+        console.log('⚡ Initial temperature bild från cache:', safeTimestamp);
       } else {
         // Ladda bilden manuellt om den inte är preloaded
+        setImageLoaded(false);
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
+          console.log('✅ Initial temperature bild laddad:', safeTimestamp);
         };
         img.onerror = () => {
-          // Tyst fail
+          console.log('❌ Kunde inte ladda initial temperature bild:', safeTimestamp);
         };
         img.src = imageUrl;
       }
     }
-  }, [metadata?.timestamps, preloadedImages]);
+  }, [metadata?.timestamps, preloadedImages, selectedHour, baseTime, visible]);
 
   // Hitta rätt bild för nuvarande tidsstämpel - samma som CurrentMagnitudeLayer
   const findImageForTimestamp = useCallback((prefix: string) => {

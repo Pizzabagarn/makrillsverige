@@ -9,6 +9,8 @@ import { TimeSliderProvider } from "./context/TimeSliderContext";
 import { LayerProvider } from "./context/LayerContext";
 import { AreaParametersProvider } from "./context/AreaParametersContext";
 import { ImageLayerProvider } from "./context/ImageLayerContext";
+import { useEffect } from "react";
+import { registerServiceWorker } from "../lib/serviceWorker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,19 +29,34 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Register service worker for aggressive caching
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      registerServiceWorker()
+        .then((registration) => {
+          if (registration) {
+            console.log('🚀 Service Worker: Aggressive caching enabled for marine images');
+          }
+        })
+        .catch((error) => {
+          console.warn('⚠️ Service Worker: Failed to register, falling back to normal caching');
+        });
+    }
+  }, []);
+
   return (
     <html lang="sv">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AreaParametersProvider>
-          <TimeSliderProvider>
-            <LayerProvider>
-              <ImageLayerProvider>
+          <ImageLayerProvider>
+            <TimeSliderProvider>
+              <LayerProvider>
                 <SidebarWithToggle>
                   {children}
                 </SidebarWithToggle>
-              </ImageLayerProvider>
-            </LayerProvider>
-          </TimeSliderProvider>
+              </LayerProvider>
+            </TimeSliderProvider>
+          </ImageLayerProvider>
         </AreaParametersProvider>
       </body>
     </html>

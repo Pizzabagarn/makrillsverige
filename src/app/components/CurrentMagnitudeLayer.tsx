@@ -77,17 +77,48 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     loadMetadata();
   }, []);
 
-  // 1.5) Preload bilder i bakgrunden EFTER metadata laddats  
+  // 1.5) Optimized preloading - prioritera första bilden, sedan resten i bakgrunden
   useEffect(() => {
-    if (availableImages.length === 0) return;
+    if (availableImages.length === 0 || !baseTime) return;
     
     const preloadImages = async () => {
-      // console.log(`🚀 Bakgrundspreloading av ${availableImages.length} bilder...`);
+      console.log(`🚀 Optimerad preloading av ${availableImages.length} bilder...`);
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
-      // Preload bilder gradvis för att inte blockera UI
+      // 1. Bestäm vilken bild som ska visas först (baserat på selectedHour)
+      const firstImageTime = new Date(baseTime + selectedHour * 3600_000);
+      const firstImagePrefix = firstImageTime.toISOString().slice(0, 13);
+      const firstImageTimestamp = metadata?.timestamps?.find(ts => ts.startsWith(firstImagePrefix));
+      const firstImageSafeTimestamp = firstImageTimestamp?.replaceAll(':', '-').replaceAll('+', 'plus');
+      
+      // 2. Ladda första bilden omedelbart (högsta prioritet)
+      if (firstImageSafeTimestamp && availableImages.includes(firstImageSafeTimestamp)) {
+        const img = new Image();
+        const imageUrl = `/data/current-magnitude-images/current_magnitude_${firstImageSafeTimestamp}.png`;
+        
+        img.onload = () => {
+          imageMap.set(firstImageSafeTimestamp, img);
+          loadedCount++;
+          setPreloadedImages(prev => new Map([...prev, [firstImageSafeTimestamp, img]]));
+          console.log('⚡ Första magnitude bild preloaded:', firstImageSafeTimestamp);
+        };
+        
+        img.onerror = () => {
+          console.log('⚠️ Kunde inte preload första magnitude bild:', firstImageSafeTimestamp);
+        };
+        
+        img.src = imageUrl;
+      }
+      
+      // 3. Vänta lite för att låta första bilden ladda, sedan ladda resten
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 4. Preload alla andra bilder i bakgrunden
       for (const safeTimestamp of availableImages) {
+        // Skippa första bilden som redan laddats
+        if (safeTimestamp === firstImageSafeTimestamp) continue;
+        
         const img = new Image();
         const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.png`;
         
@@ -95,14 +126,13 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
           imageMap.set(safeTimestamp, img);
           loadedCount++;
           if (loadedCount % 10 === 0) {
-            // console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} bilder`);
+            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} magnitude bilder`);
           }
-          // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
         };
         
         img.onerror = () => {
-          // console.log(`⚠️ Kunde inte preload: ${safeTimestamp}`);
+          // Tyst fail för bättre prestanda
         };
         
         img.src = imageUrl;
@@ -111,12 +141,12 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         await new Promise(resolve => setTimeout(resolve, 10));
       }
       
-      // console.log(`🎉 Alla ${loadedCount} bilder preloadade!`);
+      console.log(`🎉 Alla ${loadedCount} magnitude bilder preloadade!`);
     };
     
-    // Start preloading after a short delay to let initial render complete
-    setTimeout(preloadImages, 1000);
-  }, [availableImages]);
+    // Start preloading immediately för första bilden, sedan resten i bakgrunden
+    setTimeout(preloadImages, 100);
+  }, [availableImages, baseTime, selectedHour, metadata?.timestamps]);
 
   // 2) Memoized timestamp prefix - DEFAULT till current time om baseTime saknas
   const timestampPrefix = useMemo(() => {
@@ -126,39 +156,48 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       .toISOString().slice(0, 13);
   }, [effectiveSelectedHour, baseTime]);
 
-  // 2.5) Ladda initial bild direkt när metadata finns (inte vänta på interaction)
+  // 2.5) Ladda initial bild direkt när metadata finns eller när lagret blir synligt
   useEffect(() => {
-    if (!metadata?.timestamps || currentImageUrl) return;
+    if (!metadata?.timestamps || !baseTime || !visible) return;
     
-    // Hitta närmaste tidsstämpel till nuvarande tid
-    const now = new Date().toISOString().slice(0, 13);
-    const initialTimestamp = metadata.timestamps.find(ts => ts.startsWith(now)) || metadata.timestamps[0];
+    // Använd selectedHour för att bestämma initial bild (inte nuvarande tid)
+    const initialTime = new Date(baseTime + selectedHour * 3600_000);
+    const initialTimePrefix = initialTime.toISOString().slice(0, 13);
+    const initialTimestamp = metadata.timestamps.find(ts => ts.startsWith(initialTimePrefix)) || metadata.timestamps[0];
     
     if (initialTimestamp) {
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.png`;
       
-      // console.log('🎯 Laddar initial magnitude bild:', safeTimestamp);
+      // Kolla om vi redan har denna bild laddad
+      if (currentImageUrl === imageUrl && imageLoaded) {
+        console.log('⚡ Magnitude bild redan laddad:', safeTimestamp);
+        return;
+      }
+      
+      console.log('🎯 Laddar initial magnitude bild för selectedHour:', selectedHour, 'timestamp:', safeTimestamp, 'visible:', visible);
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
+        console.log('⚡ Initial magnitude bild från cache:', safeTimestamp);
       } else {
         // Ladda bilden manuellt om den inte är preloaded
+        setImageLoaded(false);
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          // console.log('✅ Initial magnitude bild laddad');
+          console.log('✅ Initial magnitude bild laddad:', safeTimestamp);
         };
         img.onerror = () => {
-          // console.log('❌ Kunde inte ladda initial magnitude bild');
+          console.log('❌ Kunde inte ladda initial magnitude bild:', safeTimestamp);
         };
         img.src = imageUrl;
       }
     }
-  }, [metadata?.timestamps, preloadedImages]);
+  }, [metadata?.timestamps, preloadedImages, selectedHour, baseTime, visible]);
 
   // 3) Hitta rätt bild för nuvarande tidsstämpel
   const findImageForTimestamp = useCallback((prefix: string) => {

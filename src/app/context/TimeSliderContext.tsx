@@ -2,6 +2,8 @@
 'use client';
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useAreaParameters } from './AreaParametersContext';
+import { useImageLayer } from './ImageLayerContext';
+import { imagePreloader, type ImageType } from '../../lib/imagePreloader';
 
 const TimeSliderContext = createContext<{
   selectedHour: number;
@@ -29,6 +31,7 @@ const TimeSliderContext = createContext<{
 
 export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) => {
   const { data: areaData, isLoading: areaDataLoading } = useAreaParameters();
+  const { activeLayer } = useImageLayer();
   const [selectedHour, setSelectedHour] = useState(0);
   const [displayHour, setDisplayHour] = useState(0); // For immediate UI updates
   const [minHour, setMinHour] = useState(0); // Will be set dynamically from data
@@ -104,8 +107,19 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
         setBaseTime(baseTime);
         setAvailableHours(availableHours);
         
-        // Start at current time (hour 0 = now), but clamp to available data bounds
-        const startHour = Math.max(Math.min(0, maxHour), minHour);
+        // Smart initial time selection:
+        // 1. If current time (hour 0) exists in data, use it
+        // 2. Otherwise, use the most recent available data (maxHour)
+        // 3. This ensures we always show meaningful data on initial load
+        const currentTimeAvailable = availableHours.includes(0);
+        const startHour = currentTimeAvailable ? 0 : maxHour;
+        
+        console.log(`🎯 Smart initial time selection:
+          Current time available: ${currentTimeAvailable}
+          Selected start hour: ${startHour}
+          Start time (UTC): ${new Date(baseTime + startHour * 3600 * 1000).toISOString()}
+          Start time (local): ${new Date(baseTime + startHour * 3600 * 1000).toLocaleString('sv-SE')}`);
+        
         setSelectedHour(startHour);
         setDisplayHour(startHour);
         
@@ -133,6 +147,37 @@ export const TimeSliderProvider = ({ children }: { children: React.ReactNode }) 
 
     initializeBounds();
   }, [areaData, areaDataLoading]); // Depend on area data
+
+  // Trigger centralized preloading when parameters change
+  useEffect(() => {
+    if (!baseTime || !areaData?.metadata?.timestamps || availableHours.length === 0) {
+      return;
+    }
+    
+    const layerMapping: Record<string, ImageType> = {
+      'current': 'current',
+      'salinity': 'salinity',
+      'temperature': 'temperature'
+    };
+    
+    const imageLayerType = layerMapping[activeLayer || 'current'] || 'current';
+    
+    // Queue images for preloading with priority
+    imagePreloader.queueImages({
+      activeLayer: imageLayerType,
+      selectedHour,
+      baseTime,
+      availableTimestamps: areaData.metadata.timestamps
+    });
+    
+    const status = imagePreloader.getPreloadStatus();
+    console.log('🚀 Preloader: Queue updated', {
+      activeLayer: imageLayerType,
+      selectedHour,
+      queueLength: status.queueLength,
+      preloadedCount: status.preloadedCount
+    });
+  }, [activeLayer, selectedHour, baseTime, areaData?.metadata?.timestamps, availableHours.length]);
 
   // Sync displayHour with selectedHour when not actively changing
   useEffect(() => {
