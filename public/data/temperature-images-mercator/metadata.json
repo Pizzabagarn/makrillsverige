@@ -1,7 +1,7 @@
 {
   "parameter": "temperature",
-  "generated_at": "2025-07-11T19:11:25.863679",
-  "resolution": "400x400",
+  "generated_at": "2025-07-11T20:42:32.879604",
+  "resolution": "1400x1400",
   "wgs84_bbox": [
     10.3,
     16.6,
@@ -22,8 +22,8 @@
       "filename": "temperature_2025-06-29T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.043118912911583,
-        22.665177948514014
+        7.030727406470256,
+        22.841841949454267
       ],
       "mercator_coordinates": [
         [
@@ -49,8 +49,8 @@
       "filename": "temperature_2025-06-29T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.137828619439618,
-        22.769223880821954
+        7.127493053550143,
+        22.946156971911574
       ],
       "mercator_coordinates": [
         [
@@ -76,8 +76,8 @@
       "filename": "temperature_2025-06-29T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.111316166252971,
-        22.79116738304213
+        7.022017160464316,
+        22.965964706815505
       ],
       "mercator_coordinates": [
         [
@@ -103,8 +103,8 @@
       "filename": "temperature_2025-06-29T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.074056373755256,
-        22.849606731374276
+        6.988778462796566,
+        23.024951844143633
       ],
       "mercator_coordinates": [
         [
@@ -130,8 +130,8 @@
       "filename": "temperature_2025-06-29T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.145353350947353,
-        22.879732074665
+        7.026015218542846,
+        23.055740036121133
       ],
       "mercator_coordinates": [
         [
@@ -157,8 +157,8 @@
       "filename": "temperature_2025-06-29T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.203939266588358,
-        22.868840496567216
+        7.123692372255754,
+        23.045270645189536
       ],
       "mercator_coordinates": [
         [
@@ -184,8 +184,8 @@
       "filename": "temperature_2025-06-29T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.271415407672693,
-        22.919535754447114
+        7.2073620959684215,
+        23.10046052114598
       ],
       "mercator_coordinates": [
         [
@@ -211,8 +211,8 @@
       "filename": "temperature_2025-06-29T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.285985471096183,
-        22.935834426504567
+        7.264669615643895,
+        23.120072527207157
       ],
       "mercator_coordinates": [
         [
@@ -238,8 +238,8 @@
       "filename": "temperature_2025-06-29T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.31668231177727,
-        22.842688230670383
+        7.309143223258333,
+        23.02474163099085
       ],
       "mercator_coordinates": [
         [
@@ -265,8 +265,8 @@
       "filename": "temperature_2025-06-29T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.350218473963651,
-        22.788135753842933
+        7.329184596773195,
+        22.969799653216644
       ],
       "mercator_coordinates": [
         [
@@ -292,8 +292,8 @@
       "filename": "temperature_2025-06-29T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.260552694131055,
-        22.69965234869374
+        7.243628215166735,
+        22.879088242649743
       ],
       "mercator_coordinates": [
         [
@@ -319,8 +319,8 @@
       "filename": "temperature_2025-06-29T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.142068214557509,
-        22.55457771268549
+        7.1195782317849945,
+        22.729736946282085
       ],
       "mercator_coordinates": [
         [
@@ -346,8 +346,8 @@
       "filename": "temperature_2025-06-30T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.988601411119244,
-        22.354399801846395
+        6.985765577518084,
+        22.522438871904644
       ],
       "mercator_coordinates": [
         [
@@ -373,8 +373,8 @@
       "filename": "temperature_2025-06-30T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.884810678049806,
-        22.23174272680332
+        6.880200220770611,
+        22.396587639035594
       ],
       "mercator_coordinates": [
         [
@@ -400,8 +400,8 @@
       "filename": "temperature_2025-06-30T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.820611658765502,
-        22.082832466097035
+        6.798357514627005,
+        22.24352753868005
       ],
       "mercator_coordinates": [
         [
@@ -427,8 +427,8 @@
       "filename": "temperature_2025-06-30T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.757865600157456,
-        22.009250450153715
+        6.737568314531832,
+        22.16900435260734
       ],
       "mercator_coordinates": [
         [
@@ -454,8 +454,8 @@
       "filename": "temperature_2025-06-30T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.715825272291455,
-        21.983751739053716
+        6.695998133022953,
+        22.144145346896707
       ],
       "mercator_coordinates": [
         [
@@ -481,8 +481,8 @@
       "filename": "temperature_2025-06-30T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.712523106783056,
-        22.04884892117571
+        6.689282198901688,
+        22.21447580526665
       ],
       "mercator_coordinates": [
         [
@@ -508,8 +508,8 @@
       "filename": "temperature_2025-06-30T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.735624550133531,
-        22.188243730734143
+        6.7057004546737895,
+        22.360576906055293
       ],
       "mercator_coordinates": [
         [
@@ -535,8 +535,8 @@
       "filename": "temperature_2025-06-30T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.781935725848012,
-        22.33455828942305
+        6.745804117605604,
+        22.514597533149015
       ],
       "mercator_coordinates": [
         [
@@ -562,8 +562,8 @@
       "filename": "temperature_2025-06-30T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.830958745874533,
-        22.405529009369115
+        6.769650705755888,
+        22.584641552640363
       ],
       "mercator_coordinates": [
         [
@@ -589,8 +589,8 @@
       "filename": "temperature_2025-06-30T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.902068134755844,
-        22.49246470653189
+        6.756536421912431,
+        22.672621207979937
       ],
       "mercator_coordinates": [
         [
@@ -616,8 +616,8 @@
       "filename": "temperature_2025-06-30T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.915885631793442,
-        22.61074768543252
+        6.759774410656908,
+        22.793094870349428
       ],
       "mercator_coordinates": [
         [
@@ -643,8 +643,8 @@
       "filename": "temperature_2025-06-30T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.941713576124953,
-        22.655921073931417
+        6.784364678531833,
+        22.837137307664175
       ],
       "mercator_coordinates": [
         [
@@ -670,8 +670,8 @@
       "filename": "temperature_2025-06-30T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.994337637601065,
-        22.64150947742852
+        6.83671943597857,
+        22.820047317563247
       ],
       "mercator_coordinates": [
         [
@@ -697,8 +697,8 @@
       "filename": "temperature_2025-06-30T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.071119585315162,
-        22.595760171412447
+        6.914178531909566,
+        22.770215106705862
       ],
       "mercator_coordinates": [
         [
@@ -724,8 +724,8 @@
       "filename": "temperature_2025-06-30T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.150597078221325,
-        22.60987266467486
+        6.99444046543981,
+        22.78259902276633
       ],
       "mercator_coordinates": [
         [
@@ -751,8 +751,8 @@
       "filename": "temperature_2025-06-30T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.231338700907318,
-        22.867647665685976
+        7.076067685751008,
+        22.891962031205015
       ],
       "mercator_coordinates": [
         [
@@ -778,8 +778,8 @@
       "filename": "temperature_2025-06-30T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.300353245698541,
-        23.12481303786673
+        7.145824029633226,
+        23.16831738919261
       ],
       "mercator_coordinates": [
         [
@@ -805,8 +805,8 @@
       "filename": "temperature_2025-06-30T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.358879372389215,
-        23.3394353062954
+        7.204988506430756,
+        23.400867974333583
       ],
       "mercator_coordinates": [
         [
@@ -832,8 +832,8 @@
       "filename": "temperature_2025-06-30T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.407044370795814,
-        23.501890887207715
+        7.254282990331845,
+        23.574694919767353
       ],
       "mercator_coordinates": [
         [
@@ -859,8 +859,8 @@
       "filename": "temperature_2025-06-30T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.440705268121702,
-        23.59923434273794
+        7.289203231596604,
+        23.680198113437353
       ],
       "mercator_coordinates": [
         [
@@ -886,8 +886,8 @@
       "filename": "temperature_2025-06-30T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.465450171583603,
-        23.672096920169363
+        7.315842922472704,
+        23.757220596543934
       ],
       "mercator_coordinates": [
         [
@@ -913,8 +913,8 @@
       "filename": "temperature_2025-06-30T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.488850703590557,
-        23.69737737279933
+        7.342263462373855,
+        23.784704519465194
       ],
       "mercator_coordinates": [
         [
@@ -940,8 +940,8 @@
       "filename": "temperature_2025-06-30T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.52050002856901,
-        23.731236829898155
+        7.3776162389225695,
+        23.819624732850645
       ],
       "mercator_coordinates": [
         [
@@ -967,8 +967,8 @@
       "filename": "temperature_2025-06-30T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.503917348659957,
-        23.73640708050268
+        7.4230384212238105,
+        23.824707314669322
       ],
       "mercator_coordinates": [
         [
@@ -994,8 +994,8 @@
       "filename": "temperature_2025-07-01T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.462232594720817,
-        23.73954497019941
+        7.453415784538663,
+        23.828246348054464
       ],
       "mercator_coordinates": [
         [
@@ -1021,8 +1021,8 @@
       "filename": "temperature_2025-07-01T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.425328955227901,
-        23.697006021237016
+        7.42042207802304,
+        23.783746658978313
       ],
       "mercator_coordinates": [
         [
@@ -1048,8 +1048,8 @@
       "filename": "temperature_2025-07-01T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.394955856755456,
-        23.678646692856155
+        7.391752895476376,
+        23.764013248886982
       ],
       "mercator_coordinates": [
         [
@@ -1075,8 +1075,8 @@
       "filename": "temperature_2025-07-01T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.377397866306486,
-        23.632627391763037
+        7.373471027186724,
+        23.71343887076431
       ],
       "mercator_coordinates": [
         [
@@ -1102,8 +1102,8 @@
       "filename": "temperature_2025-07-01T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.368752733962177,
-        23.603825394357212
+        7.363107243415508,
+        23.68137252244334
       ],
       "mercator_coordinates": [
         [
@@ -1129,8 +1129,8 @@
       "filename": "temperature_2025-07-01T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.372607452672558,
-        23.542298618874227
+        7.365275132177124,
+        23.611368009318998
       ],
       "mercator_coordinates": [
         [
@@ -1156,8 +1156,8 @@
       "filename": "temperature_2025-07-01T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.3916222672628535,
-        23.494793527321203
+        7.38294356404197,
+        23.55927543613735
       ],
       "mercator_coordinates": [
         [
@@ -1183,8 +1183,8 @@
       "filename": "temperature_2025-07-01T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.423346127309715,
-        23.470666570127687
+        7.413675632897916,
+        23.53134944367053
       ],
       "mercator_coordinates": [
         [
@@ -1210,8 +1210,8 @@
       "filename": "temperature_2025-07-01T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.470974783693543,
-        23.474668331641368
+        7.461325275512706,
+        23.533835915185488
       ],
       "mercator_coordinates": [
         [
@@ -1237,8 +1237,8 @@
       "filename": "temperature_2025-07-01T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.529126664999044,
-        23.48627205192496
+        7.51961526461296,
+        23.545189828895985
       ],
       "mercator_coordinates": [
         [
@@ -1264,8 +1264,8 @@
       "filename": "temperature_2025-07-01T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.5954648042238695,
-        23.512493536280022
+        7.586270455396022,
+        23.572057538350027
       ],
       "mercator_coordinates": [
         [
@@ -1291,8 +1291,8 @@
       "filename": "temperature_2025-07-01T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.663742952584158,
-        23.559412560897705
+        7.65440218788589,
+        23.623626711232923
       ],
       "mercator_coordinates": [
         [
@@ -1318,8 +1318,8 @@
       "filename": "temperature_2025-07-01T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.734333862883807,
-        23.519063280380422
+        7.725086791212976,
+        23.58465473370951
       ],
       "mercator_coordinates": [
         [
@@ -1345,8 +1345,8 @@
       "filename": "temperature_2025-07-01T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.81581387337066,
-        23.4897739307793
+        7.808760546333379,
+        23.555782404453055
       ],
       "mercator_coordinates": [
         [
@@ -1372,8 +1372,8 @@
       "filename": "temperature_2025-07-01T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.922360563177065,
-        23.468962436424366
+        7.919998093099575,
+        23.53311374182872
       ],
       "mercator_coordinates": [
         [
@@ -1399,8 +1399,8 @@
       "filename": "temperature_2025-07-01T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        8.061389465277639,
-        23.432841370826328
+        8.059343916716713,
+        23.494982797947024
       ],
       "mercator_coordinates": [
         [
@@ -1426,8 +1426,8 @@
       "filename": "temperature_2025-07-01T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        8.209120256193685,
-        23.41237382403157
+        8.201308112408483,
+        23.473710333433413
       ],
       "mercator_coordinates": [
         [
@@ -1453,8 +1453,8 @@
       "filename": "temperature_2025-07-01T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        8.268567609592775,
-        23.33739784515783
+        8.265179033842488,
+        23.393886095236105
       ],
       "mercator_coordinates": [
         [
@@ -1480,8 +1480,8 @@
       "filename": "temperature_2025-07-01T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        8.309712952138009,
-        23.242030899108475
+        8.30255839674195,
+        23.29155490564195
       ],
       "mercator_coordinates": [
         [
@@ -1507,8 +1507,8 @@
       "filename": "temperature_2025-07-01T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        8.193065138105974,
-        23.141842188892394
+        8.187117953291512,
+        23.182755430737195
       ],
       "mercator_coordinates": [
         [
@@ -1534,8 +1534,8 @@
       "filename": "temperature_2025-07-01T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.9726616768578005,
-        23.056482603544044
+        7.963165753511541,
+        23.09057138332852
       ],
       "mercator_coordinates": [
         [
@@ -1561,8 +1561,8 @@
       "filename": "temperature_2025-07-01T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.757587023122693,
-        23.003085241102312
+        7.744817705138982,
+        23.031198807979465
       ],
       "mercator_coordinates": [
         [
@@ -1588,8 +1588,8 @@
       "filename": "temperature_2025-07-01T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.567597492974286,
-        22.94880883221962
+        7.553210287502603,
+        22.972715568393443
       ],
       "mercator_coordinates": [
         [
@@ -1615,8 +1615,8 @@
       "filename": "temperature_2025-07-01T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.410996510691618,
-        22.862560236064343
+        7.395349112150176,
+        22.881912883190516
       ],
       "mercator_coordinates": [
         [
@@ -1642,8 +1642,8 @@
       "filename": "temperature_2025-07-02T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.289798919780143,
-        22.793094738970137
+        7.27148047825716,
+        22.829028332340357
       ],
       "mercator_coordinates": [
         [
@@ -1669,8 +1669,8 @@
       "filename": "temperature_2025-07-02T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.201561383480714,
-        22.67656651484141
+        7.181001061423082,
+        22.79758412947433
       ],
       "mercator_coordinates": [
         [
@@ -1696,8 +1696,8 @@
       "filename": "temperature_2025-07-02T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.1413779578494,
-        22.598430015706114
+        7.119543224560323,
+        22.762463993954448
       ],
       "mercator_coordinates": [
         [
@@ -1723,8 +1723,8 @@
       "filename": "temperature_2025-07-02T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.11066828796238,
-        22.52120705661082
+        7.087921250230433,
+        22.682698337433333
       ],
       "mercator_coordinates": [
         [
@@ -1750,8 +1750,8 @@
       "filename": "temperature_2025-07-02T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.093746861565229,
-        22.482968221381878
+        7.070499591009376,
+        22.643614385169666
       ],
       "mercator_coordinates": [
         [
@@ -1777,8 +1777,8 @@
       "filename": "temperature_2025-07-02T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.0854597369612495,
-        22.417966011468565
+        7.059835070192209,
+        22.57543517886548
       ],
       "mercator_coordinates": [
         [
@@ -1804,8 +1804,8 @@
       "filename": "temperature_2025-07-02T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.0745444540803755,
-        22.395639677512495
+        7.045564455417417,
+        22.550764740403675
       ],
       "mercator_coordinates": [
         [
@@ -1831,8 +1831,8 @@
       "filename": "temperature_2025-07-02T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.0561777665664,
-        22.424990835970444
+        7.023528307030389,
+        22.579810955169112
       ],
       "mercator_coordinates": [
         [
@@ -1858,8 +1858,8 @@
       "filename": "temperature_2025-07-02T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.035789984357357,
-        22.481683526278246
+        6.9999240571410875,
+        22.636813385212857
       ],
       "mercator_coordinates": [
         [
@@ -1885,8 +1885,8 @@
       "filename": "temperature_2025-07-02T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.009059027559831,
-        22.539629045008944
+        6.972657287004401,
+        22.695226727970663
       ],
       "mercator_coordinates": [
         [
@@ -1912,8 +1912,8 @@
       "filename": "temperature_2025-07-02T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.972912547657737,
-        22.577453591548178
+        6.940038608012599,
+        22.73254626782012
       ],
       "mercator_coordinates": [
         [
@@ -1939,8 +1939,8 @@
       "filename": "temperature_2025-07-02T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.921385961485891,
-        22.570843417260956
+        6.892781751945246,
+        22.722794709198656
       ],
       "mercator_coordinates": [
         [
@@ -1966,8 +1966,8 @@
       "filename": "temperature_2025-07-02T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.863069775263526,
-        22.54964676440356
+        6.839907380287841,
+        22.696737408141804
       ],
       "mercator_coordinates": [
         [
@@ -1993,8 +1993,8 @@
       "filename": "temperature_2025-07-02T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.8071644467103045,
-        22.466514214075637
+        6.786826764663142,
+        22.6061439057237
       ],
       "mercator_coordinates": [
         [
@@ -2020,8 +2020,8 @@
       "filename": "temperature_2025-07-02T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.7740178573115175,
-        22.368750966790937
+        6.757061208194375,
+        22.50060295835444
       ],
       "mercator_coordinates": [
         [
@@ -2047,8 +2047,8 @@
       "filename": "temperature_2025-07-02T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.740076708268865,
-        22.294840662084383
+        6.726758474832628,
+        22.420701316814046
       ],
       "mercator_coordinates": [
         [
@@ -2074,8 +2074,8 @@
       "filename": "temperature_2025-07-02T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.71943456859912,
-        22.220576258937466
+        6.702624333676779,
+        22.34127476661831
       ],
       "mercator_coordinates": [
         [
@@ -2101,8 +2101,8 @@
       "filename": "temperature_2025-07-02T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.706328255849927,
-        22.134203324086894
+        6.6799494426944985,
+        22.24994124172666
       ],
       "mercator_coordinates": [
         [
@@ -2128,8 +2128,8 @@
       "filename": "temperature_2025-07-02T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.667555208702317,
-        22.104719618879088
+        6.644684757390204,
+        22.219401729431635
       ],
       "mercator_coordinates": [
         [
@@ -2155,8 +2155,8 @@
       "filename": "temperature_2025-07-02T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.62977051265337,
-        22.116902084279282
+        6.608202230903768,
+        22.232728873138274
       ],
       "mercator_coordinates": [
         [
@@ -2182,8 +2182,8 @@
       "filename": "temperature_2025-07-02T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.614286696369273,
-        22.156286011596283
+        6.5862989631524105,
+        22.274045494907664
       ],
       "mercator_coordinates": [
         [
@@ -2209,8 +2209,8 @@
       "filename": "temperature_2025-07-02T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.599814183101632,
-        22.2306034571604
+        6.566068565589903,
+        22.353253871590685
       ],
       "mercator_coordinates": [
         [
@@ -2236,8 +2236,8 @@
       "filename": "temperature_2025-07-02T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.59503794139966,
-        22.28406991991232
+        6.55554183357488,
+        22.410511415287676
       ],
       "mercator_coordinates": [
         [
@@ -2263,8 +2263,8 @@
       "filename": "temperature_2025-07-02T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.601940058845255,
-        22.28223988085178
+        6.553894488557252,
+        22.409488897651336
       ],
       "mercator_coordinates": [
         [
@@ -2290,8 +2290,8 @@
       "filename": "temperature_2025-07-03T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.619379511685517,
-        22.281800553762654
+        6.567491820588874,
+        22.409836311369062
       ],
       "mercator_coordinates": [
         [
@@ -2317,8 +2317,8 @@
       "filename": "temperature_2025-07-03T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.6500686306133545,
-        22.183060422350806
+        6.599463441423473,
+        22.30673349489101
       ],
       "mercator_coordinates": [
         [
@@ -2344,8 +2344,8 @@
       "filename": "temperature_2025-07-03T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.674733891804215,
-        22.076948373291795
+        6.627446509738141,
+        22.19691908934397
       ],
       "mercator_coordinates": [
         [
@@ -2371,8 +2371,8 @@
       "filename": "temperature_2025-07-03T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.6892750293734204,
-        21.993630747216606
+        6.637672190042728,
+        22.111621016865687
       ],
       "mercator_coordinates": [
         [
@@ -2398,8 +2398,8 @@
       "filename": "temperature_2025-07-03T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.694618847996499,
-        21.918857093069956
+        6.629781923491027,
+        22.033324279766315
       ],
       "mercator_coordinates": [
         [
@@ -2425,8 +2425,8 @@
       "filename": "temperature_2025-07-03T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.667651653926889,
-        21.867956183495117
+        6.604240858607797,
+        21.981054866514373
       ],
       "mercator_coordinates": [
         [
@@ -2452,8 +2452,8 @@
       "filename": "temperature_2025-07-03T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.639984425270168,
-        21.927907971296303
+        6.57842512417214,
+        22.04365205547783
       ],
       "mercator_coordinates": [
         [
@@ -2479,8 +2479,8 @@
       "filename": "temperature_2025-07-03T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.6122744949692285,
-        22.04470921177547
+        6.551452897627731,
+        22.16377460641271
       ],
       "mercator_coordinates": [
         [
@@ -2506,8 +2506,8 @@
       "filename": "temperature_2025-07-03T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.595026599370395,
-        22.21250168450462
+        6.534788591321737,
+        22.337464279510318
       ],
       "mercator_coordinates": [
         [
@@ -2533,8 +2533,8 @@
       "filename": "temperature_2025-07-03T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.599383633815353,
-        22.381057214121554
+        6.539659964098749,
+        22.510514972444167
       ],
       "mercator_coordinates": [
         [
@@ -2560,8 +2560,8 @@
       "filename": "temperature_2025-07-03T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.631157159239219,
-        22.618469101282827
+        6.571504122545856,
+        22.755806925660877
       ],
       "mercator_coordinates": [
         [
@@ -2587,8 +2587,8 @@
       "filename": "temperature_2025-07-03T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.694664626155829,
-        22.77544868748431
+        6.634844308010012,
+        22.9155177348869
       ],
       "mercator_coordinates": [
         [
@@ -2614,8 +2614,8 @@
       "filename": "temperature_2025-07-03T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.761541180580483,
-        22.891037549912394
+        6.701830319169976,
+        23.03324570563886
       ],
       "mercator_coordinates": [
         [
@@ -2641,8 +2641,8 @@
       "filename": "temperature_2025-07-03T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.832114862682369,
-        23.000207515245577
+        6.772780721365651,
+        23.143540054559192
       ],
       "mercator_coordinates": [
         [
@@ -2668,8 +2668,8 @@
       "filename": "temperature_2025-07-03T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.8943828563165805,
-        23.039924325822486
+        6.835456051872443,
+        23.18036594657406
       ],
       "mercator_coordinates": [
         [
@@ -2695,8 +2695,8 @@
       "filename": "temperature_2025-07-03T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.912176060846311,
-        23.017403311597967
+        6.855238789917938,
+        23.153507667719392
       ],
       "mercator_coordinates": [
         [
@@ -2722,8 +2722,8 @@
       "filename": "temperature_2025-07-03T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.884085831214851,
-        22.95745386627466
+        6.835492804627008,
+        23.08767339420917
       ],
       "mercator_coordinates": [
         [
@@ -2749,8 +2749,8 @@
       "filename": "temperature_2025-07-03T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.814834275527041,
-        22.866038196003238
+        6.781925717382579,
+        22.99115061483198
       ],
       "mercator_coordinates": [
         [
@@ -2776,8 +2776,8 @@
       "filename": "temperature_2025-07-03T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.79355839970304,
-        22.711781919840753
+        6.763881857470284,
+        22.828559147736893
       ],
       "mercator_coordinates": [
         [
@@ -2803,8 +2803,8 @@
       "filename": "temperature_2025-07-03T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.812072633346944,
-        22.654323869684415
+        6.784283432754039,
+        22.769060328693268
       ],
       "mercator_coordinates": [
         [
@@ -2830,8 +2830,8 @@
       "filename": "temperature_2025-07-03T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.87893688954935,
-        22.532931006625088
+        6.84981135995955,
+        22.644828128923006
       ],
       "mercator_coordinates": [
         [
@@ -2857,8 +2857,8 @@
       "filename": "temperature_2025-07-03T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        6.961674940262195,
-        22.45214387901851
+        6.926985851977726,
+        22.562332720652226
       ],
       "mercator_coordinates": [
         [
@@ -2884,8 +2884,8 @@
       "filename": "temperature_2025-07-03T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.059701773319443,
-        22.421404480337156
+        7.024557800248644,
+        22.532495466952952
       ],
       "mercator_coordinates": [
         [
@@ -2911,8 +2911,8 @@
       "filename": "temperature_2025-07-03T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.142878006246581,
-        22.342753182307348
+        7.110025122872011,
+        22.453203645840077
       ],
       "mercator_coordinates": [
         [
@@ -2938,8 +2938,8 @@
       "filename": "temperature_2025-07-04T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.2134097960387304,
-        22.321302949976094
+        7.184017236557662,
+        22.43384322669716
       ],
       "mercator_coordinates": [
         [
@@ -2965,8 +2965,8 @@
       "filename": "temperature_2025-07-04T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.267335165087309,
-        22.320017886479356
+        7.241589155374913,
+        22.435096113072074
       ],
       "mercator_coordinates": [
         [
@@ -2992,8 +2992,8 @@
       "filename": "temperature_2025-07-04T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.3047662293008315,
-        22.24064229335573
+        7.283219990376463,
+        22.353953311945435
       ],
       "mercator_coordinates": [
         [
@@ -3019,8 +3019,8 @@
       "filename": "temperature_2025-07-04T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.3281841995307255,
-        22.158902241100897
+        7.310707426857487,
+        22.269981724139782
       ],
       "mercator_coordinates": [
         [
@@ -3046,8 +3046,8 @@
       "filename": "temperature_2025-07-04T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.356891853070356,
-        22.0785161424502
+        7.339808655089042,
+        22.187165449264995
       ],
       "mercator_coordinates": [
         [
@@ -3073,8 +3073,8 @@
       "filename": "temperature_2025-07-04T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.385567652037127,
-        22.008842650421933
+        7.3696230585096165,
+        22.11493488293591
       ],
       "mercator_coordinates": [
         [
@@ -3100,8 +3100,8 @@
       "filename": "temperature_2025-07-04T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.425783249923756,
-        21.934190286513772
+        7.411243267964786,
+        22.03622603176821
       ],
       "mercator_coordinates": [
         [
@@ -3127,8 +3127,8 @@
       "filename": "temperature_2025-07-04T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.4514678207447576,
-        21.905876250441082
+        7.438422508660851,
+        22.00469245433413
       ],
       "mercator_coordinates": [
         [
@@ -3154,8 +3154,8 @@
       "filename": "temperature_2025-07-04T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.48341033259538,
-        21.88847914819651
+        7.47164328354305,
+        21.983764432311318
       ],
       "mercator_coordinates": [
         [
@@ -3181,8 +3181,8 @@
       "filename": "temperature_2025-07-04T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.510818774881668,
-        21.958313675862623
+        7.499803749765778,
+        22.052671153755313
       ],
       "mercator_coordinates": [
         [
@@ -3208,8 +3208,8 @@
       "filename": "temperature_2025-07-04T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.536989139346677,
-        22.05493907818709
+        7.524368656821728,
+        22.14860226783067
       ],
       "mercator_coordinates": [
         [
@@ -3235,8 +3235,8 @@
       "filename": "temperature_2025-07-04T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.5614803374840625,
-        22.1049016982006
+        7.54489164938427,
+        22.195876581405965
       ],
       "mercator_coordinates": [
         [
@@ -3262,8 +3262,8 @@
       "filename": "temperature_2025-07-04T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
-        7.577977510576054,
-        22.146851079028323
+        7.553081872751794,
+        22.234995725034572
       ],
       "mercator_coordinates": [
         [

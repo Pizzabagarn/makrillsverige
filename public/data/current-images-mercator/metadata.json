@@ -1,7 +1,7 @@
 {
   "parameter": "current",
-  "generated_at": "2025-07-11T19:07:33.080819",
-  "resolution": "400x400",
+  "generated_at": "2025-07-11T20:33:52.205303",
+  "resolution": "1400x1400",
   "wgs84_bbox": [
     10.3,
     16.6,
@@ -23,7 +23,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.29444957624871
+        1.3125398179811947
       ],
       "mercator_coordinates": [
         [
@@ -50,7 +50,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.384240167263774
+        1.4029766068004572
       ],
       "mercator_coordinates": [
         [
@@ -77,7 +77,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4338996592220987
+        1.4533078515122422
       ],
       "mercator_coordinates": [
         [
@@ -104,7 +104,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4319802263492083
+        1.4515608024341657
       ],
       "mercator_coordinates": [
         [
@@ -131,7 +131,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4070978773175145
+        1.426772765152073
       ],
       "mercator_coordinates": [
         [
@@ -158,7 +158,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4229851173100465
+        1.4262976841467256
       ],
       "mercator_coordinates": [
         [
@@ -185,7 +185,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4423643300327846
+        1.4457616193903586
       ],
       "mercator_coordinates": [
         [
@@ -212,7 +212,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4410159960463071
+        1.4608355569283167
       ],
       "mercator_coordinates": [
         [
@@ -239,7 +239,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4954027109675196
+        1.5154981622087675
       ],
       "mercator_coordinates": [
         [
@@ -266,7 +266,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.5228757229939447
+        1.543147652791135
       ],
       "mercator_coordinates": [
         [
@@ -293,7 +293,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.5129988643647296
+        1.5335101309113306
       ],
       "mercator_coordinates": [
         [
@@ -320,7 +320,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4794788162656536
+        1.5549293181489616
       ],
       "mercator_coordinates": [
         [
@@ -347,7 +347,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4482332715237558
+        1.5449878783996944
       ],
       "mercator_coordinates": [
         [
@@ -374,7 +374,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4302040857320446
+        1.526556829687308
       ],
       "mercator_coordinates": [
         [
@@ -401,7 +401,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.391148882251345
+        1.4846219620676369
       ],
       "mercator_coordinates": [
         [
@@ -428,7 +428,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.3307247916426506
+        1.3967354861305528
       ],
       "mercator_coordinates": [
         [
@@ -455,7 +455,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.3912542180185299
+        1.3950897575513965
       ],
       "mercator_coordinates": [
         [
@@ -482,7 +482,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.4101320417832106
+        1.4138799432174665
       ],
       "mercator_coordinates": [
         [
@@ -509,7 +509,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.3735191371821989
+        1.3768945078204713
       ],
       "mercator_coordinates": [
         [
@@ -536,7 +536,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.2379474365540049
+        1.2406655618131033
       ],
       "mercator_coordinates": [
         [
@@ -563,7 +563,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.050999791660824
+        1.0526583443841122
       ],
       "mercator_coordinates": [
         [
@@ -590,7 +590,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8363178615970804
+        0.8365397844610964
       ],
       "mercator_coordinates": [
         [
@@ -617,7 +617,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6369314424428605
+        0.6805787357371405
       ],
       "mercator_coordinates": [
         [
@@ -644,7 +644,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5517617641993299
+        0.5897029804922346
       ],
       "mercator_coordinates": [
         [
@@ -671,7 +671,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.542299947872441
+        0.5424473950369749
       ],
       "mercator_coordinates": [
         [
@@ -698,7 +698,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.556567992016785
+        0.5566070227294008
       ],
       "mercator_coordinates": [
         [
@@ -725,7 +725,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5439972230742877
+        0.5444791770604108
       ],
       "mercator_coordinates": [
         [
@@ -752,7 +752,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5144316205477197
+        0.5148755365286132
       ],
       "mercator_coordinates": [
         [
@@ -779,7 +779,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.47194158813208337
+        0.4726995165448294
       ],
       "mercator_coordinates": [
         [
@@ -806,7 +806,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.4486327650183352
+        0.45054894543869156
       ],
       "mercator_coordinates": [
         [
@@ -833,7 +833,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5399209936929128
+        0.5409953945732091
       ],
       "mercator_coordinates": [
         [
@@ -860,7 +860,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.639543455196169
+        0.6400637679834305
       ],
       "mercator_coordinates": [
         [
@@ -887,7 +887,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7291937998211875
+        0.7296184231684301
       ],
       "mercator_coordinates": [
         [
@@ -914,7 +914,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.773193702541499
+        0.7737259824207499
       ],
       "mercator_coordinates": [
         [
@@ -941,7 +941,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7705960906186067
+        0.7712843401900402
       ],
       "mercator_coordinates": [
         [
@@ -968,7 +968,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7545160981522347
+        0.7558252354922709
       ],
       "mercator_coordinates": [
         [
@@ -995,7 +995,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7244100307891311
+        0.7250869682998798
       ],
       "mercator_coordinates": [
         [
@@ -1022,7 +1022,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.710791544263236
+        0.7118808005263367
       ],
       "mercator_coordinates": [
         [
@@ -1049,7 +1049,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6849087809222849
+        0.6853971041596669
       ],
       "mercator_coordinates": [
         [
@@ -1076,7 +1076,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6081103413907291
+        0.6091725295772792
       ],
       "mercator_coordinates": [
         [
@@ -1103,7 +1103,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6261219542493924
+        0.6283253905427029
       ],
       "mercator_coordinates": [
         [
@@ -1130,7 +1130,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6634470358600338
+        0.6655464070656497
       ],
       "mercator_coordinates": [
         [
@@ -1157,7 +1157,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7050180515524324
+        0.707135624624666
       ],
       "mercator_coordinates": [
         [
@@ -1184,7 +1184,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7391582125377397
+        0.7415630296507979
       ],
       "mercator_coordinates": [
         [
@@ -1211,7 +1211,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.732888063870683
+        0.7358815597049385
       ],
       "mercator_coordinates": [
         [
@@ -1238,7 +1238,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7227751668943295
+        0.7298126958602027
       ],
       "mercator_coordinates": [
         [
@@ -1265,7 +1265,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.714214212470656
+        0.7257343446617223
       ],
       "mercator_coordinates": [
         [
@@ -1292,7 +1292,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.7205675182914197
+        0.7271746034887997
       ],
       "mercator_coordinates": [
         [
@@ -1319,7 +1319,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8347937208329155
+        0.8391727058344438
       ],
       "mercator_coordinates": [
         [
@@ -1346,7 +1346,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.906205344346002
+        0.9095331125012748
       ],
       "mercator_coordinates": [
         [
@@ -1373,7 +1373,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9244231131460134
+        0.9274397170707663
       ],
       "mercator_coordinates": [
         [
@@ -1400,7 +1400,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8901708251605347
+        0.894318843033286
       ],
       "mercator_coordinates": [
         [
@@ -1427,7 +1427,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.811919385944145
+        0.8148952626144288
       ],
       "mercator_coordinates": [
         [
@@ -1454,7 +1454,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8469760331072473
+        0.8516630636693155
       ],
       "mercator_coordinates": [
         [
@@ -1481,7 +1481,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8733328626815665
+        0.8772450422501735
       ],
       "mercator_coordinates": [
         [
@@ -1508,7 +1508,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.872483208826361
+        0.8884542224295239
       ],
       "mercator_coordinates": [
         [
@@ -1535,7 +1535,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8834223106156566
+        0.898490716512856
       ],
       "mercator_coordinates": [
         [
@@ -1562,7 +1562,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.897186169783832
+        0.9134204531774313
       ],
       "mercator_coordinates": [
         [
@@ -1589,7 +1589,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8807710904639067
+        0.8972488152561109
       ],
       "mercator_coordinates": [
         [
@@ -1616,7 +1616,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.830507131085541
+        0.8456975150002087
       ],
       "mercator_coordinates": [
         [
@@ -1643,7 +1643,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9060867425704656
+        0.90675795152503
       ],
       "mercator_coordinates": [
         [
@@ -1670,7 +1670,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9920013356992856
+        0.9943522058688545
       ],
       "mercator_coordinates": [
         [
@@ -1697,7 +1697,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.017720177191613
+        1.021343802944109
       ],
       "mercator_coordinates": [
         [
@@ -1724,7 +1724,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9819657003654525
+        0.985699278875412
       ],
       "mercator_coordinates": [
         [
@@ -1751,7 +1751,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8979454752706921
+        0.8999290968828338
       ],
       "mercator_coordinates": [
         [
@@ -1778,7 +1778,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8101249849981577
+        0.8099614344168704
       ],
       "mercator_coordinates": [
         [
@@ -1805,7 +1805,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9012236568280844
+        0.901028606449471
       ],
       "mercator_coordinates": [
         [
@@ -1832,7 +1832,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.97713184701092
+        0.976903730200068
       ],
       "mercator_coordinates": [
         [
@@ -1859,7 +1859,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0097649068290224
+        1.0095130414306805
       ],
       "mercator_coordinates": [
         [
@@ -1886,7 +1886,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0331974154203405
+        1.047639704813657
       ],
       "mercator_coordinates": [
         [
@@ -1913,7 +1913,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0623595282444762
+        1.085818954458922
       ],
       "mercator_coordinates": [
         [
@@ -1940,7 +1940,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0781574511094794
+        1.102419120658664
       ],
       "mercator_coordinates": [
         [
@@ -1967,7 +1967,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0574964030806178
+        1.081247293670294
       ],
       "mercator_coordinates": [
         [
@@ -1994,7 +1994,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0551412950583239
+        1.0566237330362989
       ],
       "mercator_coordinates": [
         [
@@ -2021,7 +2021,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.12857757542836
+        1.1311062549800177
       ],
       "mercator_coordinates": [
         [
@@ -2048,7 +2048,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.138319926649514
+        1.141808479063561
       ],
       "mercator_coordinates": [
         [
@@ -2075,7 +2075,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.088439393638767
+        1.091020161326788
       ],
       "mercator_coordinates": [
         [
@@ -2102,7 +2102,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9945116278198232
+        0.9953451486230223
       ],
       "mercator_coordinates": [
         [
@@ -2129,7 +2129,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9863045276902755
+        1.0050535082324146
       ],
       "mercator_coordinates": [
         [
@@ -2156,7 +2156,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0302103713071178
+        1.050175739371754
       ],
       "mercator_coordinates": [
         [
@@ -2183,7 +2183,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.044094117713831
+        1.0650175462019382
       ],
       "mercator_coordinates": [
         [
@@ -2210,7 +2210,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        1.0367466504883815
+        1.057997682946217
       ],
       "mercator_coordinates": [
         [
@@ -2237,7 +2237,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9963195731430444
+        1.016606007639427
       ],
       "mercator_coordinates": [
         [
@@ -2264,7 +2264,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9253438219216242
+        0.9442950014111605
       ],
       "mercator_coordinates": [
         [
@@ -2291,7 +2291,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8496774198594668
+        0.8535800505533581
       ],
       "mercator_coordinates": [
         [
@@ -2318,7 +2318,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9104982494190342
+        0.9146946449923911
       ],
       "mercator_coordinates": [
         [
@@ -2345,7 +2345,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.9247470679699136
+        0.9246788006636265
       ],
       "mercator_coordinates": [
         [
@@ -2372,7 +2372,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.90508466312656
+        0.9054865526757069
       ],
       "mercator_coordinates": [
         [
@@ -2399,7 +2399,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.8153226967472559
+        0.8159816080139314
       ],
       "mercator_coordinates": [
         [
@@ -2426,7 +2426,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6743158557539293
+        0.6746036563686837
       ],
       "mercator_coordinates": [
         [
@@ -2453,7 +2453,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.4927550777838888
+        0.49718305976551813
       ],
       "mercator_coordinates": [
         [
@@ -2480,7 +2480,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5042094077224896
+        0.5042385547676894
       ],
       "mercator_coordinates": [
         [
@@ -2507,7 +2507,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5600629257357408
+        0.5636721411026923
       ],
       "mercator_coordinates": [
         [
@@ -2534,7 +2534,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5380310470520931
+        0.5382908481018165
       ],
       "mercator_coordinates": [
         [
@@ -2561,7 +2561,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5208287462869192
+        0.5212393890402663
       ],
       "mercator_coordinates": [
         [
@@ -2588,7 +2588,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5179737093871664
+        0.5182939926854664
       ],
       "mercator_coordinates": [
         [
@@ -2615,7 +2615,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5105502250717118
+        0.5109882277967367
       ],
       "mercator_coordinates": [
         [
@@ -2642,7 +2642,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5110065094516706
+        0.512019489308517
       ],
       "mercator_coordinates": [
         [
@@ -2669,7 +2669,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5593436494193765
+        0.5623497202474814
       ],
       "mercator_coordinates": [
         [
@@ -2696,7 +2696,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6081457172124357
+        0.6123943350254208
       ],
       "mercator_coordinates": [
         [
@@ -2723,7 +2723,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.569062450184413
+        0.571675708719448
       ],
       "mercator_coordinates": [
         [
@@ -2750,7 +2750,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6095824167446716
+        0.6113858715490156
       ],
       "mercator_coordinates": [
         [
@@ -2777,7 +2777,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5708417561026854
+        0.5714694974454574
       ],
       "mercator_coordinates": [
         [
@@ -2804,7 +2804,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.4853217957030273
+        0.4881992934172767
       ],
       "mercator_coordinates": [
         [
@@ -2831,7 +2831,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.4585957239168746
+        0.45999668196216087
       ],
       "mercator_coordinates": [
         [
@@ -2858,7 +2858,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.44380425205494134
+        0.4442020968661028
       ],
       "mercator_coordinates": [
         [
@@ -2885,7 +2885,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5130410083141856
+        0.5161576318377855
       ],
       "mercator_coordinates": [
         [
@@ -2912,7 +2912,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5081000144183544
+        0.5085798993731183
       ],
       "mercator_coordinates": [
         [
@@ -2939,7 +2939,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5161179198910344
+        0.5181949757733457
       ],
       "mercator_coordinates": [
         [
@@ -2966,7 +2966,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5749684739455589
+        0.5767727096450741
       ],
       "mercator_coordinates": [
         [
@@ -2993,7 +2993,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.5691165494962098
+        0.5708084195377122
       ],
       "mercator_coordinates": [
         [
@@ -3020,7 +3020,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.4930901987224283
+        0.4953474874470522
       ],
       "mercator_coordinates": [
         [
@@ -3047,7 +3047,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.46005218244595225
+        0.4613514557960036
       ],
       "mercator_coordinates": [
         [
@@ -3074,7 +3074,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.470251905110582
+        0.47054388988307627
       ],
       "mercator_coordinates": [
         [
@@ -3101,7 +3101,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.41227497748789155
+        0.41280173702507056
       ],
       "mercator_coordinates": [
         [
@@ -3128,7 +3128,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.41566856682687486
+        0.41569584490351036
       ],
       "mercator_coordinates": [
         [
@@ -3155,7 +3155,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.4992295632406636
+        0.5034767383137654
       ],
       "mercator_coordinates": [
         [
@@ -3182,7 +3182,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6089924493745579
+        0.6099574848714844
       ],
       "mercator_coordinates": [
         [
@@ -3209,7 +3209,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6139355482952009
+        0.6145345297086091
       ],
       "mercator_coordinates": [
         [
@@ -3236,7 +3236,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6246488927885683
+        0.6270329505827172
       ],
       "mercator_coordinates": [
         [
@@ -3263,7 +3263,7 @@
       "data_points": 2363,
       "value_range": [
         0.0,
-        0.6383212684398754
+        0.6400156317093608
       ],
       "mercator_coordinates": [
         [
