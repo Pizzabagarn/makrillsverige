@@ -1,7 +1,7 @@
 {
   "parameter": "mackerel",
-  "generated_at": "2025-07-15T03:36:15.574816",
-  "resolution": "400x400",
+  "generated_at": "2025-07-15T10:12:04.795607",
+  "resolution": "1400x1400",
   "wgs84_bbox": [
     10.3,
     16.6,
@@ -22,8 +22,8 @@
       "filename": "mackerel_probability_2025-07-14T18-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -34.40907329863288,
-        93.15876885467446
+        -34.249502283968354,
+        94.15572260788109
       ],
       "mercator_coordinates": [
         [
@@ -49,8 +49,8 @@
       "filename": "mackerel_probability_2025-07-14T19-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -35.10672317922854,
-        98.57367860375759
+        -34.93652556842099,
+        99.49498169944282
       ],
       "mercator_coordinates": [
         [
@@ -76,8 +76,8 @@
       "filename": "mackerel_probability_2025-07-14T20-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -34.95950407873602,
-        92.94436327771528
+        -34.78234304499746,
+        93.97441125949399
       ],
       "mercator_coordinates": [
         [
@@ -103,8 +103,8 @@
       "filename": "mackerel_probability_2025-07-14T21-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -34.5732029569531,
-        98.65593697049944
+        -34.39919709273798,
+        99.67007611403662
       ],
       "mercator_coordinates": [
         [
@@ -130,8 +130,8 @@
       "filename": "mackerel_probability_2025-07-14T22-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -34.417877283989604,
-        98.15782210423178
+        -34.23810869848533,
+        99.11568785985551
       ],
       "mercator_coordinates": [
         [
@@ -157,8 +157,8 @@
       "filename": "mackerel_probability_2025-07-14T23-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.52499425536036,
-        98.07780235031673
+        -33.49173383130738,
+        99.13262602175132
       ],
       "mercator_coordinates": [
         [
@@ -184,8 +184,8 @@
       "filename": "mackerel_probability_2025-07-15T00-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.5976006463454,
-        97.75120777959876
+        -33.668830164719274,
+        98.71497777092193
       ],
       "mercator_coordinates": [
         [
@@ -211,8 +211,8 @@
       "filename": "mackerel_probability_2025-07-15T01-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.819976534353273,
-        92.57235479192428
+        -33.82859718662646,
+        93.76639486184324
       ],
       "mercator_coordinates": [
         [
@@ -238,8 +238,8 @@
       "filename": "mackerel_probability_2025-07-15T02-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.01902393381136,
-        97.47654248722644
+        -35.77955222822025,
+        98.43678560112669
       ],
       "mercator_coordinates": [
         [
@@ -265,8 +265,8 @@
       "filename": "mackerel_probability_2025-07-15T03-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.84863001143265,
-        91.5225469821119
+        -34.966233017431705,
+        92.67144677469364
       ],
       "mercator_coordinates": [
         [
@@ -292,8 +292,8 @@
       "filename": "mackerel_probability_2025-07-15T04-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.01967563321552,
-        91.32449837382566
+        -35.15493914962886,
+        92.52766539804065
       ],
       "mercator_coordinates": [
         [
@@ -319,8 +319,8 @@
       "filename": "mackerel_probability_2025-07-15T05-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.673228727952093,
-        91.34652038898895
+        -34.83316366489569,
+        92.53582127944767
       ],
       "mercator_coordinates": [
         [
@@ -346,8 +346,8 @@
       "filename": "mackerel_probability_2025-07-15T06-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.829224027871287,
-        91.45271888159255
+        -32.09619425730273,
+        92.65634093796938
       ],
       "mercator_coordinates": [
         [
@@ -373,8 +373,8 @@
       "filename": "mackerel_probability_2025-07-15T07-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.479029519269353,
-        97.5077839240493
+        -31.377121546303123,
+        98.51684825415387
       ],
       "mercator_coordinates": [
         [
@@ -400,8 +400,8 @@
       "filename": "mackerel_probability_2025-07-15T08-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.461650724701038,
-        97.46460324433625
+        -31.352860226362903,
+        98.40377997280359
       ],
       "mercator_coordinates": [
         [
@@ -427,8 +427,8 @@
       "filename": "mackerel_probability_2025-07-15T09-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.801682874035517,
-        94.17835628029047
+        -32.54580098576207,
+        95.20303023228455
       ],
       "mercator_coordinates": [
         [
@@ -454,8 +454,8 @@
       "filename": "mackerel_probability_2025-07-15T10-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.20298125718997,
-        98.11271543277678
+        -32.08834322230003,
+        99.15322084709496
       ],
       "mercator_coordinates": [
         [
@@ -481,8 +481,8 @@
       "filename": "mackerel_probability_2025-07-15T11-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.069625370959805,
-        98.13414731127939
+        -34.2146806922934,
+        99.20744802410759
       ],
       "mercator_coordinates": [
         [
@@ -508,8 +508,8 @@
       "filename": "mackerel_probability_2025-07-15T12-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.33511748675213,
-        98.60974073955605
+        -36.470192087328904,
+        99.74054196484113
       ],
       "mercator_coordinates": [
         [
@@ -535,8 +535,8 @@
       "filename": "mackerel_probability_2025-07-15T13-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.08058956120954,
-        98.47649883373447
+        -37.91262909315153,
+        99.63731721854433
       ],
       "mercator_coordinates": [
         [
@@ -562,8 +562,8 @@
       "filename": "mackerel_probability_2025-07-15T14-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.42033303213465,
-        92.70631556376247
+        -36.459175612846096,
+        94.4181881545932
       ],
       "mercator_coordinates": [
         [
@@ -589,8 +589,8 @@
       "filename": "mackerel_probability_2025-07-15T15-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.782172399138105,
-        93.9486877732164
+        -38.464294289621634,
+        95.66899127080357
       ],
       "mercator_coordinates": [
         [
@@ -616,8 +616,8 @@
       "filename": "mackerel_probability_2025-07-15T16-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.53186774251275,
-        92.6104784526545
+        -39.025459068165326,
+        94.34125909864217
       ],
       "mercator_coordinates": [
         [
@@ -643,8 +643,8 @@
       "filename": "mackerel_probability_2025-07-15T17-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.7080560327164,
-        92.66815848971015
+        -37.34049110685187,
+        94.36725203142232
       ],
       "mercator_coordinates": [
         [
@@ -670,8 +670,8 @@
       "filename": "mackerel_probability_2025-07-15T18-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.50817831190221,
-        92.7813305917382
+        -33.908565659998246,
+        94.4188259734613
       ],
       "mercator_coordinates": [
         [
@@ -697,8 +697,8 @@
       "filename": "mackerel_probability_2025-07-15T19-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.58215516633504,
-        93.00189112862884
+        -35.587264252989534,
+        94.40744206946485
       ],
       "mercator_coordinates": [
         [
@@ -724,8 +724,8 @@
       "filename": "mackerel_probability_2025-07-15T20-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.52225131746086,
-        98.4520197676388
+        -35.33611382625082,
+        99.45684923064977
       ],
       "mercator_coordinates": [
         [
@@ -751,8 +751,8 @@
       "filename": "mackerel_probability_2025-07-15T21-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.07708992065245,
-        98.49355084727866
+        -33.37823828165526,
+        99.49141171826919
       ],
       "mercator_coordinates": [
         [
@@ -778,8 +778,8 @@
       "filename": "mackerel_probability_2025-07-15T22-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.501504653537864,
-        98.58809442111868
+        -33.732400678777964,
+        99.5796564675357
       ],
       "mercator_coordinates": [
         [
@@ -805,8 +805,8 @@
       "filename": "mackerel_probability_2025-07-15T23-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -33.13353598765049,
-        98.63354949921536
+        -35.21390473334971,
+        99.62289782320097
       ],
       "mercator_coordinates": [
         [
@@ -832,8 +832,8 @@
       "filename": "mackerel_probability_2025-07-16T00-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.741416944095867,
-        98.78700112937877
+        -36.98636388493752,
+        99.77771067206538
       ],
       "mercator_coordinates": [
         [
@@ -859,8 +859,8 @@
       "filename": "mackerel_probability_2025-07-16T01-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.21030050135044,
-        98.62652604353488
+        -36.83355393698317,
+        99.61226732429375
       ],
       "mercator_coordinates": [
         [
@@ -886,8 +886,8 @@
       "filename": "mackerel_probability_2025-07-16T02-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.232840609913957,
-        98.77398322819826
+        -35.920405331379634,
+        99.86070896797096
       ],
       "mercator_coordinates": [
         [
@@ -913,8 +913,8 @@
       "filename": "mackerel_probability_2025-07-16T03-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.623145374105256,
-        93.07549798424641
+        -35.9556008102973,
+        94.51050245352977
       ],
       "mercator_coordinates": [
         [
@@ -940,8 +940,8 @@
       "filename": "mackerel_probability_2025-07-16T04-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.77142615907136,
-        92.98962165161716
+        -37.69609817294441,
+        94.39439091540234
       ],
       "mercator_coordinates": [
         [
@@ -967,8 +967,8 @@
       "filename": "mackerel_probability_2025-07-16T05-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.433087910414155,
-        93.01999475170302
+        -35.399074125659254,
+        94.07984047685109
       ],
       "mercator_coordinates": [
         [
@@ -994,8 +994,8 @@
       "filename": "mackerel_probability_2025-07-16T06-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.845965789784575,
-        93.07198758825803
+        -37.882842895358536,
+        94.11966914203462
       ],
       "mercator_coordinates": [
         [
@@ -1021,8 +1021,8 @@
       "filename": "mackerel_probability_2025-07-16T07-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.26402575975176,
-        93.02320517077116
+        -31.98244419604102,
+        94.06853410771947
       ],
       "mercator_coordinates": [
         [
@@ -1048,8 +1048,8 @@
       "filename": "mackerel_probability_2025-07-16T08-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.29438981740083,
-        93.19619287702231
+        -35.132803959444246,
+        94.24127181353475
       ],
       "mercator_coordinates": [
         [
@@ -1075,8 +1075,8 @@
       "filename": "mackerel_probability_2025-07-16T09-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -32.55851248411513,
-        98.25030176088308
+        -34.136302226981144,
+        99.21188904570022
       ],
       "mercator_coordinates": [
         [
@@ -1102,8 +1102,8 @@
       "filename": "mackerel_probability_2025-07-16T10-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.805618278308646,
-        98.76611478006433
+        -34.961088862571934,
+        99.72824642996247
       ],
       "mercator_coordinates": [
         [
@@ -1129,8 +1129,8 @@
       "filename": "mackerel_probability_2025-07-16T11-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.795418430627944,
-        98.59176820339884
+        -35.90183386362447,
+        99.56659309007577
       ],
       "mercator_coordinates": [
         [
@@ -1156,8 +1156,8 @@
       "filename": "mackerel_probability_2025-07-16T12-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.058359650929084,
-        98.49633077892348
+        -37.62169277165117,
+        99.50958452720651
       ],
       "mercator_coordinates": [
         [
@@ -1183,8 +1183,8 @@
       "filename": "mackerel_probability_2025-07-16T13-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.947545110231736,
-        98.15139206258134
+        -37.18202427261654,
+        99.19063670364389
       ],
       "mercator_coordinates": [
         [
@@ -1210,8 +1210,8 @@
       "filename": "mackerel_probability_2025-07-16T14-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.291428555539103,
-        98.02897570640086
+        -36.85783872088373,
+        99.08533454496131
       ],
       "mercator_coordinates": [
         [
@@ -1237,8 +1237,8 @@
       "filename": "mackerel_probability_2025-07-16T15-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.911913476258164,
-        92.39513293547829
+        -37.14726732145706,
+        95.2974542461786
       ],
       "mercator_coordinates": [
         [
@@ -1264,8 +1264,8 @@
       "filename": "mackerel_probability_2025-07-16T16-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.142873440207936,
-        95.1464766580652
+        -39.00924099388483,
+        96.7571738496239
       ],
       "mercator_coordinates": [
         [
@@ -1291,8 +1291,8 @@
       "filename": "mackerel_probability_2025-07-16T17-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.196781906536753,
-        93.0815492864357
+        -36.89531246925243,
+        95.99907952433871
       ],
       "mercator_coordinates": [
         [
@@ -1318,8 +1318,8 @@
       "filename": "mackerel_probability_2025-07-16T18-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.42361338119963,
-        92.9382412194067
+        -38.749411011291855,
+        95.91134079748134
       ],
       "mercator_coordinates": [
         [
@@ -1345,8 +1345,8 @@
       "filename": "mackerel_probability_2025-07-16T19-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.912900768292914,
-        92.24761127968645
+        -38.21055145843129,
+        95.4477639753854
       ],
       "mercator_coordinates": [
         [
@@ -1372,8 +1372,8 @@
       "filename": "mackerel_probability_2025-07-16T20-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.37150449246333,
-        92.46501326203129
+        -35.15568696658324,
+        94.54282457267104
       ],
       "mercator_coordinates": [
         [
@@ -1399,8 +1399,8 @@
       "filename": "mackerel_probability_2025-07-16T21-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.017179955541245,
-        98.30603838193785
+        -33.20676504556841,
+        99.38380571497966
       ],
       "mercator_coordinates": [
         [
@@ -1426,8 +1426,8 @@
       "filename": "mackerel_probability_2025-07-16T22-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -31.102533818223634,
-        96.75498835431277
+        -37.143685975198785,
+        97.84208510826964
       ],
       "mercator_coordinates": [
         [
@@ -1453,8 +1453,8 @@
       "filename": "mackerel_probability_2025-07-16T23-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.70233506324119,
-        98.53154579893736
+        -36.27591604447017,
+        99.60964804938897
       ],
       "mercator_coordinates": [
         [
@@ -1480,8 +1480,8 @@
       "filename": "mackerel_probability_2025-07-17T00-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.98117544012761,
-        98.72709738595404
+        -35.78969932252046,
+        99.84320814749312
       ],
       "mercator_coordinates": [
         [
@@ -1507,8 +1507,8 @@
       "filename": "mackerel_probability_2025-07-17T01-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.743503564807877,
-        98.77699584469693
+        -35.69841436353569,
+        99.9078043787319
       ],
       "mercator_coordinates": [
         [
@@ -1534,8 +1534,8 @@
       "filename": "mackerel_probability_2025-07-17T02-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.817047900640805,
-        98.61183774879652
+        -37.13284788437317,
+        99.71661969267036
       ],
       "mercator_coordinates": [
         [
@@ -1561,8 +1561,8 @@
       "filename": "mackerel_probability_2025-07-17T03-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.42231764528159,
-        98.80215466250206
+        -34.77544793601781,
+        99.88714188015325
       ],
       "mercator_coordinates": [
         [
@@ -1588,8 +1588,8 @@
       "filename": "mackerel_probability_2025-07-17T04-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.867071058517695,
-        93.23865675625791
+        -36.913941750366234,
+        94.48599508957247
       ],
       "mercator_coordinates": [
         [
@@ -1615,8 +1615,8 @@
       "filename": "mackerel_probability_2025-07-17T05-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.082138832091793,
-        93.25999645909211
+        -34.77662623383254,
+        94.46678033775018
       ],
       "mercator_coordinates": [
         [
@@ -1642,8 +1642,8 @@
       "filename": "mackerel_probability_2025-07-17T06-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.916616874519715,
-        93.25989409926535
+        -37.397627184805074,
+        94.47971448947584
       ],
       "mercator_coordinates": [
         [
@@ -1669,8 +1669,8 @@
       "filename": "mackerel_probability_2025-07-17T07-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.675868655554783,
-        93.19375879919825
+        -37.266238780813914,
+        94.44670174360587
       ],
       "mercator_coordinates": [
         [
@@ -1696,8 +1696,8 @@
       "filename": "mackerel_probability_2025-07-17T08-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.8142324277914,
-        93.00595577379418
+        -37.97892871151263,
+        94.44155318935782
       ],
       "mercator_coordinates": [
         [
@@ -1723,8 +1723,8 @@
       "filename": "mackerel_probability_2025-07-17T09-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.973599194019638,
-        92.7082523704234
+        -37.08819766584014,
+        94.30930058350339
       ],
       "mercator_coordinates": [
         [
@@ -1750,8 +1750,8 @@
       "filename": "mackerel_probability_2025-07-17T10-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.95686289162895,
-        92.36202701709553
+        -33.74617090242182,
+        94.84782054856439
       ],
       "mercator_coordinates": [
         [
@@ -1777,8 +1777,8 @@
       "filename": "mackerel_probability_2025-07-17T11-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.857693847608594,
-        97.88960719068227
+        -34.83805176766781,
+        99.16935185044312
       ],
       "mercator_coordinates": [
         [
@@ -1804,8 +1804,8 @@
       "filename": "mackerel_probability_2025-07-17T12-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.43142071421727,
-        97.58984766914051
+        -38.12738854570956,
+        98.92245817265727
       ],
       "mercator_coordinates": [
         [
@@ -1831,8 +1831,8 @@
       "filename": "mackerel_probability_2025-07-17T13-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.38690502868076,
-        97.15926918518092
+        -37.45503523445449,
+        98.59413530430233
       ],
       "mercator_coordinates": [
         [
@@ -1858,8 +1858,8 @@
       "filename": "mackerel_probability_2025-07-17T14-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.374044654883832,
-        96.75702601505448
+        -37.372310803708174,
+        98.41441516636911
       ],
       "mercator_coordinates": [
         [
@@ -1885,8 +1885,8 @@
       "filename": "mackerel_probability_2025-07-17T15-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.05608156078532,
-        96.65610129708872
+        -36.33683310891935,
+        98.5395314671631
       ],
       "mercator_coordinates": [
         [
@@ -1912,8 +1912,8 @@
       "filename": "mackerel_probability_2025-07-17T16-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.81178699138991,
-        94.64451658455457
+        -38.54507378830071,
+        97.89922507635947
       ],
       "mercator_coordinates": [
         [
@@ -1939,8 +1939,8 @@
       "filename": "mackerel_probability_2025-07-17T17-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.721805339459333,
-        94.86421134754461
+        -38.567044941034766,
+        98.06111881040725
       ],
       "mercator_coordinates": [
         [
@@ -1966,8 +1966,8 @@
       "filename": "mackerel_probability_2025-07-17T18-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.201157631963586,
-        94.9480902002537
+        -38.84566529278942,
+        98.13927200351304
       ],
       "mercator_coordinates": [
         [
@@ -1993,8 +1993,8 @@
       "filename": "mackerel_probability_2025-07-17T19-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.976956451415415,
-        94.87150122943402
+        -38.81490869813361,
+        98.05007999972034
       ],
       "mercator_coordinates": [
         [
@@ -2020,8 +2020,8 @@
       "filename": "mackerel_probability_2025-07-17T20-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.524972409973657,
-        95.4692502562086
+        -38.65398930203726,
+        98.69929497153848
       ],
       "mercator_coordinates": [
         [
@@ -2047,8 +2047,8 @@
       "filename": "mackerel_probability_2025-07-17T21-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.10862670408878,
-        95.80158383007911
+        -35.63701790758018,
+        98.81061549589778
       ],
       "mercator_coordinates": [
         [
@@ -2074,8 +2074,8 @@
       "filename": "mackerel_probability_2025-07-17T22-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.16838739121492,
-        97.30673115469993
+        -33.75779549945812,
+        99.49089842835451
       ],
       "mercator_coordinates": [
         [
@@ -2101,8 +2101,8 @@
       "filename": "mackerel_probability_2025-07-17T23-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.31012024311219,
-        97.33715728492925
+        -34.98988530195928,
+        99.49654421256716
       ],
       "mercator_coordinates": [
         [
@@ -2128,8 +2128,8 @@
       "filename": "mackerel_probability_2025-07-18T00-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.143077336475613,
-        97.42583866082897
+        -34.92264550653743,
+        99.56671205886589
       ],
       "mercator_coordinates": [
         [
@@ -2155,8 +2155,8 @@
       "filename": "mackerel_probability_2025-07-18T01-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.55641118958765,
-        97.37573078418924
+        -34.73765688595127,
+        99.56753387409753
       ],
       "mercator_coordinates": [
         [
@@ -2182,8 +2182,8 @@
       "filename": "mackerel_probability_2025-07-18T02-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.22259072819262,
-        97.29336586472199
+        -34.1925435534371,
+        99.51410844443659
       ],
       "mercator_coordinates": [
         [
@@ -2209,8 +2209,8 @@
       "filename": "mackerel_probability_2025-07-18T03-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.63484959783778,
-        97.16123111917041
+        -34.818403742913986,
+        99.38698718054238
       ],
       "mercator_coordinates": [
         [
@@ -2236,8 +2236,8 @@
       "filename": "mackerel_probability_2025-07-18T04-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.845989242602876,
-        97.15976913192702
+        -35.09224937660413,
+        99.21239108220145
       ],
       "mercator_coordinates": [
         [
@@ -2263,8 +2263,8 @@
       "filename": "mackerel_probability_2025-07-18T05-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.284232821438646,
-        95.25070649527868
+        -35.55507156920556,
+        98.47680599365911
       ],
       "mercator_coordinates": [
         [
@@ -2290,8 +2290,8 @@
       "filename": "mackerel_probability_2025-07-18T06-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.553265182419047,
-        95.37310291999829
+        -37.20116650989289,
+        98.61125015397877
       ],
       "mercator_coordinates": [
         [
@@ -2317,8 +2317,8 @@
       "filename": "mackerel_probability_2025-07-18T07-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.16095324366037,
-        95.5575247055592
+        -36.26176103641022,
+        98.78810746258898
       ],
       "mercator_coordinates": [
         [
@@ -2344,8 +2344,8 @@
       "filename": "mackerel_probability_2025-07-18T08-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.60066799536688,
-        95.9272906036429
+        -35.137092798807195,
+        99.12596103165717
       ],
       "mercator_coordinates": [
         [
@@ -2371,8 +2371,8 @@
       "filename": "mackerel_probability_2025-07-18T09-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.64564834335138,
-        96.2138529708717
+        -29.566860680152026,
+        99.36634863611894
       ],
       "mercator_coordinates": [
         [
@@ -2398,8 +2398,8 @@
       "filename": "mackerel_probability_2025-07-18T10-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.531274363813505,
-        96.66654132714064
+        -30.554912652177965,
+        99.78377624738292
       ],
       "mercator_coordinates": [
         [
@@ -2425,8 +2425,8 @@
       "filename": "mackerel_probability_2025-07-18T11-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -30.246688841299786,
-        97.65251570192774
+        -30.16522950059705,
+        100.54443821209424
       ],
       "mercator_coordinates": [
         [
@@ -2452,8 +2452,8 @@
       "filename": "mackerel_probability_2025-07-18T12-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.82186172057912,
-        99.4145069306129
+        -29.72929039717888,
+        101.66993395968652
       ],
       "mercator_coordinates": [
         [
@@ -2479,8 +2479,8 @@
       "filename": "mackerel_probability_2025-07-18T13-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.129667980765728,
-        99.84628554186455
+        -29.028787852138855,
+        102.07467920042438
       ],
       "mercator_coordinates": [
         [
@@ -2506,8 +2506,8 @@
       "filename": "mackerel_probability_2025-07-18T14-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.850639390715894,
-        99.81669003281135
+        -32.39807805811138,
+        102.04055667141255
       ],
       "mercator_coordinates": [
         [
@@ -2533,8 +2533,8 @@
       "filename": "mackerel_probability_2025-07-18T15-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.111989191811457,
-        99.65426529222249
+        -31.724464247478096,
+        101.84141739163674
       ],
       "mercator_coordinates": [
         [
@@ -2560,8 +2560,8 @@
       "filename": "mackerel_probability_2025-07-18T16-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.296068211680666,
-        99.64461917077739
+        -30.968034071598147,
+        101.810088335613
       ],
       "mercator_coordinates": [
         [
@@ -2587,8 +2587,8 @@
       "filename": "mackerel_probability_2025-07-18T17-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.8232849650238,
-        98.3236964974866
+        -33.07438911066641,
+        101.17816678951492
       ],
       "mercator_coordinates": [
         [
@@ -2614,8 +2614,8 @@
       "filename": "mackerel_probability_2025-07-18T18-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.219396454621798,
-        98.35058714811343
+        -33.12414994576877,
+        101.22444563992414
       ],
       "mercator_coordinates": [
         [
@@ -2641,8 +2641,8 @@
       "filename": "mackerel_probability_2025-07-18T19-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.179975774850234,
-        97.99020687653802
+        -33.005629699603105,
+        100.90781705554643
       ],
       "mercator_coordinates": [
         [
@@ -2668,8 +2668,8 @@
       "filename": "mackerel_probability_2025-07-18T20-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.95578081757457,
-        97.99645460413383
+        -27.33127609652818,
+        100.93387333371598
       ],
       "mercator_coordinates": [
         [
@@ -2695,8 +2695,8 @@
       "filename": "mackerel_probability_2025-07-18T21-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.042376554456236,
-        97.93035674597162
+        -29.231549961382708,
+        100.92834777146649
       ],
       "mercator_coordinates": [
         [
@@ -2722,8 +2722,8 @@
       "filename": "mackerel_probability_2025-07-18T22-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.601985507112502,
-        98.27718845309141
+        -29.243074107273642,
+        101.1360285469377
       ],
       "mercator_coordinates": [
         [
@@ -2749,8 +2749,8 @@
       "filename": "mackerel_probability_2025-07-18T23-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -28.269318733150303,
-        100.31129334745678
+        -28.158179917485043,
+        102.17889862029547
       ],
       "mercator_coordinates": [
         [
@@ -2776,8 +2776,8 @@
       "filename": "mackerel_probability_2025-07-19T00-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.401679925996454,
-        99.48967428764492
+        -26.948230074206627,
+        101.70022512040009
       ],
       "mercator_coordinates": [
         [
@@ -2803,8 +2803,8 @@
       "filename": "mackerel_probability_2025-07-19T01-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -29.135375070445306,
-        99.47276060163932
+        -28.978096338912565,
+        101.68429738136727
       ],
       "mercator_coordinates": [
         [
@@ -2830,8 +2830,8 @@
       "filename": "mackerel_probability_2025-07-19T02-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.28415008694333,
-        99.46765502327887
+        -31.135393641055302,
+        101.69355333372262
       ],
       "mercator_coordinates": [
         [
@@ -2857,8 +2857,8 @@
       "filename": "mackerel_probability_2025-07-19T03-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.129339889067147,
-        99.48996528588445
+        -30.34184551880797,
+        101.74243628437446
       ],
       "mercator_coordinates": [
         [
@@ -2884,8 +2884,8 @@
       "filename": "mackerel_probability_2025-07-19T04-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -25.34931007099857,
-        99.48308747499328
+        -30.284121266630024,
+        101.7717460011074
       ],
       "mercator_coordinates": [
         [
@@ -2911,8 +2911,8 @@
       "filename": "mackerel_probability_2025-07-19T05-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -25.664713548506167,
-        99.242963641765
+        -30.213547575987434,
+        101.6768304178927
       ],
       "mercator_coordinates": [
         [
@@ -2938,8 +2938,8 @@
       "filename": "mackerel_probability_2025-07-19T06-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -25.807104135525535,
-        98.11248027009863
+        -30.91363017114749,
+        101.13531353035434
       ],
       "mercator_coordinates": [
         [
@@ -2965,8 +2965,8 @@
       "filename": "mackerel_probability_2025-07-19T07-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.52923952988336,
-        98.11857009471628
+        -32.387214227730645,
+        101.11660771616721
       ],
       "mercator_coordinates": [
         [
@@ -2992,8 +2992,8 @@
       "filename": "mackerel_probability_2025-07-19T08-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.72005140361223,
-        98.07346731241996
+        -32.09530024385125,
+        101.04180113584405
       ],
       "mercator_coordinates": [
         [
@@ -3019,8 +3019,8 @@
       "filename": "mackerel_probability_2025-07-19T09-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.774743091549162,
-        97.96282206428906
+        -27.52400357904412,
+        100.90895722532332
       ],
       "mercator_coordinates": [
         [
@@ -3046,8 +3046,8 @@
       "filename": "mackerel_probability_2025-07-19T10-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.341053664557094,
-        97.73217973255653
+        -27.291647384192256,
+        100.68415383477355
       ],
       "mercator_coordinates": [
         [
@@ -3073,8 +3073,8 @@
       "filename": "mackerel_probability_2025-07-19T11-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -27.07585051980767,
-        97.54001443439108
+        -27.64675069324306,
+        100.47763268348433
       ],
       "mercator_coordinates": [
         [
@@ -3100,8 +3100,8 @@
       "filename": "mackerel_probability_2025-07-19T12-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -26.588149827295744,
-        97.45343885048528
+        -26.482397640589827,
+        100.3053189719217
       ],
       "mercator_coordinates": [
         [
@@ -3127,8 +3127,8 @@
       "filename": "mackerel_probability_2025-07-19T13-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -25.94142025274508,
-        98.53780276131008
+        -26.237801020544588,
+        100.7169520069813
       ],
       "mercator_coordinates": [
         [
@@ -3154,8 +3154,8 @@
       "filename": "mackerel_probability_2025-07-19T14-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -24.84260989529222,
-        98.40904941635479
+        -25.378983753528086,
+        100.56307738449043
       ],
       "mercator_coordinates": [
         [
@@ -3181,8 +3181,8 @@
       "filename": "mackerel_probability_2025-07-19T15-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -24.704466294459724,
-        98.31076775631689
+        -25.262599355780676,
+        100.43746797662561
       ],
       "mercator_coordinates": [
         [
@@ -3208,8 +3208,8 @@
       "filename": "mackerel_probability_2025-07-19T16-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -24.73775852915049,
-        98.23281555305451
+        -28.32955242530783,
+        100.34582322494704
       ],
       "mercator_coordinates": [
         [
@@ -3235,8 +3235,8 @@
       "filename": "mackerel_probability_2025-07-19T17-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -23.195975247311686,
-        98.16974624897827
+        -27.80729388474934,
+        100.28714100496252
       ],
       "mercator_coordinates": [
         [
@@ -3262,8 +3262,8 @@
       "filename": "mackerel_probability_2025-07-19T18-00-00.000Z.png",
       "data_points": 2426,
       "value_range": [
-        -23.364096476209777,
-        96.96319142520775
+        -27.813503293727056,
+        99.70249305243324
       ],
       "mercator_coordinates": [
         [

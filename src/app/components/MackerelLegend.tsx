@@ -8,27 +8,29 @@ interface MackerelLegendProps {
 }
 
 const MackerelLegend = ({ visible = true, className = "" }: MackerelLegendProps) => {
-  // Colorcet.fire colormap för legend - perceptuellt uniform hotspot-visualisering
-  // Värdeintervall: -39% till +102.2% (från verklig dataanalys)
-  // Design: Svart → Rött → Orange → Gult → Vitt för optimal hotspot-visualisering
+  // MJUKA FÄRGÖVERGÅNGAR: Svart → Grå → Blå → Orange med mjuka övergångar
+  // Visar bara nyckelpunkter i legenden för läsbarhet
   const legendColors = [
+    // Nyckelpunkter för svart → grå övergång
     { value: -39.0, color: '#000000', label: '-39%' },  // Absolut minimum - svart
-    { value: -30.0, color: '#320000', label: '-30%' },  // Mycket mörk röd
-    { value: -20.0, color: '#4d0000', label: '-20%' },  // Mörk röd
-    { value: -10.0, color: '#690100', label: '-10%' },  // Röd
-    { value: 0.0, color: '#870200', label: '0%' },      // Neutral punkt - röd
-    { value: 10.0, color: '#a60400', label: '10%' },    // Ljusare röd
-    { value: 20.0, color: '#c60800', label: '20%' },    // Stark röd
-    { value: 30.0, color: '#e81000', label: '30%' },    // Rund medelvärde - röd-orange
-    { value: 40.0, color: '#fb3d00', label: '40%' },    // Orange
-    { value: 50.0, color: '#fe6b00', label: '50%' },    // Stark orange
-    { value: 60.0, color: '#ff8f00', label: '60%' },    // Ljus orange
-    { value: 70.0, color: '#ffaf01', label: '70%' },    // Gul-orange
-    { value: 80.0, color: '#ffcc05', label: '80%' },    // Ljus gul-orange
-    { value: 90.0, color: '#ffe810', label: '90%' },    // Gul
-    { value: 95.0, color: '#fff532', label: '95%' },    // Ljus gul
-    { value: 100.0, color: '#fffecc', label: '100%' },  // Nästan vit
-    { value: 102.2, color: '#ffffff', label: '102%' }   // Absolut maximum - vit
+    { value: -20.0, color: '#000000', label: '-20%' },  // Svart
+    { value: 0.0, color: '#000000', label: '0%' },      // Svart vid neutral punkt
+    { value: 5.0, color: '#070707', label: '5%' },      // Mycket mörk grå
+    { value: 15.0, color: '#1A1A1A', label: '15%' },    // Grå
+    { value: 25.0, color: '#363636', label: '25%' },    // Ljus grå
+    
+    // Nyckelpunkter för grå → blå övergång
+    { value: 30.0, color: '#1E1E44', label: '30%' },    // Mörk grå-blå
+    { value: 40.0, color: '#0A1B88', label: '40%' },    // Blå
+    { value: 50.0, color: '#001FCC', label: '50%' },    // Ljus blå
+    
+    // Nyckelpunkter för blå → orange övergång
+    { value: 60.0, color: '#8A7700', label: '60%' },    // Gul-brun
+    { value: 70.0, color: '#EEBB00', label: '70%' },    // Gul-orange
+    { value: 80.0, color: '#FFFF33', label: '80%' },    // Gul
+    { value: 90.0, color: '#FFFF77', label: '90%' },    // Ljus gul
+    { value: 100.0, color: '#FFFFCC', label: '100%' },  // Nästan vit
+    { value: 102.2, color: '#FFFFFF', label: '102%' }   // Absolut maximum - vit
   ];
 
   if (!visible) {

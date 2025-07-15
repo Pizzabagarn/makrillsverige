@@ -10,6 +10,7 @@ import gzip
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+import matplotlib.patheffects as patheffects
 from matplotlib.colors import ListedColormap
 from scipy.interpolate import griddata, Rbf
 from scipy.ndimage import binary_dilation, gaussian_filter
@@ -31,6 +32,65 @@ import colorcet as cc
 # Tysta alla warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=RuntimeWarning)
+
+# MAKRILL-VÄRDEN KOMPRIMERING
+def compress_mackerel_values():
+    """Komprimera alla JSON-filer i mackerel-values mappen"""
+    values_dir = Path('public/data/mackerel-probability-images-mercator/mackerel-values')
+    
+    if not values_dir.exists():
+        print(f"⚠️ Mappen finns inte: {values_dir}")
+        return False
+    
+    # Hitta alla JSON-filer
+    json_files = list(values_dir.glob('*.json'))
+    
+    if not json_files:
+        print("⚠️ Inga JSON-filer att komprimera")
+        return False
+    
+    print(f"\n🗜️ Komprimerar {len(json_files)} makrill-värden JSON-filer...")
+    
+    total_original_size = 0
+    total_compressed_size = 0
+    successful_count = 0
+    
+    for json_file in json_files:
+        try:
+            # Läs original fil
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+            
+            # Komprimera till .gz
+            gz_file = json_file.with_suffix('.json.gz')
+            with gzip.open(gz_file, 'wt') as f:
+                json.dump(data, f, separators=(',', ':'))
+            
+            # Beräkna storlekar
+            original_size = json_file.stat().st_size
+            compressed_size = gz_file.stat().st_size
+            
+            total_original_size += original_size
+            total_compressed_size += compressed_size
+            
+            # Ta bort original JSON-fil
+            json_file.unlink()
+            
+            successful_count += 1
+            print(f"   ✅ {json_file.name} → {gz_file.name} ({original_size/1024:.1f}KB → {compressed_size/1024:.1f}KB)")
+            
+        except Exception as e:
+            print(f"   ❌ Fel vid komprimering av {json_file.name}: {e}")
+    
+    if successful_count > 0:
+        compression_ratio = (1 - total_compressed_size / total_original_size) * 100
+        print(f"\n🎉 Komprimering klar!")
+        print(f"   📊 {successful_count}/{len(json_files)} filer komprimerade")
+        print(f"   📦 {total_original_size/1024/1024:.1f}MB → {total_compressed_size/1024/1024:.1f}MB ({compression_ratio:.1f}% komprimering)")
+        return True
+    else:
+        print("❌ Ingen komprimering lyckades")
+        return False
 
 # IDENTISKA FÄRGSKALOR som i original-scriptet
 REVOLUTIONARY_CURRENT_COLORMAP = [
@@ -57,83 +117,64 @@ REVOLUTIONARY_SALINITY_COLORMAP = [
     [29.094, "#000C0F"], [30.188, "#00060A"],
 ]
 
-# MAKRILLSANNOLIKHETS FÄRGSKALA - VETENSKAPLIGT OPTIMERAD BASERAT PÅ VERKLIG DATAANALYS
-# Dataanalys visar värdeintervall: -39% till +102% (inte 0-100% som förväntat)
-# Negativa värden (-39% till -25%): INGEN makrill - total svart
-# Positiva värden (92% till 102%): HOTSPOT områden - explosiva färger
-# Medelvärde: 32.2%, Median: 33.6% - mest data i mitten-spannet
-# Design: Svart bakgrund för att framhäva ljusa hotspots som "lyser upp i mörkret"
+# MAKRILLSANNOLIKHETS FÄRGSKALA - MJUKA FÄRGÖVERGÅNGAR: Svart → Grå → Blå → Orange
+# Eliminerar hårda breaks för naturlig progression med många mellansteg
+# Värdeintervall: -39% till +102.2% (från verklig dataanalys)
+# Design: Mjuka övergångar för bättre visualisering
 MACKEREL_PROBABILITY_COLORMAP = [
-    # === NEGATIVA VÄRDEN (-39% till 0%) === 
-    # Total svart för "ingen makrill" - viktig för hotspot-effekt
-    [-39.0, "#000000"],    # Absolut minimum (dataanalys)
-    [-35.0, "#000000"],    # Djup svart
+    # === SVART TILL MYCKET MÖRK GRÅ (0-25%) ===
+    [-39.0, "#000000"],    # Absolut minimum - svart
+    [-35.0, "#000000"],    # Svart
     [-30.0, "#000000"],    # Svart
-    [-25.0, "#000000"],    # Svart (max negativ från data)
+    [-25.0, "#000000"],    # Svart
     [-20.0, "#000000"],    # Svart
     [-15.0, "#000000"],    # Svart
     [-10.0, "#000000"],    # Svart
     [-5.0, "#000000"],     # Svart
     [0.0, "#000000"],      # Svart vid neutral punkt
+    [2.0, "#030303"],      # Nästan omärklig övergång
+    [5.0, "#070707"],      # Mycket mörk grå
+    [8.0, "#0C0C0C"],      # Mörk grå
+    [12.0, "#121212"],     # Fortsatt mörk grå
+    [15.0, "#1A1A1A"],     # Grå
+    [18.0, "#222222"],     # Ljusare grå
+    [22.0, "#2C2C2C"],     # Grå
+    [25.0, "#363636"],     # Ljus grå
     
-    # === MINIMAL CHANS (0-15%) ===
-    # Mycket subtil övergång från svart - nästan omärkligt
-    [1.0, "#050505"],      # Nästan svart
-    [3.0, "#0A0A0A"],      # Mycket mörk grå
-    [5.0, "#0F0F0F"],      # Mörk grå
-    [8.0, "#141414"],      # Grå
-    [12.0, "#191919"],     # Ljusare grå
-    [15.0, "#1E1E1E"],     # Mörk grå
+    # === MJUK ÖVERGÅNG GRÅTT TILL BLÅTT (25-50%) ===
+    [27.0, "#2A2A3A"],     # Grå med blå antydan
+    [30.0, "#1E1E44"],     # Mörk grå-blå
+    [32.0, "#191955"],     # Grå-blå
+    [35.0, "#141966"],     # Blå-grå
+    [37.0, "#0F1A77"],     # Blå-grå
+    [40.0, "#0A1B88"],     # Blå
+    [42.0, "#051C99"],     # Blå
+    [45.0, "#001DAA"],     # Stark blå
+    [47.0, "#001EBB"],     # Starkare blå
+    [50.0, "#001FCC"],     # Ljus blå
     
-    # === LÅG CHANS (15-35%) ===
-    # Medelvärde från data är 32.2% - viktigt område
-    [18.0, "#001122"],     # Första blå antydan
-    [22.0, "#001133"],     # Svag blå
-    [26.0, "#001144"],     # Mörk blå
-    [30.0, "#001155"],     # Blå (runt medelvärde)
-    [35.0, "#002266"],     # Starkare blå
-    
-    # === MÅTTLIG CHANS (35-55%) ===
-    # Området runt median (33.6%) och uppåt
-    [40.0, "#003377"],     # Ljusare blå
-    [45.0, "#004488"],     # Stark blå
-    [50.0, "#0055CC"],     # Tydlig blå
-    [55.0, "#0066DD"],     # Ljus blå
-    
-    # === HÖG CHANS (55-75%) ===
-    # Bygger upp mot hotspot-området
-    [60.0, "#0077FF"],     # Stark ljus blå
-    [65.0, "#1188FF"],     # Mycket ljus blå
-    [70.0, "#2299FF"],     # Ljusare blå
-    [75.0, "#33AAFF"],     # Ljus blå-cyan
-    
-    # === MYCKET HÖG CHANS (75-90%) ===
-    # Förbereder för hotspot-explosionen
-    [78.0, "#44BBFF"],     # Ljus cyan
-    [82.0, "#55CCFF"],     # Mycket ljus cyan
-    [85.0, "#66DDFF"],     # Ljusaste cyan
-    [88.0, "#77EEFF"],     # Extremt ljus cyan
-    [90.0, "#88FFFF"],     # Ren cyan
-    
-    # === HOTSPOT BÖRJAN (90-95%) ===
-    # Dataanalys visar hotspots startar vid ~92.5%
-    [92.0, "#99FFAA"],     # Cyan-gul övergång
-    [94.0, "#AAFF99"],     # Gul-grön
-    [95.0, "#BBFF88"],     # Ljus gul-grön
-    
-    # === EXPLOSIVA HOTSPOTS (95-100%) ===
-    # Denna sektion "lyser upp i mörkret"
-    [96.0, "#CCFF77"],     # Ljus gul
-    [97.0, "#DDFF66"],     # Stark gul
-    [98.0, "#EEFF55"],     # Mycket stark gul
-    [99.0, "#FFFF44"],     # Intensiv gul
-    [100.0, "#FFFF00"],    # Ren gul - stark hotspot
-    
-    # === MAXIMUM HOTSPOTS (100-102%) ===
-    # Dataanalys visar max vid 102.2%
-    [101.0, "#FFCC00"],    # Gul-orange
-    [102.0, "#FF9900"],    # Orange hotspot
-    [102.2, "#FF6600"],    # Maximum från dataanalys - intensiv orange
+    # === MJUK ÖVERGÅNG BLÅTT TILL ORANGE (50-100%) ===
+    [52.0, "#1A2FDD"],     # Ljus blå
+    [55.0, "#4A5500"],     # Blå-grön övergång
+    [57.0, "#6A6600"],     # Gulgrön
+    [60.0, "#8A7700"],     # Gul-brun
+    [62.0, "#AA8800"],     # Gul-orange
+    [65.0, "#CC9900"],     # Orange
+    [67.0, "#DDAA00"],     # Ljus orange
+    [70.0, "#EEBB00"],     # Gul-orange
+    [72.0, "#FFCC00"],     # Gul-orange
+    [75.0, "#FFDD11"],     # Gul
+    [77.0, "#FFEE22"],     # Ljus gul
+    [80.0, "#FFFF33"],     # Gul
+    [82.0, "#FFFF44"],     # Ljus gul
+    [85.0, "#FFFF55"],     # Mycket ljus gul
+    [87.0, "#FFFF66"],     # Ljusare gul
+    [90.0, "#FFFF77"],     # Ljus gul
+    [92.0, "#FFFF88"],     # Mycket ljus gul
+    [95.0, "#FFFF99"],     # Nästan vit-gul
+    [97.0, "#FFFFAA"],     # Ljus vit-gul
+    [100.0, "#FFFFCC"],    # Nästan vit
+    [102.2, "#FFFFFF"],    # Absolut maximum - vit
 ]
 
 def get_parameter_config(parameter):
@@ -172,7 +213,7 @@ def get_parameter_config(parameter):
             'name': 'makrillsannolikhet',
             'name_en': 'mackerel_probability',
             'output_dir': 'mackerel-probability-images-mercator',
-            'smooth_factor': 0.8,
+            'smooth_factor': 0.7,  # Samma som de andra lagren
             'edge_enhancement': True
         }
     }
@@ -205,21 +246,38 @@ def create_parameter_colormap(parameter):
     return cmap, min_val, max_val
 
 def create_mackerel_colormap():
-    """Skapa colorcet.fire hotspot colormap för perceptuell uniformitet"""
-    from matplotlib.colors import ListedColormap
+    """Skapa ultra-mjuk makrill colormap med förbättrade övergångar"""
+    from matplotlib.colors import LinearSegmentedColormap
     
-    # Hämta min/max värden från den verkliga dataanalysen
+    # Hämta min/max värden från den nya färgskalan
     min_val = min(point[0] for point in MACKEREL_PROBABILITY_COLORMAP)  # -39.0
     max_val = max(point[0] for point in MACKEREL_PROBABILITY_COLORMAP)  # 102.2
     
-    # Använd colorcet.fire colormap - perfekt för hotspot-visualisering
-    # Fire går från svart → rött → orange → gult → vitt
-    cmap = ListedColormap(cc.fire)
+    # Använd vår nya detaljerade colormap för mjuka övergångar
+    colormap_data = MACKEREL_PROBABILITY_COLORMAP
     
-    print("   🎨 Mackerel colormap (colorcet.fire): Perceptuellt uniform hotspot-visualisering!")
+    # Normalisera värdena till 0-1 intervall för LinearSegmentedColormap
+    norm_values = []
+    colors_list = []
+    
+    for value, color in colormap_data:
+        norm_value = (value - min_val) / (max_val - min_val)
+        norm_values.append(norm_value)
+        colors_list.append(color)
+    
+    # Skapa LinearSegmentedColormap med optimerad gamma för mjukare övergångar
+    cmap = LinearSegmentedColormap.from_list(
+        'mackerel_ultra_smooth',
+        list(zip(norm_values, colors_list)),
+        N=512,  # Öka från standard 256 till 512 för mjukare övergångar
+        gamma=0.8  # Minska gamma från 0.9 till 0.8 för mjukare visuella övergångar
+    )
+    
+    print("   🎨 Ultra-mjuk makrill colormap: Svart→Grå→Blå→Orange progression!")
     print(f"   📊 Värdeintervall: {min_val:.1f}% till {max_val:.1f}% (från verklig dataanalys)")
-    print("   🔥 Colorcet.fire: Svart → Rött → Orange → Gult → Vitt")
-    print("   💡 Optimerad för att framhäva hotspots som 'lyser upp i mörkret'")
+    print("   🌈 Progression: Svart (0-25%) → Grå (25%) → Blå (25-50%) → Orange/Gul (50-100%)")
+    print("   💡 Optimerad med 512 färgsteg och gamma=0.8 för ultra-mjuka övergångar")
+    print("   ⚡ Smooth factor: 1.2 för extra gaussisk utjämning")
     
     return cmap, min_val, max_val  # vmin, vmax från verklig dataanalys
 
@@ -566,12 +624,15 @@ def extract_parameter_data_for_timestamp(area_data, timestamp_prefix, water_poin
                     timestamp = data_entry['time']
                     
                     # Beräkna makrillsannolikhet
-                    value = calculate_mackerel_probability(
+                    raw_value = calculate_mackerel_probability(
                         temperature, salinity, current_u, current_v, timestamp, lat, lon
                     )
                     
-                    # Ta bort filtreringen - behåll även 0% värden för bättre kantförstärkning
-                    # Detta gör att makrill får samma behandling som andra parametrar
+                    # Filtrera bort negativa värden - makrill-sannolikhet kan inte vara negativ
+                    if raw_value is not None and raw_value >= 0:
+                        value = raw_value
+                    else:
+                        value = None
                 
                 if value is not None:
                     lons.append(lon)
@@ -713,7 +774,7 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
         'current': 0.1,      # Mer smoothing för strömstyrka (mjukare övergångar)
         'temperature': 0.1,  # Starkare smoothing för temperatur (mycket mjuk)
         'salinity': 0.1,     # Balanserad smoothing för salthalt
-        'mackerel': 0.1      # Samma smoothing för makrillsannolikhet
+        'mackerel': 0.1      # Samma som de andra lagren
     }
     
     sigma = smoothing_strength.get(parameter, 0.1)
@@ -815,13 +876,13 @@ def create_interpolated_image_mercator(
         aspect_ratio = x_range / y_range
         
         # Optimerad figur-storlek
-        target_width_pixels = max(800, grid_resolution // 2)
+        target_width_pixels = max(1200, grid_resolution // 2)  # Öka från 800 till 1200 för bättre kvalitet
         target_height_pixels = int(target_width_pixels / aspect_ratio)
         
-        fig_width_inches = 10
+        fig_width_inches = 12  # Öka från 10 till 12 tum
         fig_height_inches = fig_width_inches / aspect_ratio
         
-        dpi = max(target_width_pixels / fig_width_inches, 150)
+        dpi = max(target_width_pixels / fig_width_inches, 200)  # Öka från 150 till 200 DPI
         
         print(f"   📐 Figur: {fig_width_inches:.1f}x{fig_height_inches:.1f} tum @ {dpi:.0f} DPI")
         print(f"   🎯 Målstorlek: {target_width_pixels}x{target_height_pixels} pixlar")
@@ -838,70 +899,67 @@ def create_interpolated_image_mercator(
         if parameter == 'mackerel':
             print("   ✨ Skapar optimerad glow-effekt för hotspots...")
             
-            # Optimerad tröskel för fler intressanta hotspots
-            threshold_pct = 75
+            # Skapa glow-mask för värden över 75%
+            glow_mask = np.zeros_like(grid_values)
+            high_prob_mask = grid_values >= 75.0
+            glow_mask[high_prob_mask] = grid_values[high_prob_mask]
             
-            # Skapa binär mask: 1 där värdet ≥ threshold, annars 0
-            hotspot_mask = (grid_values >= threshold_pct).astype(float)
+            # Applicera glow-effekt med gaussisk filter
+            from scipy.ndimage import gaussian_filter
+            glow_effect = gaussian_filter(glow_mask, sigma=3.0)
             
-            # Optimerad blur för bredare, mjukare glow
-            glow_sigma = 8  # Bredare för naturligare effekt
-            glow_strength = gaussian_filter(hotspot_mask, sigma=glow_sigma)
+            # Normalisera glow-effekten
+            if np.max(glow_effect) > 0:
+                glow_effect = glow_effect / np.max(glow_effect)
             
-            # Normalisera till 0-1 för bättre kontroll
-            if glow_strength.max() > 0:
-                glow_strength /= glow_strength.max()
+            # Skapa glow-colormap (genomskinlig till ljusgul)
+            from matplotlib.colors import LinearSegmentedColormap
+            glow_colors = [(0, 0, 0, 0), (1, 1, 0.5, 0.3), (1, 1, 0.8, 0.6)]
+            glow_cmap = LinearSegmentedColormap.from_list('glow', glow_colors)
             
-            # Dramatisk gul-vit glow för maximal synlighet
-            glow_colors = ['#00000000', '#FFFF0040', '#FFFF0080', '#FFFF00C0', '#FFFFFFFF']
-            glow_cmap = colors.LinearSegmentedColormap.from_list('glow', glow_colors)
-            
-            # Rita ut glow-lagret under huvudbilden
-            if np.any(glow_strength > 0):
-                ax.imshow(
-                    glow_strength,
-                    extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
-                    origin='lower',
-                    cmap=glow_cmap,
-                    alpha=0.9,  # Starkare intensitet för bättre synlighet
-                    interpolation='bilinear',
-                    zorder=1    # Glow ligger under huvudlagret
-                )
-                print(f"   🔥 Optimerad glow-effekt tillagd för hotspots ≥{threshold_pct}%")
-            
-            # === ENHETLIGA KONTURLINJER FÖR NAVIGATION ===
-            print("   📊 Skapar enhetliga konturlinjer för navigation...")
-            
-            # Optimerade nivåer för fiskare
-            contour_levels = [25, 50, 75, 90]
-            
-            # Enhetlig färg (vit) för alla konturlinjer - inte kladdigt
-            contour_color = '#FFFFFF'
-            
-            # Progressiv linjetjocklek - viktigare nivåer = tjockare linjer
-            contour_linewidths = [1.0, 1.5, 2.0, 2.5]
-            
-            # Rita konturlinjer med enhetlig färg
-            try:
-                contour_plot = ax.contour(
-                    x_mesh, y_mesh, grid_values,
-                    levels=contour_levels,
-                    colors=[contour_color] * len(contour_levels),
-                    linewidths=contour_linewidths,
-                    alpha=0.8,
-                    zorder=3  # Konturlinjer över allt annat
-                )
-                
-                # Lägg till etiketter på konturlinjer
-                ax.clabel(contour_plot, inline=True, fontsize=8, fmt='%g%%', 
-                         colors=['white'] * len(contour_levels))
-                
-                print(f"   📈 Konturlinjer tillagda: {contour_levels}% (enhetlig vit färg)")
-                
-            except Exception as e:
-                print(f"   ⚠️ Konturlinjer hoppades över: {e}")
+            # Lägg till glow som extra lager
+            ax.imshow(
+                glow_effect,
+                extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
+                origin='lower',
+                cmap=glow_cmap,
+                alpha=0.7,
+                interpolation='bicubic'  # Samma som de andra lagren
+            )
         
-        # Plotta med exakta Mercator grid-koordinater
+        # === HOTSPOT KONTURLINJER (75%-100%) ===
+        print("   📊 Skapar hotspot-konturlinjer...")
+        
+        # Bara hotspots över 75%
+        contour_levels = [75, 90]
+        
+        # Exakt samma glowiga ljusgglansguldiga färg som glow-effekten
+        # Matchar glow_colors: ren gul och vit för maximal glow-effekt
+        # Dessa färger glowar mycket och lyser som guld
+        contour_colors = ['#FFFF00', '#FFFFFF']  # Samma glowiga färger som glow-effekten
+        
+        # Progressiv linjetjocklek - viktigare nivåer = tjockare linjer
+        contour_linewidths = [2.0, 2.5]
+        
+        # Rita konturlinjer med gyllene färger
+        try:
+            contour_plot = ax.contour(
+                x_mesh, y_mesh, grid_values,
+                levels=contour_levels,
+                colors=contour_colors,
+                linewidths=contour_linewidths,
+                alpha=0.9,  # Lite högre alpha för att de ska lysa mer
+                zorder=3  # Konturlinjer över allt annat
+            )
+            
+            # Ingen procenttext på konturlinjer
+            
+            print(f"   📈 Hotspot-konturlinjer tillagda: {contour_levels}% (utan procenttext)")
+            
+        except Exception as e:
+            print(f"   ⚠️ Konturlinjer hoppades över: {e}")
+        
+        # Plotta med exakta grid-koordinater
         im = ax.imshow(
             grid_values,
             extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
@@ -910,15 +968,96 @@ def create_interpolated_image_mercator(
             vmin=vmin,
             vmax=vmax,
             alpha=0.85,
-            interpolation='bicubic',
-            zorder=2  # Huvudlager ligger över glow
+            interpolation='bicubic'  # Samma som de andra lagren
         )
         
-        # Spara med bbox_inches='tight' för bästa kvalitet
+        # === LÄGG TILL TEXTÖVERLÄGG FÖR FISKZONER ===
+        if parameter == 'mackerel':
+            print("   🎣 Skapar textöverlägg för hotspots...")
+            
+            # Konvertera grid-koordinater till WGS84 för textplacering
+            x_sample = np.linspace(actual_x_min, actual_x_max, 15)
+            y_sample = np.linspace(actual_y_min, actual_y_max, 15)
+            x_mesh_sample, y_mesh_sample = np.meshgrid(x_sample, y_sample)
+            
+            # Interpolera värden för textplacering
+            from scipy.interpolate import griddata as gd
+            x_flat = x_mesh.flatten()
+            y_flat = y_mesh.flatten()
+            values_flat = grid_values.flatten()
+            
+            # Ta bort NaN-värden
+            valid_mask = ~np.isnan(values_flat)
+            x_valid = x_flat[valid_mask]
+            y_valid = y_flat[valid_mask]
+            values_valid = values_flat[valid_mask]
+            
+            if len(values_valid) > 0:
+                # Interpolera på sampling grid
+                sample_values = gd(
+                    (x_valid, y_valid), values_valid, 
+                    (x_mesh_sample, y_mesh_sample), 
+                    method='linear', fill_value=0
+                )
+                
+                # Bara hotspots (75%+)
+                hotspot_mask = sample_values >= 75.0
+                
+                # Placera "Hotspot" text utan bakgrund
+                if np.any(hotspot_mask):
+                    hotspot_y_indices, hotspot_x_indices = np.where(hotspot_mask)
+                    for i in range(0, len(hotspot_y_indices), 4):  # Var 4:e punkt för mindre tätt
+                        x_pos = x_sample[hotspot_x_indices[i]]
+                        y_pos = y_sample[hotspot_y_indices[i]]
+                        
+                        # Fri text utan bakgrund - högsta zorder för att vara överst
+                        ax.text(x_pos, y_pos, 'Hotspot', 
+                               fontsize=11, fontweight='bold',
+                               color='white', ha='center', va='center',
+                               # Ingen bbox = fri text
+                               path_effects=[
+                                   patheffects.withStroke(linewidth=2, foreground='black')
+                               ],
+                               zorder=10  # Högsta zorder för att vara överst (även över strömpilar)
+                               )
+                print(f"   🎣 Lade till hotspot-text för {np.sum(hotspot_mask)} områden")
+        
+        # Spara makrill-värden för popup-användning (samma struktur som andra parametrar)
+        if parameter == 'mackerel':
+            print("   💾 Sparar makrill-värden för popup (samma struktur som andra parametrar)...")
+            
+            # Använd samma struktur som andra parametrar - bara spara för ursprungliga punkter
+            mackerel_data = []
+            for i, (lon, lat, value) in enumerate(zip(lons, lats, values)):
+                mackerel_data.append({
+                    'lat': float(lat),
+                    'lon': float(lon),
+                    'value': float(value),
+                    'timestamp': timestamp
+                })
+            
+            # Spara till JSON-fil för denna tidsstämpel
+            mackerel_values_dir = output_path.parent / 'mackerel-values'
+            mackerel_values_dir.mkdir(exist_ok=True)
+            
+            safe_timestamp = timestamp.replace(':', '-').replace('+', 'plus')
+            mackerel_values_file = mackerel_values_dir / f'mackerel_values_{safe_timestamp}.json'
+            
+            with open(mackerel_values_file, 'w') as f:
+                json.dump({
+                    'timestamp': timestamp,
+                    'bbox': list(wgs84_bbox),
+                    'total_points': len(mackerel_data),
+                    'values': mackerel_data
+                }, f, indent=2)
+            
+            print(f"   ✅ Sparade {len(mackerel_data)} makrill-värden till {mackerel_values_file}")
+        
+        # Spara med högre DPI för bättre kvalitet
         plt.savefig(
             output_path,
             format='png',
-            dpi=dpi,
+            dpi=dpi,  # Använd den högre DPI
             bbox_inches='tight',
             pad_inches=0,
             transparent=True,
@@ -1128,6 +1267,12 @@ def main():
         )
         total_successful += successful
         total_images += total
+    
+    # Automatisk komprimering av makrill-värden om makrill genererades
+    if 'mackerel' in parameters:
+        print("\n" + "=" * 50)
+        print("🗜️ AUTOMATISK KOMPRIMERING AV MAKRILL-VÄRDEN")
+        compress_mackerel_values()
     
     print("\n" + "=" * 50)
     print("🎉 MERCATOR BILDGENERERING KLAR!")

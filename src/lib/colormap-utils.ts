@@ -81,25 +81,58 @@ const COLORMAP_DATA = {
     { value: 30.188, color: '#00060A' }
   ],
   mackerel: [
-    // Colorcet.fire colormap - perceptuellt uniform hotspot-visualisering
-    // Svart → Rött → Orange → Gult → Vitt (från verklig dataanalys -39% till +102.2%)
+    // MJUKA FÄRGÖVERGÅNGAR: Svart → Grå → Blå → Orange med många mellansteg
+    // Eliminerar hårda breaks för naturlig progression
+    
+    // === SVART TILL MYCKET MÖRK GRÅ (0-25%) ===
     { value: -39.0, color: '#000000' },  // Absolut minimum - svart
-    { value: -30.0, color: '#320000' },  // Mycket mörk röd
-    { value: -20.0, color: '#4d0000' },  // Mörk röd
-    { value: -10.0, color: '#690100' },  // Röd
-    { value: 0.0, color: '#870200' },    // Neutral punkt - röd
-    { value: 10.0, color: '#a60400' },   // Ljusare röd
-    { value: 20.0, color: '#c60800' },   // Stark röd
-    { value: 30.0, color: '#e81000' },   // Rund medelvärde - röd-orange
-    { value: 40.0, color: '#fb3d00' },   // Orange
-    { value: 50.0, color: '#fe6b00' },   // Stark orange
-    { value: 60.0, color: '#ff8f00' },   // Ljus orange
-    { value: 70.0, color: '#ffaf01' },   // Gul-orange
-    { value: 80.0, color: '#ffcc05' },   // Ljus gul-orange
-    { value: 90.0, color: '#ffe810' },   // Gul
-    { value: 95.0, color: '#fff532' },   // Ljus gul
-    { value: 100.0, color: '#fffecc' },  // Nästan vit
-    { value: 102.2, color: '#ffffff' }   // Absolut maximum - vit
+    { value: -30.0, color: '#000000' },  // Svart
+    { value: -20.0, color: '#000000' },  // Svart
+    { value: -10.0, color: '#000000' },  // Svart
+    { value: 0.0, color: '#000000' },    // Svart vid neutral punkt
+    { value: 2.0, color: '#030303' },    // Nästan omärklig övergång
+    { value: 5.0, color: '#070707' },    // Mycket mörk grå
+    { value: 8.0, color: '#0C0C0C' },    // Mörk grå
+    { value: 12.0, color: '#121212' },   // Fortsatt mörk grå
+    { value: 15.0, color: '#1A1A1A' },   // Grå
+    { value: 18.0, color: '#222222' },   // Ljusare grå
+    { value: 22.0, color: '#2C2C2C' },   // Grå
+    { value: 25.0, color: '#363636' },   // Ljus grå
+    
+    // === MJUK ÖVERGÅNG GRÅTT TILL BLÅTT (25-50%) ===
+    { value: 27.0, color: '#2A2A3A' },   // Grå med blå antydan
+    { value: 30.0, color: '#1E1E44' },   // Mörk grå-blå
+    { value: 32.0, color: '#191955' },   // Grå-blå
+    { value: 35.0, color: '#141966' },   // Blå-grå
+    { value: 37.0, color: '#0F1A77' },   // Blå-grå
+    { value: 40.0, color: '#0A1B88' },   // Blå
+    { value: 42.0, color: '#051C99' },   // Blå
+    { value: 45.0, color: '#001DAA' },   // Stark blå
+    { value: 47.0, color: '#001EBB' },   // Starkare blå
+    { value: 50.0, color: '#001FCC' },   // Ljus blå
+    
+    // === MJUK ÖVERGÅNG BLÅTT TILL ORANGE (50-100%) ===
+    { value: 52.0, color: '#1A2FDD' },   // Ljus blå
+    { value: 55.0, color: '#4A5500' },   // Blå-grön övergång
+    { value: 57.0, color: '#6A6600' },   // Gulgrön
+    { value: 60.0, color: '#8A7700' },   // Gul-brun
+    { value: 62.0, color: '#AA8800' },   // Gul-orange
+    { value: 65.0, color: '#CC9900' },   // Orange
+    { value: 67.0, color: '#DDAA00' },   // Ljus orange
+    { value: 70.0, color: '#EEBB00' },   // Gul-orange
+    { value: 72.0, color: '#FFCC00' },   // Gul-orange
+    { value: 75.0, color: '#FFDD11' },   // Gul
+    { value: 77.0, color: '#FFEE22' },   // Ljus gul
+    { value: 80.0, color: '#FFFF33' },   // Gul
+    { value: 82.0, color: '#FFFF44' },   // Ljus gul
+    { value: 85.0, color: '#FFFF55' },   // Mycket ljus gul
+    { value: 87.0, color: '#FFFF66' },   // Ljusare gul
+    { value: 90.0, color: '#FFFF77' },   // Ljus gul
+    { value: 92.0, color: '#FFFF88' },   // Mycket ljus gul
+    { value: 95.0, color: '#FFFF99' },   // Nästan vit-gul
+    { value: 97.0, color: '#FFFFAA' },   // Ljus vit-gul
+    { value: 100.0, color: '#FFFFCC' },  // Nästan vit
+    { value: 102.2, color: '#FFFFFF' }   // Absolut maximum - vit
   ]
 };
 

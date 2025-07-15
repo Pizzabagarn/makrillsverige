@@ -55,14 +55,14 @@ def create_contour_lines(probability_grid, x_grid, y_grid, levels=[10, 25, 50, 7
     Returns:
         contour_data: Data för konturlinjer
     """
-    # Optimerade kontrastfärger för bästa synlighet
-    # Vita linjer syns bäst mot mörka områden, svarta mot ljusa
+    # Exakt samma glowiga färger som glow-effekten för 75%+ hotspots
+    # Matchar glow_colors: #FFFF00 och #FFFFFF för maximal glow-effekt
     contour_colors = [
         '#FFFFFF',  # 10% - Vit (syns mot mörka områden)
         '#FFFF00',  # 25% - Gul (stark kontrast)
         '#FF8000',  # 50% - Orange (balanserad synlighet)
-        '#FF0000',  # 75% - Röd (viktig tröskel)
-        '#000000',  # 90% - Svart (syns mot ljusa hotspots)
+        '#FFFF00',  # 75% - Exakt samma gul som glow-effekten
+        '#FFFFFF',  # 90% - Exakt samma vit som glow-effekten
     ]
     
     return {

@@ -154,12 +154,14 @@ export default function Sidebar({
       color: 'amber'
     },
     mackerel: {
-      name: 'Makrillsannolikhet',
+      name: 'Makrill-sannolikhet',
       icon: (
-        <div className="w-3 h-3 mr-2 bg-gradient-to-r from-black via-gray-600 via-blue-500 via-cyan-400 via-yellow-400 to-orange-500 rounded-full border border-white/20"></div>
+        <svg className="w-3 h-3 mr-2 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c1.74 0 3.34.56 4.64 1.5L4.5 17.64C3.56 16.34 3 14.74 3 13c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.85-1.01 3.45-2.5 4.31V15.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.81C6.55 15.45 6 14.26 6 13c0-1.65 1.35-3 3-3s3 1.35 3 3c0 .83-.67 1.5-1.5 1.5S9 13.83 9 13c0-.55.45-1 1-1s1 .45 1 1-.45 1-1 1-1-.45-1-1z"/>
+        </svg>
       ),
-      description: 'Sannolikhet för makrill från -39% (svart) till 102% (orange hotspot). Vetenskapligt optimerad för att framhäva hotspots som lyser upp i mörkret.',
-      color: 'orange'
+      description: 'Makrill-sannolikhet från 0% (svart) till 100% (het orange). Beräknas från temperatur, salthalt och ström.',
+      color: 'red'
     },
     vectors: {
       name: 'Strömpilar',

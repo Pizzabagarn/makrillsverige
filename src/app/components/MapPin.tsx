@@ -7,6 +7,142 @@ import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { getColorForValue } from '../../lib/colormap-utils';
 
+// Cache för makrill-värden
+const mackerelValuesCache = new Map<string, any>();
+
+// Cache för vattenmask
+let waterMaskCache: any = null;
+
+// Hjälpfunktion för att ladda vattenmask
+async function loadWaterMask(): Promise<any> {
+  if (waterMaskCache) {
+    return waterMaskCache;
+  }
+  
+  try {
+    const response = await fetch('/data/scandinavian-waters.geojson');
+    if (!response.ok) {
+      console.warn('⚠️ Kunde inte ladda vattenmask');
+      return null;
+    }
+    
+    waterMaskCache = await response.json();
+    return waterMaskCache;
+  } catch (error) {
+    console.warn('⚠️ Fel vid laddning av vattenmask:', error);
+    return null;
+  }
+}
+
+// Hjälpfunktion för att kontrollera om punkt är i vatten
+function isPointInWater(lat: number, lon: number, waterMask: any): boolean {
+  if (!waterMask || !waterMask.features) return true; // Fallback: visa data om ingen vattenmask
+  
+  const point = [lon, lat]; // GeoJSON använder [lon, lat]
+  
+  for (const feature of waterMask.features) {
+    if (feature.geometry.type === 'Polygon') {
+      // Polygon har en yttre ring [0] och potentiellt inre ringar (hål)
+      if (pointInPolygon(point as [number, number], feature.geometry.coordinates[0])) {
+        return true;
+      }
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      for (const polygonCoords of feature.geometry.coordinates) {
+        // Varje polygon i MultiPolygon har samma struktur som Polygon
+        if (pointInPolygon(point as [number, number], polygonCoords[0])) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  return false;
+}
+
+// Enkel punkt-i-polygon algoritm
+function pointInPolygon(point: [number, number], polygon: any[]): boolean {
+  const [x, y] = point;
+  let inside = false;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const coords = polygon[i];
+    const nextCoords = polygon[j];
+    
+    if (coords.length >= 2 && nextCoords.length >= 2) {
+      const [xi, yi] = coords;
+      const [xj, yj] = nextCoords;
+      
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+  }
+  
+  return inside;
+}
+
+// Hjälpfunktion för att ladda makrill-värden via API (hanterar .gz filer)
+async function loadMackerelValues(timestamp: string): Promise<any> {
+  const cacheKey = timestamp;
+  
+  // Kolla cache först
+  if (mackerelValuesCache.has(cacheKey)) {
+    return mackerelValuesCache.get(cacheKey);
+  }
+  
+  try {
+    // Använd API-route som hanterar dekomprimering på servern
+    const response = await fetch(`/api/mackerel-values/${encodeURIComponent(timestamp)}`);
+    
+    if (!response.ok) {
+      console.warn(`⚠️ Kunde inte ladda makrill-värden för ${timestamp}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Spara i cache
+    mackerelValuesCache.set(cacheKey, data);
+    
+    return data;
+  } catch (error) {
+    console.warn(`⚠️ Fel vid laddning av makrill-värden för ${timestamp}:`, error);
+    return null;
+  }
+}
+
+// Hjälpfunktion för att hitta närmaste makrill-värde
+function findNearestMackerelValue(lat: number, lon: number, mackerelData: any): number | undefined {
+  if (!mackerelData?.values) return undefined;
+  
+  let nearestValue = undefined;
+  let minDistance = Infinity;
+  
+  for (const point of mackerelData.values) {
+    const distance = Math.sqrt(
+      Math.pow(lat - point.lat, 2) + Math.pow(lon - point.lon, 2)
+    );
+    
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestValue = point.value;
+    }
+  }
+  
+  return nearestValue;
+}
+
+// Hjälpfunktion för att konvertera makrill-procent till beskrivande text
+function getMackerelDescription(probability: number): string {
+  if (probability >= 90) return 'Exceptionell chans';
+  if (probability >= 75) return 'Hotspot';
+  if (probability >= 50) return 'Bra chans';
+  if (probability >= 25) return 'Måttlig chans';
+  if (probability >= 10) return 'Låg chans';
+  if (probability > 0) return 'Minimal chans';
+  return 'Ingen chans';
+}
+
 interface PinData {
   lat: number;
   lon: number;
@@ -14,6 +150,7 @@ interface PinData {
   temperature?: number;
   salinity?: number;
   current?: { u: number; v: number };
+  mackerel?: number; // Makrill-sannolikhet i procent
 }
 
 interface MapPinProps {
@@ -97,7 +234,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   }, [selectedHour, baseTime, areaData?.metadata?.timestamps]);
 
   // Hitta närmaste datapunkt och extrahera parametrar
-  const findNearestDataPoint = useCallback((lat: number, lon: number): PinData | null => {
+  const findNearestDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
 
     let nearestPoint = null;
@@ -117,18 +254,37 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     const timeData = nearestPoint.data.find(d => d.time === targetTimestamp);
     if (!timeData) return null;
 
+    // Ladda vattenmask och kontrollera om punkt är i vatten
+    const waterMask = await loadWaterMask();
+    const isInWater = isPointInWater(lat, lon, waterMask);
+
+    // Ladda makrill-data endast om punkt är i vatten
+    let mackerelValue: number | undefined = undefined;
+    if (isInWater) {
+      const mackerelData = await loadMackerelValues(targetTimestamp);
+      const rawMackerelValue = mackerelData ? 
+        findNearestMackerelValue(lat, lon, mackerelData) : 
+        undefined;
+      
+      // Filtrera bort negativa värden
+      if (rawMackerelValue !== undefined && rawMackerelValue >= 0) {
+        mackerelValue = rawMackerelValue;
+      }
+    }
+
     return {
       lat: nearestPoint.lat,
       lon: nearestPoint.lon,
       timestamp: targetTimestamp,
       temperature: timeData.temperature,
       salinity: timeData.salinity,
-      current: timeData.current
+      current: timeData.current,
+      mackerel: mackerelValue
     };
   }, [areaData, targetTimestamp]);
 
   // Lokal interpolation för mjukare övergångar
-  const findInterpolatedDataPoint = useCallback((lat: number, lon: number): PinData | null => {
+  const findInterpolatedDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
 
     // Hitta punkter inom en radie (ca 10km)
@@ -157,19 +313,39 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
 
     if (nearbyPoints.length === 0) {
       // Fallback till närmaste punkt
-      return findNearestDataPoint(lat, lon);
+      return await findNearestDataPoint(lat, lon);
+    }
+
+    // Ladda vattenmask och kontrollera om punkt är i vatten
+    const waterMask = await loadWaterMask();
+    const isInWater = isPointInWater(lat, lon, waterMask);
+
+    // Ladda makrill-data endast om punkt är i vatten
+    let mackerelValue: number | undefined = undefined;
+    if (isInWater) {
+      const mackerelData = await loadMackerelValues(targetTimestamp);
+      const rawMackerelValue = mackerelData ? 
+        findNearestMackerelValue(lat, lon, mackerelData) : 
+        undefined;
+      
+      // Filtrera bort negativa värden
+      if (rawMackerelValue !== undefined && rawMackerelValue >= 0) {
+        mackerelValue = rawMackerelValue;
+      }
     }
 
     if (nearbyPoints.length === 1) {
       // Bara en punkt - använd den
       const point = nearbyPoints[0];
+
       return {
         lat: point.lat,
         lon: point.lon,
         timestamp: targetTimestamp,
         temperature: point.data.temperature,
         salinity: point.data.salinity,
-        current: point.data.current
+        current: point.data.current,
+        mackerel: mackerelValue
       };
     }
 
@@ -220,7 +396,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       timestamp: targetTimestamp,
       temperature: interpolateParameter('temperature'),
       salinity: interpolateParameter('salinity'),
-      current: interpolateParameter('current')
+      current: interpolateParameter('current'),
+      mackerel: mackerelValue // Använd redan beräknat mackerelValue
     };
   }, [areaData, targetTimestamp, findNearestDataPoint]);
 
@@ -387,7 +564,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   useEffect(() => {
     if (!map || !visible) return;
 
-    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+    const handleMapClick = async (e: maplibregl.MapMouseEvent) => {
       // Om popup redan är öppen, stäng den istället för att skapa ny pin
       if (showPopup) {
         setShowPopup(false);
@@ -398,7 +575,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       const clickedLocation = { lat: lngLat.lat, lon: lngLat.lng };
       
       // Hitta interpolerade datapunkt (med fallback till närmaste)
-      const nearestData = findInterpolatedDataPoint(clickedLocation.lat, clickedLocation.lon);
+      const nearestData = await findInterpolatedDataPoint(clickedLocation.lat, clickedLocation.lon);
       
       if (nearestData) {
         setPinLocation(clickedLocation);
@@ -406,7 +583,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
         setShowPopup(true);
       } else {
         // Visa popup även om det inte finns data - försök med närmaste punkt som fallback
-        const fallbackData = findNearestDataPoint(clickedLocation.lat, clickedLocation.lon);
+        const fallbackData = await findNearestDataPoint(clickedLocation.lat, clickedLocation.lon);
         
         setPinLocation(clickedLocation);
         setPinData(fallbackData || {
@@ -415,7 +592,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
           timestamp: targetTimestamp || new Date().toISOString(),
           temperature: undefined,
           salinity: undefined,
-          current: undefined
+          current: undefined,
+          mackerel: undefined
         });
         setShowPopup(true);
       }
@@ -505,10 +683,13 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   // Uppdatera pin data när tiden ändras
   useEffect(() => {
     if (pinLocation && areaData) {
-      const updatedData = findInterpolatedDataPoint(pinLocation.lat, pinLocation.lon);
-      if (updatedData) {
-        setPinData(updatedData);
-      }
+      const updatePinData = async () => {
+        const updatedData = await findInterpolatedDataPoint(pinLocation.lat, pinLocation.lon);
+        if (updatedData) {
+          setPinData(updatedData);
+        }
+      };
+      updatePinData();
     }
   }, [pinLocation, targetTimestamp, findInterpolatedDataPoint, areaData]);
 
@@ -723,8 +904,36 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
                 </div>
               )}
               
+              {/* Makrill-sannolikhet med Apple-design */}
+              {pinData.mackerel !== undefined && pinData.mackerel !== null && (
+                <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 xs:gap-1 sm:gap-2">
+                      <div className="w-4 h-4 xs:w-4 xs:h-4 sm:w-5 sm:h-5 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                        <span className="text-white text-xs xs:text-xs sm:text-xs">🐟</span>
+                      </div>
+                      <div>
+                        <div className="text-xs xs:text-xs sm:text-sm font-semibold text-white">Makrill</div>
+                        <div className="text-xs xs:text-xs sm:text-xs text-white/60">Sannolikhet</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div 
+                        className="text-xs xs:text-xs sm:text-sm font-bold text-outlined"
+                        style={{ color: getColorForValue('mackerel', pinData.mackerel) }}
+                      >
+                        {pinData.mackerel.toFixed(0)}%
+                      </div>
+                      <div className="text-xs xs:text-xs sm:text-xs text-white/70 font-medium">
+                        {getMackerelDescription(pinData.mackerel)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Visa meddelande om ingen data finns */}
-              {(!pinData.temperature && !pinData.salinity && !pinData.current) && (
+              {(!pinData.temperature && !pinData.salinity && !pinData.current && !pinData.mackerel) && (
                 <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5 text-center">
                   <div className="text-white/80 font-medium text-xs xs:text-xs sm:text-sm">
                     Ingen data tillgänglig för denna position

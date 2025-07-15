@@ -19,6 +19,19 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: '/data/mackerel-probability-images-mercator/mackerel-values/:path*.gz',
+        headers: [
+          {
+            key: 'Content-Encoding',
+            value: 'gzip',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
     ];
   },
 };
