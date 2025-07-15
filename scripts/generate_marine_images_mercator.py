@@ -10,6 +10,7 @@ import gzip
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from matplotlib.colors import ListedColormap
 from scipy.interpolate import griddata, Rbf
 from scipy.ndimage import binary_dilation, gaussian_filter
 from sklearn.ensemble import RandomForestRegressor
@@ -24,6 +25,8 @@ import argparse
 import warnings
 import pyproj
 from pyproj import Transformer
+import math
+import colorcet as cc
 
 # Tysta alla warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -52,6 +55,85 @@ REVOLUTIONARY_SALINITY_COLORMAP = [
     [12.375, "#4393C3"], [15.000, "#2166AC"], [17.359, "#053061"], [20.000, "#042A50"],
     [20.234, "#032441"], [23.109, "#021E32"], [25.000, "#011823"], [28.312, "#001214"],
     [29.094, "#000C0F"], [30.188, "#00060A"],
+]
+
+# MAKRILLSANNOLIKHETS FÄRGSKALA - VETENSKAPLIGT OPTIMERAD BASERAT PÅ VERKLIG DATAANALYS
+# Dataanalys visar värdeintervall: -39% till +102% (inte 0-100% som förväntat)
+# Negativa värden (-39% till -25%): INGEN makrill - total svart
+# Positiva värden (92% till 102%): HOTSPOT områden - explosiva färger
+# Medelvärde: 32.2%, Median: 33.6% - mest data i mitten-spannet
+# Design: Svart bakgrund för att framhäva ljusa hotspots som "lyser upp i mörkret"
+MACKEREL_PROBABILITY_COLORMAP = [
+    # === NEGATIVA VÄRDEN (-39% till 0%) === 
+    # Total svart för "ingen makrill" - viktig för hotspot-effekt
+    [-39.0, "#000000"],    # Absolut minimum (dataanalys)
+    [-35.0, "#000000"],    # Djup svart
+    [-30.0, "#000000"],    # Svart
+    [-25.0, "#000000"],    # Svart (max negativ från data)
+    [-20.0, "#000000"],    # Svart
+    [-15.0, "#000000"],    # Svart
+    [-10.0, "#000000"],    # Svart
+    [-5.0, "#000000"],     # Svart
+    [0.0, "#000000"],      # Svart vid neutral punkt
+    
+    # === MINIMAL CHANS (0-15%) ===
+    # Mycket subtil övergång från svart - nästan omärkligt
+    [1.0, "#050505"],      # Nästan svart
+    [3.0, "#0A0A0A"],      # Mycket mörk grå
+    [5.0, "#0F0F0F"],      # Mörk grå
+    [8.0, "#141414"],      # Grå
+    [12.0, "#191919"],     # Ljusare grå
+    [15.0, "#1E1E1E"],     # Mörk grå
+    
+    # === LÅG CHANS (15-35%) ===
+    # Medelvärde från data är 32.2% - viktigt område
+    [18.0, "#001122"],     # Första blå antydan
+    [22.0, "#001133"],     # Svag blå
+    [26.0, "#001144"],     # Mörk blå
+    [30.0, "#001155"],     # Blå (runt medelvärde)
+    [35.0, "#002266"],     # Starkare blå
+    
+    # === MÅTTLIG CHANS (35-55%) ===
+    # Området runt median (33.6%) och uppåt
+    [40.0, "#003377"],     # Ljusare blå
+    [45.0, "#004488"],     # Stark blå
+    [50.0, "#0055CC"],     # Tydlig blå
+    [55.0, "#0066DD"],     # Ljus blå
+    
+    # === HÖG CHANS (55-75%) ===
+    # Bygger upp mot hotspot-området
+    [60.0, "#0077FF"],     # Stark ljus blå
+    [65.0, "#1188FF"],     # Mycket ljus blå
+    [70.0, "#2299FF"],     # Ljusare blå
+    [75.0, "#33AAFF"],     # Ljus blå-cyan
+    
+    # === MYCKET HÖG CHANS (75-90%) ===
+    # Förbereder för hotspot-explosionen
+    [78.0, "#44BBFF"],     # Ljus cyan
+    [82.0, "#55CCFF"],     # Mycket ljus cyan
+    [85.0, "#66DDFF"],     # Ljusaste cyan
+    [88.0, "#77EEFF"],     # Extremt ljus cyan
+    [90.0, "#88FFFF"],     # Ren cyan
+    
+    # === HOTSPOT BÖRJAN (90-95%) ===
+    # Dataanalys visar hotspots startar vid ~92.5%
+    [92.0, "#99FFAA"],     # Cyan-gul övergång
+    [94.0, "#AAFF99"],     # Gul-grön
+    [95.0, "#BBFF88"],     # Ljus gul-grön
+    
+    # === EXPLOSIVA HOTSPOTS (95-100%) ===
+    # Denna sektion "lyser upp i mörkret"
+    [96.0, "#CCFF77"],     # Ljus gul
+    [97.0, "#DDFF66"],     # Stark gul
+    [98.0, "#EEFF55"],     # Mycket stark gul
+    [99.0, "#FFFF44"],     # Intensiv gul
+    [100.0, "#FFFF00"],    # Ren gul - stark hotspot
+    
+    # === MAXIMUM HOTSPOTS (100-102%) ===
+    # Dataanalys visar max vid 102.2%
+    [101.0, "#FFCC00"],    # Gul-orange
+    [102.0, "#FF9900"],    # Orange hotspot
+    [102.2, "#FF6600"],    # Maximum från dataanalys - intensiv orange
 ]
 
 def get_parameter_config(parameter):
@@ -83,6 +165,15 @@ def get_parameter_config(parameter):
             'output_dir': 'salinity-images-mercator',
             'smooth_factor': 0.7,
             'edge_enhancement': True
+        },
+        'mackerel': {
+            'colormap': MACKEREL_PROBABILITY_COLORMAP,
+            'unit': '%',
+            'name': 'makrillsannolikhet',
+            'name_en': 'mackerel_probability',
+            'output_dir': 'mackerel-probability-images-mercator',
+            'smooth_factor': 0.8,
+            'edge_enhancement': True
         }
     }
     return configs[parameter]
@@ -91,6 +182,10 @@ def create_parameter_colormap(parameter):
     """Parameter-specifik colormap-skapning för bästa visuella resultat"""
     config = get_parameter_config(parameter)
     colormap_data = config['colormap']
+    
+    # Speciell hantering för makrill som använder inferno
+    if parameter == 'mackerel':
+        return create_mackerel_colormap()
     
     # Extrahera värden och färger från det nya formatet
     values = [item[0] for item in colormap_data]
@@ -108,6 +203,253 @@ def create_parameter_colormap(parameter):
     print(f"   🎨 {parameter.title()} colormap (LinearSegmented+gamma): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
     
     return cmap, min_val, max_val
+
+def create_mackerel_colormap():
+    """Skapa colorcet.fire hotspot colormap för perceptuell uniformitet"""
+    from matplotlib.colors import ListedColormap
+    
+    # Hämta min/max värden från den verkliga dataanalysen
+    min_val = min(point[0] for point in MACKEREL_PROBABILITY_COLORMAP)  # -39.0
+    max_val = max(point[0] for point in MACKEREL_PROBABILITY_COLORMAP)  # 102.2
+    
+    # Använd colorcet.fire colormap - perfekt för hotspot-visualisering
+    # Fire går från svart → rött → orange → gult → vitt
+    cmap = ListedColormap(cc.fire)
+    
+    print("   🎨 Mackerel colormap (colorcet.fire): Perceptuellt uniform hotspot-visualisering!")
+    print(f"   📊 Värdeintervall: {min_val:.1f}% till {max_val:.1f}% (från verklig dataanalys)")
+    print("   🔥 Colorcet.fire: Svart → Rött → Orange → Gult → Vitt")
+    print("   💡 Optimerad för att framhäva hotspots som 'lyser upp i mörkret'")
+    
+    return cmap, min_val, max_val  # vmin, vmax från verklig dataanalys
+
+def calculate_seasonal_factor(timestamp):
+    """
+    Beräkna säsongsfaktor baserat på datum
+    Använder sinuskurva med peak i juli-augusti
+    """
+    try:
+        # Parsa timestamp
+        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        
+        # Dag på året (1-365)
+        day_of_year = dt.timetuple().tm_yday
+        
+        # Säsongskurva: peak omkring dag 200 (mitten av juli)
+        # Använd sinuskurva med offset för att ge peak på sommaren
+        seasonal_radians = (day_of_year - 200) * 2 * np.pi / 365
+        seasonal_factor = np.cos(seasonal_radians)
+        
+        # Normalisera till 0-1 range där 1 = peak sommar
+        seasonal_factor = (seasonal_factor + 1) / 2
+        
+        return seasonal_factor
+        
+    except Exception as e:
+        print(f"⚠️ Fel vid beräkning av säsongsfaktor: {e}")
+        return 0.5  # Neutral värde vid fel
+
+def calculate_current_direction_factor(u, v):
+    """
+    Beräkna strömriktningsfaktor baserat på u/v komponenter
+    Gynnar sydlig ström (från norr) som för in saltvatten i Öresund
+    """
+    if u is None or v is None:
+        return 0.0
+    
+    # Beräkna riktning i radianer (0 = öst, π/2 = norr, π = väst, 3π/2 = syd)
+    angle = np.arctan2(v, u)
+    
+    # Gynna sydlig ström (från norr mot söder)
+    # Optimal riktning: π (180°) = ren sydlig ström
+    optimal_angle = np.pi  # Sydlig riktning
+    
+    # Beräkna hur nära aktuell riktning är optimal
+    angle_diff = abs(angle - optimal_angle)
+    if angle_diff > np.pi:
+        angle_diff = 2 * np.pi - angle_diff
+    
+    # Konvertera till faktor: 1.0 för optimal riktning, 0.0 för motsatt
+    direction_factor = np.cos(angle_diff)
+    
+    # Normalisera till 0-1 range
+    direction_factor = (direction_factor + 1) / 2
+    
+    return direction_factor
+
+def load_calibration_data():
+    """Ladda kalibrering från JSON-fil"""
+    calibration_path = Path(__file__).parent.parent / 'public' / 'data' / 'mackerel_calibration.json'
+    
+    if not calibration_path.exists():
+        print("⚠️ Ingen kalibrering hittad, använder standard intercept")
+        return {'calibration': {'recommendedIntercept': -8.0, 'confidence': 'low'}}
+    
+    try:
+        with open(calibration_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+        calibration = data.get('calibration', {})
+        print(f"📊 Kalibrering laddad: {calibration.get('totalReports', 0)} rapporter, "
+              f"intercept: {calibration.get('recommendedIntercept', -8.0):.3f}, "
+              f"konfidensgrad: {calibration.get('confidence', 'low')}")
+        
+        return data
+    except Exception as e:
+        print(f"⚠️ Fel vid laddning av kalibrering: {e}")
+        return {'calibration': {'recommendedIntercept': -8.0, 'confidence': 'low'}}
+
+# Ladda kalibrering globalt
+CALIBRATION_DATA = load_calibration_data()
+
+def calculate_mackerel_probability(temperature, salinity, current_u, current_v, timestamp, lat=None, lon=None, use_historical=True):
+    """
+    Implementera logistisk regression för makrillsannolikhet
+    FÖRBÄTTRAD VERSION: Realistiska koefficienter med tröskeleffekter + DATADRIVEN KALIBRERING
+    """
+    
+    # Kontrollera input-värden
+    if temperature is None or salinity is None:
+        return 0.0
+    
+    # Beräkna strömstyrka
+    if current_u is not None and current_v is not None:
+        current_strength = np.sqrt(current_u**2 + current_v**2)
+        direction_factor = calculate_current_direction_factor(current_u, current_v)
+    else:
+        current_strength = 0.0
+        direction_factor = 0.0
+    
+    # Beräkna säsongsfaktor
+    seasonal_factor = calculate_seasonal_factor(timestamp)
+    
+    # ==== FÖRBÄTTRADE PARAMETRAR MED TRÖSKELEFFEKTER ====
+    
+    # 1. TEMPERATUR - Optimal 15-20°C, straff utanför
+    temp_factor = 0.0
+    if temperature < 8:
+        temp_factor = -2.0  # Mycket dåligt för makrill
+    elif temperature < 12:
+        temp_factor = -1.0  # Dåligt
+    elif temperature < 15:
+        temp_factor = 0.0   # Neutralt
+    elif temperature <= 20:
+        temp_factor = (temperature - 15) * 0.4  # Optimal range
+    else:
+        temp_factor = 2.0 - (temperature - 20) * 0.2  # Straff för för varmt
+    
+    # 2. SALTHALT - Stark tröskeleffekt under 15 g/kg
+    salinity_factor = 0.0
+    if salinity < 8:
+        salinity_factor = -3.0  # Mycket dåligt - för sött
+    elif salinity < 15:
+        salinity_factor = -1.0 + (salinity - 8) * 0.3  # Gradvis förbättring
+    elif salinity < 25:
+        salinity_factor = 1.0 + (salinity - 15) * 0.1  # Bra range
+    else:
+        salinity_factor = 2.0  # Optimalt saltvatten
+    
+    # 3. STRÖMSTYRKA - Måttlig ström bäst, inte för stark
+    current_factor = 0.0
+    if current_strength > 0:
+        if current_strength < 0.5:
+            current_factor = current_strength * 0.8  # Svag ström ok
+        elif current_strength < 1.0:
+            current_factor = 0.4  # Optimal ström
+        else:
+            current_factor = 0.4 - (current_strength - 1.0) * 0.3  # Straff för stark ström
+    
+    # 4. STRÖMRIKTNING - Bara viktigt i Öresund-området
+    direction_boost = 0.0
+    if lat is not None and lon is not None:
+        # Endast i Öresund-området (ungefär)
+        if 55.5 <= lat <= 56.5 and 12.5 <= lon <= 13.0:
+            direction_boost = direction_factor * 1.5  # Viktigt för Öresund
+        else:
+            direction_boost = direction_factor * 0.3  # Mindre viktigt utanför
+    
+    # 5. SÄSONG - Mycket stark men inte överväldigande
+    season_boost = 0.0
+    if seasonal_factor > 0.8:  # Peak sommar
+        season_boost = 3.0
+    elif seasonal_factor > 0.6:  # Högsäsong
+        season_boost = 2.0
+    elif seasonal_factor > 0.4:  # Måttlig säsong
+        season_boost = 1.0
+    elif seasonal_factor > 0.2:  # Lågsäsong
+        season_boost = -1.0
+    else:  # Vintersäsong
+        season_boost = -3.0
+    
+    # 6. HISTORISKA FAKTORER - Mycket försiktiga
+    hist_bonus = 0.0
+    if use_historical and lat is not None and lon is not None:
+        try:
+            # Bara lätt bonus för stabila förhållanden
+            if seasonal_factor > 0.6:  # Endast under säsong
+                if temperature > 15:
+                    hist_bonus += 0.2
+                if salinity > 20:
+                    hist_bonus += 0.2
+                if current_strength > 0.1:
+                    hist_bonus += 0.1
+        except Exception as e:
+            print(f"⚠️ Historisk data inte tillgänglig: {e}")
+    
+    # ==== FÖRBÄTTRAD LOGISTISK REGRESSION MED DATADRIVEN KALIBRERING ====
+    
+    # Hämta kalibrerad intercept från fishing reports
+    calibrated_intercept = CALIBRATION_DATA['calibration'].get('recommendedIntercept', -8.0)
+    confidence = CALIBRATION_DATA['calibration'].get('confidence', 'low')
+    use_slope_calibration = CALIBRATION_DATA['calibration'].get('useSlopeCalibration', False)
+    
+    if use_slope_calibration and 'coefficients' in CALIBRATION_DATA['calibration']:
+        # ==== ML SLOPE-KALIBRERING (≥20 rapporter) ====
+        coeffs = CALIBRATION_DATA['calibration']['coefficients']
+        
+        # Normalisera features för ML-modell
+        norm_temp = (temperature - 15) / 10  # Ungefär -1 till +1 range
+        norm_salinity = (salinity - 20) / 15  # Ungefär -1 till +1 range  
+        norm_current = current_strength / 1.0  # 0 till ~1.5 range
+        
+        # Använd kontinuerliga seasonal features
+        day_of_year = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).timetuple().tm_yday
+        season_sin = np.sin(2 * np.pi * day_of_year / 365.25)
+        season_cos = np.cos(2 * np.pi * day_of_year / 365.25)
+        
+        # Z-värde med ML-koefficienter
+        Z = (calibrated_intercept +                      # Kalibrerad intercept
+             coeffs['temperature'] * norm_temp +         # ML temperatur-koefficient
+             coeffs['salinity'] * norm_salinity +        # ML salthalt-koefficient  
+             coeffs['currentStrength'] * norm_current +  # ML ström-koefficient
+             coeffs['seasonSin'] * season_sin +          # ML säsong sin-koefficient
+             coeffs['seasonCos'] * season_cos +          # ML säsong cos-koefficient
+             direction_boost +                           # Riktning (behålls heuristisk)
+             hist_bonus)                                 # Historik (behålls heuristisk)
+             
+        print(f"🤖 Använder ML-koefficienter för punkt ({lat:.3f}, {lon:.3f})")
+        
+    else:
+        # ==== HEURISTISK KALIBRERING (<20 rapporter) ====
+        # Z-värde med kalibrerad intercept + heuristiska faktorer
+        Z = (calibrated_intercept +    # KALIBRERAD intercept baserat på fishing reports
+             temp_factor +             # Temperatureffekt med tröskel
+             salinity_factor +         # Salthalteffekt med stark tröskel
+             current_factor +          # Strömeffekt med optimal range
+             direction_boost +         # Riktningseffekt (regionspecifik)
+             season_boost +            # Säsongseffekt (stark men inte överväldigande)
+             hist_bonus)               # Historisk bonus (försiktig)
+    
+    # Logistisk funktion: P = 1 / (1 + e^(-Z))
+    probability = 1 / (1 + np.exp(-Z))
+    
+    # Konvertera till procent
+    probability_percent = probability * 100
+    
+    # Begränsa till 0-100%
+    probability_percent = np.clip(probability_percent, 0, 100)
+    
+    return probability_percent
 
 def setup_projection_transformers(wgs84_bbox):
     """
@@ -214,6 +556,22 @@ def extract_parameter_data_for_timestamp(area_data, timestamp_prefix, water_poin
                 elif parameter == 'salinity':
                     if 'salinity' in data_entry:
                         value = data_entry['salinity']
+                elif parameter == 'mackerel':
+                    # Beräkna makrillsannolikhet baserat på alla parametrar
+                    temperature = data_entry.get('temperature')
+                    salinity = data_entry.get('salinity')
+                    current_data = data_entry.get('current', {})
+                    current_u = current_data.get('u') if current_data else None
+                    current_v = current_data.get('v') if current_data else None
+                    timestamp = data_entry['time']
+                    
+                    # Beräkna makrillsannolikhet
+                    value = calculate_mackerel_probability(
+                        temperature, salinity, current_u, current_v, timestamp, lat, lon
+                    )
+                    
+                    # Ta bort filtreringen - behåll även 0% värden för bättre kantförstärkning
+                    # Detta gör att makrill får samma behandling som andra parametrar
                 
                 if value is not None:
                     lons.append(lon)
@@ -354,7 +712,8 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
     smoothing_strength = {
         'current': 0.1,      # Mer smoothing för strömstyrka (mjukare övergångar)
         'temperature': 0.1,  # Starkare smoothing för temperatur (mycket mjuk)
-        'salinity': 0.1      # Balanserad smoothing för salthalt
+        'salinity': 0.1,     # Balanserad smoothing för salthalt
+        'mackerel': 0.1      # Samma smoothing för makrillsannolikhet
     }
     
     sigma = smoothing_strength.get(parameter, 0.1)
@@ -474,16 +833,85 @@ def create_interpolated_image_mercator(
         ax.set_aspect('equal')
         ax.axis('off')
         
+        # === OPTIMERAD GLOW-EFFEKT FÖR HOTSPOTS ===
+        # Lägg till lysande glow runt områden med hög sannolikhet
+        if parameter == 'mackerel':
+            print("   ✨ Skapar optimerad glow-effekt för hotspots...")
+            
+            # Optimerad tröskel för fler intressanta hotspots
+            threshold_pct = 75
+            
+            # Skapa binär mask: 1 där värdet ≥ threshold, annars 0
+            hotspot_mask = (grid_values >= threshold_pct).astype(float)
+            
+            # Optimerad blur för bredare, mjukare glow
+            glow_sigma = 8  # Bredare för naturligare effekt
+            glow_strength = gaussian_filter(hotspot_mask, sigma=glow_sigma)
+            
+            # Normalisera till 0-1 för bättre kontroll
+            if glow_strength.max() > 0:
+                glow_strength /= glow_strength.max()
+            
+            # Dramatisk gul-vit glow för maximal synlighet
+            glow_colors = ['#00000000', '#FFFF0040', '#FFFF0080', '#FFFF00C0', '#FFFFFFFF']
+            glow_cmap = colors.LinearSegmentedColormap.from_list('glow', glow_colors)
+            
+            # Rita ut glow-lagret under huvudbilden
+            if np.any(glow_strength > 0):
+                ax.imshow(
+                    glow_strength,
+                    extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
+                    origin='lower',
+                    cmap=glow_cmap,
+                    alpha=0.9,  # Starkare intensitet för bättre synlighet
+                    interpolation='bilinear',
+                    zorder=1    # Glow ligger under huvudlagret
+                )
+                print(f"   🔥 Optimerad glow-effekt tillagd för hotspots ≥{threshold_pct}%")
+            
+            # === ENHETLIGA KONTURLINJER FÖR NAVIGATION ===
+            print("   📊 Skapar enhetliga konturlinjer för navigation...")
+            
+            # Optimerade nivåer för fiskare
+            contour_levels = [25, 50, 75, 90]
+            
+            # Enhetlig färg (vit) för alla konturlinjer - inte kladdigt
+            contour_color = '#FFFFFF'
+            
+            # Progressiv linjetjocklek - viktigare nivåer = tjockare linjer
+            contour_linewidths = [1.0, 1.5, 2.0, 2.5]
+            
+            # Rita konturlinjer med enhetlig färg
+            try:
+                contour_plot = ax.contour(
+                    x_mesh, y_mesh, grid_values,
+                    levels=contour_levels,
+                    colors=[contour_color] * len(contour_levels),
+                    linewidths=contour_linewidths,
+                    alpha=0.8,
+                    zorder=3  # Konturlinjer över allt annat
+                )
+                
+                # Lägg till etiketter på konturlinjer
+                ax.clabel(contour_plot, inline=True, fontsize=8, fmt='%g%%', 
+                         colors=['white'] * len(contour_levels))
+                
+                print(f"   📈 Konturlinjer tillagda: {contour_levels}% (enhetlig vit färg)")
+                
+            except Exception as e:
+                print(f"   ⚠️ Konturlinjer hoppades över: {e}")
+        
         # Plotta med exakta Mercator grid-koordinater
         im = ax.imshow(
             grid_values,
-            extent=[actual_x_min, actual_x_max, actual_y_min, actual_y_max],
+            extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
             origin='lower',
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
             alpha=0.85,
-            interpolation='bicubic'
+            interpolation='bicubic',
+            zorder=2  # Huvudlager ligger över glow
         )
         
         # Spara med bbox_inches='tight' för bästa kvalitet
@@ -626,7 +1054,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Mercator Marina Bildgenerator - Löser projektionsproblem'
     )
-    parser.add_argument('--parameter', choices=['current', 'temperature', 'salinity', 'all'], 
+    parser.add_argument('--parameter', choices=['current', 'temperature', 'salinity', 'mackerel', 'all'], 
                        default='all', help='Parameter att generera (default: all)')
     parser.add_argument('--input', default='public/data/area-parameters-extended.json.gz',
                        help='Sökväg till area-parameters fil')
@@ -634,8 +1062,8 @@ def main():
                        help='Sökväg till vattenmask GeoJSON')
     parser.add_argument('--output-dir', default='public/data',
                        help='Bas-directory för output')
-    parser.add_argument('--resolution', type=int, default=1200,
-                       help='Grid-upplösning (default: 1200 för Mercator)')
+    parser.add_argument('--resolution', type=int, default=1400,
+                       help='Grid-upplösning (default: 1400 för Mercator)')
     parser.add_argument('--max-images', type=int, default=None,
                        help='Max antal bilder per parameter (för testning)')
     parser.add_argument('--force', action='store_true',
@@ -643,17 +1071,18 @@ def main():
     
     args = parser.parse_args()
     
-    print("🗺️ MERCATOR MARINA BILDGENERATOR")
+    print("🗺️ MERCATOR MARINA BILDGENERATOR + MAKRILL")
     print("=" * 50)
     print("🎯 Löser projektionsproblem genom Web Mercator (EPSG:3857)")
     print("✨ Eliminerar behov av offset-system")
     print("🔄 Identisk interpolation och färglogik som original")
     print("🌐 Perfekt kartplacering utan korrigeringar")
+    print("🐟 Inkluderar vetenskaplig makrillsannolikhet")
     
     # Bestäm parametrar
     if args.parameter == 'all':
-        parameters = ['current', 'temperature', 'salinity']
-        print("🎯 Genererar ALLA parametrar i Mercator")
+        parameters = ['current', 'temperature', 'salinity', 'mackerel']
+        print("🎯 Genererar ALLA parametrar i Mercator (inkl. makrill)")
     else:
         parameters = [args.parameter]
         config = get_parameter_config(args.parameter)

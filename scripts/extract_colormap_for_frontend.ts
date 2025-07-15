@@ -1,173 +1,141 @@
-#!/usr/bin/env node
-/**
- * Extraherar färgskalor från Python-genererade metadata.json filer
- * och formaterar dem för frontend legend-komponenter med förenklade labels
- */
+#!/usr/bin/env python3
+"""
+Extraherar färger från colorcet.fire för frontend-legenden
+Baserat på det verkliga värdeintervallet från makrill-dataanalysen
+"""
 
-import * as fs from 'fs';
-import * as path from 'path';
+import numpy as np
+import matplotlib.pyplot as plt
+import colorcet as cc
+import json
 
-interface MetadataColorEntry {
-  0: number;  // value
-  1: string;  // color hex
-}
-
-interface Metadata {
-  colormap: MetadataColorEntry[];
-  resolution: number;
-  interpolation_method: string;
-  generated_at: string;
-}
-
-interface FrontendColorEntry {
-  value: number;
-  color: string;
-  label: string;
-}
-
-/**
- * Läs metadata från en parameter-mapp
- */
-function readMetadata(parameterDir: string): Metadata | null {
-  const metadataPath = path.join(parameterDir, 'metadata.json');
-  
-  if (!fs.existsSync(metadataPath)) {
-    console.warn(`⚠️ Metadata saknas: ${metadataPath}`);
-    return null;
-  }
-  
-  try {
-    const content = fs.readFileSync(metadataPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.error(`❌ Fel vid läsning av ${metadataPath}:`, error);
-    return null;
-  }
-}
-
-/**
- * Hämta förenklade labels för renare legender
- */
-function getSimplifiedLabels(parameterName: string): string[] {
-  const labelMap: Record<string, string[]> = {
-    current: ['0.0', '0.25', '0.5', '1.0', '1.5+'],
-    temperature: ['7°C', '12°C', '16°C', '21°C'],
-    salinity: ['0', '10', '20', '30']
-  };
-  
-  return labelMap[parameterName] || [];
-}
-
-/**
- * Formatera färgskala för frontend med förenklade labels
- */
-function formatColormapForFrontend(
-  metadata: Metadata, 
-  parameterName: string
-): FrontendColorEntry[] {
-  const colormap = metadata.colormap;
-  
-  return colormap.map((entry) => {
-    const value = entry[0];
-    const color = entry[1];
+def extract_fire_colormap(min_val=-39.0, max_val=102.2, num_colors=50):
+    """
+    Extraherar färger från colorcet.fire för specificerat värdeintervall
+    """
     
-    return {
-      value: parseFloat(value.toFixed(3)),
-      color: color,
-      label: ''  // Alla labels tomma - vi använder hardkodade simplified labels
-    };
-  });
-}
-
-/**
- * Generera TypeScript kod för en legend-komponent
- */
-function generateLegendCode(
-  parameterName: string,
-  colormap: FrontendColorEntry[],
-  metadata: Metadata
-): string {
-  const parameterInfo = {
-    current: {
-      title: 'REVOLUTIONÄR FÄRGSKALA',
-      description: 'Samma som Python-scriptet',
-      unit: 'm/s',
-      displayName: 'Strömstyrka',
-      constantName: 'REVOLUTIONARY_CURRENT_COLORMAP'
-    },
-    temperature: {
-      title: 'REVOLUTIONÄR TEMPERATUR FÄRGSKALA',
-      description: 'Samma som Python-scriptet',
-      unit: '°C',
-      displayName: 'Vattentemperatur',
-      constantName: 'REVOLUTIONARY_TEMPERATURE_COLORMAP'
-    },
-    salinity: {
-      title: 'REVOLUTIONÄR SALTHALT FÄRGSKALA',
-      description: 'Samma som Python-scriptet',
-      unit: 'PSU',
-      displayName: 'Salthalt',
-      constantName: 'REVOLUTIONARY_SALINITY_COLORMAP'
-    }
-  };
-  
-  const info = parameterInfo[parameterName as keyof typeof parameterInfo];
-  const minVal = colormap[0].value;
-  const maxVal = colormap[colormap.length - 1].value;
-  const simplifiedLabels = getSimplifiedLabels(parameterName);
-  
-  const colormapCode = colormap.map(entry => {
-    return `  { value: ${entry.value}, color: '${entry.color}', label: '${entry.label}' }`;
-  }).join(',\n');
-  
-  const labelsCode = simplifiedLabels.map(label => `'${label}'`).join(', ');
-  
-  return `// ${info.title} - ${info.description} (${minVal}-${maxVal} ${info.unit}, ${colormap.length} färgsteg)
-const ${info.constantName} = [
-${colormapCode}
-];
-
-// FÖRENKLADE LABELS för renare legend (bara ${simplifiedLabels.length} viktiga värden)
-const SIMPLIFIED_LABELS = [${labelsCode}];`;
-}
-
-/**
- * Huvudfunktion
- */
-function main(): void {
-  console.log('🎨 Extraherar färgskalor från metadata...\n');
-  
-  const dataDir = path.join(process.cwd(), 'public', 'data');
-  const parameters = ['current-magnitude-images', 'temperature-images', 'salinity-images'];
-  const parameterNames = ['current', 'temperature', 'salinity'];
-  
-  for (let i = 0; i < parameters.length; i++) {
-    const parameterDir = path.join(dataDir, parameters[i]);
-    const parameterName = parameterNames[i];
+    # Skapa värdeintervall från min till max
+    values = np.linspace(min_val, max_val, num_colors)
     
-    console.log(`📊 Processar ${parameterName}...`);
+    # Hämta colorcet.fire colormap
+    fire_cmap = cc.fire
     
-    const metadata = readMetadata(parameterDir);
-    if (!metadata) {
-      continue;
+    # Normalisera värden till 0-1 range för colormap
+    normalized_values = (values - min_val) / (max_val - min_val)
+    
+    # Extrahera färger från colormap
+    colors = []
+    for i, (value, norm_val) in enumerate(zip(values, normalized_values)):
+        # Få RGB-värden från colormap
+        rgba = fire_cmap(norm_val)
+        
+        # Konvertera till hex
+        hex_color = "#{:02x}{:02x}{:02x}".format(
+            int(rgba[0] * 255),
+            int(rgba[1] * 255),
+            int(rgba[2] * 255)
+        )
+        
+        colors.append({
+            "value": round(value, 1),
+            "color": hex_color,
+            "label": f"{value:.1f}%" if i % 5 == 0 else ""  # Bara label på var 5:e
+        })
+    
+    return colors
+
+def create_frontend_colormap():
+    """Skapa optimerad colormap för frontend-legenden"""
+    
+    # Viktiga brytpunkter för makrill-sannolikhet
+    key_values = [
+        -39.0,  # Absolut minimum
+        -30.0,  # Negativ region
+        -20.0,  # Negativ region
+        -10.0,  # Negativ region
+        0.0,    # Neutral punkt
+        10.0,   # Låg sannolikhet
+        20.0,   # Låg sannolikhet
+        30.0,   # Medel (runt medelvärde 32.2%)
+        40.0,   # Måttlig sannolikhet
+        50.0,   # Hög sannolikhet
+        60.0,   # Mycket hög sannolikhet
+        70.0,   # Hotspot början
+        80.0,   # Hotspot
+        90.0,   # Stark hotspot
+        95.0,   # Mycket stark hotspot
+        100.0,  # Maximum hotspot
+        102.2   # Absolut maximum
+    ]
+    
+    # Hämta colorcet.fire colormap
+    fire_cmap = cc.fire
+    
+    # Skapa färgkarta för nyckelvärdena
+    min_val, max_val = min(key_values), max(key_values)
+    colors = []
+    
+    for value in key_values:
+        # Normalisera värde till 0-1 range
+        norm_val = (value - min_val) / (max_val - min_val)
+        
+        # Få RGB-värden från colormap
+        rgba = fire_cmap(norm_val)
+        
+        # Konvertera till hex
+        hex_color = "#{:02x}{:02x}{:02x}".format(
+            int(rgba[0] * 255),
+            int(rgba[1] * 255),
+            int(rgba[2] * 255)
+        )
+        
+        colors.append({
+            "value": value,
+            "color": hex_color,
+            "label": f"{value:.1f}%"
+        })
+    
+    return colors
+
+def main():
+    print("🎨 Extraherar colorcet.fire färger för frontend...")
+    
+    # Skapa colormap för frontend
+    frontend_colors = create_frontend_colormap()
+    
+    # Visa några exempel
+    print("\n🔥 Colorcet.fire färger för makrill-legenden:")
+    print("=" * 50)
+    
+    for color in frontend_colors:
+        print(f"  {color['value']:6.1f}% → {color['color']}")
+    
+    # Spara som JSON för frontend
+    output_data = {
+        "colormap_name": "colorcet.fire",
+        "description": "Perceptuellt uniform hotspot-visualisering",
+        "value_range": [-39.0, 102.2],
+        "colors": frontend_colors
     }
     
-    const frontendColormap = formatColormapForFrontend(metadata, parameterName);
-    const legendCode = generateLegendCode(parameterName, frontendColormap, metadata);
-    const simplifiedLabels = getSimplifiedLabels(parameterName);
+    with open('mackerel_fire_colormap.json', 'w') as f:
+        json.dump(output_data, f, indent=2)
     
-    console.log(`\n=== ${parameterName.toUpperCase()} LEGEND CODE ===`);
-    console.log(legendCode);
-    console.log(`\n✅ ${frontendColormap.length} färgsteg extraherade för ${parameterName}`);
-    console.log(`📈 Range: ${frontendColormap[0].value} - ${frontendColormap[frontendColormap.length - 1].value}`);
-    console.log(`🎯 Simplified labels: ${simplifiedLabels.join(', ')}`);
-    console.log(`🧹 Cleaner legend: ${simplifiedLabels.length} labels instead of ${frontendColormap.length}\n`);
-  }
-  
-  console.log('🏁 Klar! Kopiera koden ovan till dina legend-komponenter.');
-  console.log('💡 Tips: Använd SIMPLIFIED_LABELS i map() för renare utseende!');
-}
+    print(f"\n💾 Sparade {len(frontend_colors)} färger till: mackerel_fire_colormap.json")
+    
+    # Skapa TypeScript-format för direktintegration
+    print("\n📝 TypeScript-format för frontend:")
+    print("=" * 50)
+    print("const MACKEREL_FIRE_COLORMAP = [")
+    
+    for i, color in enumerate(frontend_colors):
+        comma = "," if i < len(frontend_colors) - 1 else ""
+        print(f"  {{ value: {color['value']}, color: '{color['color']}', label: '{color['label']}' }}{comma}")
+    
+    print("];")
+    
+    print("\n🏁 Färgextraktion klar!")
+    print("✅ Använd dessa färger i MackerelLegend.tsx och colormap-utils.ts")
 
-if (require.main === module) {
-  main();
-} 
+if __name__ == "__main__":
+    main() 

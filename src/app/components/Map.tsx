@@ -11,12 +11,17 @@ import AreaParametersLayer from './AreaParametersLayer';
 import CurrentMagnitudeLayerMercator from './CurrentMagnitudeLayerMercator';
 import TemperatureLayerMercator from './TemperatureLayerMercator';
 import SalinityLayerMercator from './SalinityLayerMercator';
+import MackerelProbabilityLayer from './MackerelProbabilityLayer';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
 import MapPin from './MapPin';
 import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
 import TemperatureLegend from './TemperatureLegend';
 import SalinityLegend from './SalinityLegend';
+import MackerelLegend from './MackerelLegend';
 import OffsetDebugger from './OffsetDebugger';
+import MapContextMenu from './MapContextMenu';
+import FishingDataForm from './FishingDataForm';
+import FishingValidationDashboard from './FishingValidationDashboard';
 import { useLayerVisibility } from '../context/LayerContext';
 import { useImageLayer } from '../context/ImageLayerContext';
 
@@ -38,6 +43,18 @@ export default function MapView({
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [isDesktop, setIsDesktop] = useState(true);
   const [showOffsetDebugger, setShowOffsetDebugger] = useState(false);
+  
+  // Context menu and fishing data form state
+  const [contextMenuState, setContextMenuState] = useState({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    coordinates: { lat: 0, lng: 0 }
+  });
+  const [fishingFormState, setFishingFormState] = useState({
+    isOpen: false,
+    location: { lat: 0, lng: 0 }
+  });
+  const [validationDashboardOpen, setValidationDashboardOpen] = useState(false);
   
   useEffect(() => {
     const check = () => setIsDesktop(window.matchMedia('(min-width: 768px)').matches);
@@ -90,6 +107,68 @@ export default function MapView({
   
   const showNavigation = showZoom && isDesktop;
 
+  // Handle right-click to show context menu
+  const handleMapContextMenu = (e: maplibregl.MapMouseEvent) => {
+    e.preventDefault();
+    
+    const { lngLat, point } = e;
+    setContextMenuState({
+      isOpen: true,
+      position: { x: point.x, y: point.y },
+      coordinates: { lat: lngLat.lat, lng: lngLat.lng }
+    });
+  };
+
+  // Handle context menu close
+  const handleContextMenuClose = () => {
+    setContextMenuState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Handle map click - close context menu but prevent other popups when fishing UI is active
+  const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+    // Always close context menu on click
+    if (contextMenuState.isOpen) {
+      handleContextMenuClose();
+      return; // Don't propagate click if we're closing context menu
+    }
+    
+    // Don't show other popups if fishing form is open
+    if (fishingFormState.isOpen) {
+      return;
+    }
+    
+    // Allow normal map click behavior for other popups
+    // (this is where other click handlers would go)
+  };
+
+  // Handle fishing data registration
+  const handleRegisterFishingData = () => {
+    setFishingFormState({
+      isOpen: true,
+      location: contextMenuState.coordinates
+    });
+  };
+
+  // Handle fishing form close
+  const handleFishingFormClose = () => {
+    setFishingFormState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Handle fishing data save
+  const handleFishingDataSave = (report: any) => {
+    console.log('Fishing data saved:', report);
+    // TODO: Add any additional handling after save
+  };
+
+  // Handle validation dashboard
+  const handleOpenValidation = () => {
+    setValidationDashboardOpen(true);
+  };
+
+  const handleCloseValidation = () => {
+    setValidationDashboardOpen(false);
+  };
+
   return (
     <div className="relative w-full h-full">
       <Map
@@ -98,6 +177,8 @@ export default function MapView({
           latitude: 55.913158,  // Nära sydvästra hörnet (med lite marginal från kanten)
           zoom: getInitialZoom()
         }}
+        onContextMenu={handleMapContextMenu}
+        onClick={handleMapClick}
         maxBounds={[
           [10.3, 54.9], // sydväst (lon_min, lat_min)
           [16.6, 59.6]  // nordöst (lon_max, lat_max)
@@ -149,6 +230,11 @@ export default function MapView({
           opacity={1.0}
         />
         
+        <MackerelProbabilityLayer 
+          visible={activeLayer === 'mackerel'}
+          opacity={1.0}
+        />
+        
         {/* PILAR MÅSTE RENDERAS EFTER BILDLAGER FÖR ATT VARA OVANPÅ */}
         <CurrentVectorsLayer 
           visible={contextShowCurrentVectors}
@@ -173,11 +259,39 @@ export default function MapView({
         visible={activeLayer === 'salinity'}
         className="absolute top-4 right-4 z-10"
       />
+      
+      <MackerelLegend 
+        visible={activeLayer === 'mackerel'}
+        className="absolute top-4 right-4 z-10"
+      />
 
       {/* Offset Debugger - aktiveras med Ctrl+Shift+O */}
       <OffsetDebugger 
         visible={showOffsetDebugger}
         className="absolute bottom-4 left-4 z-20 max-w-md"
+      />
+
+      {/* Context Menu för fiskdata */}
+      <MapContextMenu
+        isOpen={contextMenuState.isOpen}
+        position={contextMenuState.position}
+        onClose={handleContextMenuClose}
+        onRegisterFishingData={handleRegisterFishingData}
+        onOpenValidation={handleOpenValidation}
+      />
+
+      {/* Fishing Data Form */}
+      <FishingDataForm
+        isOpen={fishingFormState.isOpen}
+        onClose={handleFishingFormClose}
+        initialLocation={fishingFormState.location}
+        onSave={handleFishingDataSave}
+      />
+
+      {/* Validation Dashboard */}
+      <FishingValidationDashboard
+        isOpen={validationDashboardOpen}
+        onClose={handleCloseValidation}
       />
     </div>
   );

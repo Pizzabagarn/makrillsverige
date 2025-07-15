@@ -99,17 +99,23 @@ REVOLUTIONARY_SALINITY_COLORMAP = [
     [30.188, "#00060A"],  # Maximum - nästan svart
 ]
 
+# MAKRILLSANNOLIKHETS FÄRGSKALA - ANVÄNDER MATPLOTLIB'S INFERNO
+# Inferno är designad för att visa hotspots: mörk bakgrund → lysande fläckar
+# Perceptuellt uniform och vetenskapligt validerad för hotspot-visualisering
+# Värden 0-100% mappas till inferno colormap
+MACKEREL_PROBABILITY_COLORMAP = 'inferno'  # Använd matplotlib's inferno colormap
+
 def get_parameter_config(parameter):
-    """Hämta konfiguration för en specifik parameter"""
+    """Skapa optimerad konfiguration för olika parametrar"""
     configs = {
         'current': {
             'colormap': REVOLUTIONARY_CURRENT_COLORMAP,
             'unit': 'm/s',
             'name': 'strömstyrka',
             'name_en': 'current_magnitude',
-            'output_dir': 'current-magnitude-images',
-            'smooth_factor': 0.5,  # Lätt smoothing för strömstyrka
-            'edge_enhancement': True   # Återaktiverat med förbättrad implementation
+            'output_dir': 'current-images',
+            'smooth_factor': 0.5,
+            'edge_enhancement': True
         },
         'temperature': {
             'colormap': REVOLUTIONARY_TEMPERATURE_COLORMAP,
@@ -117,8 +123,8 @@ def get_parameter_config(parameter):
             'name': 'vattentemperatur',
             'name_en': 'temperature',
             'output_dir': 'temperature-images',
-            'smooth_factor': 0.8,  # Mer smoothing för temperatur
-            'edge_enhancement': True   # Återaktiverat med förbättrad implementation
+            'smooth_factor': 0.8,
+            'edge_enhancement': True
         },
         'salinity': {
             'colormap': REVOLUTIONARY_SALINITY_COLORMAP,
@@ -126,20 +132,29 @@ def get_parameter_config(parameter):
             'name': 'salthalt',
             'name_en': 'salinity',
             'output_dir': 'salinity-images',
-            'smooth_factor': 0.7,  # Balanserad smoothing för salthalt
-            'edge_enhancement': True   # Återaktiverat med förbättrad implementation
+            'smooth_factor': 0.7,
+            'edge_enhancement': True
+        },
+        'mackerel': {
+            'colormap': MACKEREL_PROBABILITY_COLORMAP,
+            'unit': '%',
+            'name': 'makrillsannolikhet',
+            'name_en': 'mackerel_probability',
+            'output_dir': 'mackerel-probability-images',
+            'smooth_factor': 0.8,
+            'edge_enhancement': True
         }
     }
-    
-    if parameter not in configs:
-        raise ValueError(f"Okänd parameter: {parameter}")
-    
     return configs[parameter]
 
 def create_parameter_colormap(parameter):
     """Skapa optimerad colormap för parameter baserat på verklig dataanalys"""
     config = get_parameter_config(parameter)
     colormap_data = config['colormap']
+    
+    # Speciell hantering för makrill som använder inferno
+    if parameter == 'mackerel':
+        return create_mackerel_colormap()
     
     # Extrahera värden och färger från det nya formatet
     values = [item[0] for item in colormap_data]
@@ -159,6 +174,15 @@ def create_parameter_colormap(parameter):
     print(f"   🎨 Revolutionär {parameter} colormap: {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
     
     return cmap, min_val, max_val
+
+def create_mackerel_colormap():
+    """Skapa matplotlib inferno colormap för makrillsannolikhet"""
+    # Använd matplotlib's inferno colormap - perfekt för hotspot-visualisering
+    cmap = plt.get_cmap('inferno')
+    
+    print("   🎨 Mackerel colormap (matplotlib inferno): 0-100% hotspot-optimerad")
+    
+    return cmap, 0.0, 100.0  # vmin, vmax för sannolikhet i procent
 
 def load_water_mask(geojson_path):
     """Ladda vattenmask från GeoJSON"""
@@ -717,7 +741,7 @@ def create_interpolated_image(lons, lats, values, water_mask_grid, output_path, 
         # Plotta med exakta grid-koordinater
         im = ax.imshow(
             grid_values,
-            extent=[actual_lon_min, actual_lon_max, actual_lat_min, actual_lat_max],
+            extent=(actual_lon_min, actual_lon_max, actual_lat_min, actual_lat_max),
             origin='lower',
             cmap=cmap,
             vmin=vmin,
@@ -915,7 +939,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Enhetligt skript för marina parameter-bilder med avancerad interpolation'
     )
-    parser.add_argument('--parameter', choices=['current', 'temperature', 'salinity', 'all'], 
+    parser.add_argument('--parameter', choices=['current', 'temperature', 'salinity', 'mackerel', 'all'], 
                        default='all', help='Parameter att generera (default: all)')
     parser.add_argument('--input', default='public/data/area-parameters-extended.json.gz',
                        help='Sökväg till area-parameters fil')
@@ -942,8 +966,8 @@ def main():
     
     # Bestäm parametrar
     if args.parameter == 'all':
-        parameters = ['current', 'temperature', 'salinity']
-        print("🎯 Genererar ALLA parametrar")
+        parameters = ['current', 'temperature', 'salinity', 'mackerel']
+        print("🎯 Genererar ALLA parametrar (inkl. makrill)")
     else:
         parameters = [args.parameter]
         config = get_parameter_config(args.parameter)

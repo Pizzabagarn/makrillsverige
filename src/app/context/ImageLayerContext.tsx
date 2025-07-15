@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-export type ImageLayerType = 'current' | 'temperature' | 'salinity' | null;
+export type ImageLayerType = 'current' | 'temperature' | 'salinity' | 'mackerel' | 'vectors' | null;
 
 interface ImageLayerContextType {
   activeLayer: ImageLayerType;

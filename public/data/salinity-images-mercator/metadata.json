@@ -1,6 +1,6 @@
 {
   "parameter": "salinity",
-  "generated_at": "2025-07-11T20:50:50.741974",
+  "generated_at": "2025-07-15T00:23:42.848688",
   "resolution": "1400x1400",
   "wgs84_bbox": [
     10.3,
@@ -18,12 +18,12 @@
   "total_images": 121,
   "images": [
     {
-      "timestamp": "2025-06-29T12:00:00.000Z",
-      "filename": "salinity_2025-06-29T12-00-00.000Z.png",
+      "timestamp": "2025-07-14T18:00:00.000Z",
+      "filename": "salinity_2025-07-14T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.26589521247351
+        32.19133958687423
       ],
       "mercator_coordinates": [
         [
@@ -45,12 +45,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T13:00:00.000Z",
-      "filename": "salinity_2025-06-29T13-00-00.000Z.png",
+      "timestamp": "2025-07-14T19:00:00.000Z",
+      "filename": "salinity_2025-07-14T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.26918811050402
+        32.19887338048263
       ],
       "mercator_coordinates": [
         [
@@ -72,12 +72,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T14:00:00.000Z",
-      "filename": "salinity_2025-06-29T14-00-00.000Z.png",
+      "timestamp": "2025-07-14T20:00:00.000Z",
+      "filename": "salinity_2025-07-14T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.289628578475526
+        32.18356409730018
       ],
       "mercator_coordinates": [
         [
@@ -99,12 +99,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T15:00:00.000Z",
-      "filename": "salinity_2025-06-29T15-00-00.000Z.png",
+      "timestamp": "2025-07-14T21:00:00.000Z",
+      "filename": "salinity_2025-07-14T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.298809912993217
+        32.18171566206276
       ],
       "mercator_coordinates": [
         [
@@ -126,12 +126,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T16:00:00.000Z",
-      "filename": "salinity_2025-06-29T16-00-00.000Z.png",
+      "timestamp": "2025-07-14T22:00:00.000Z",
+      "filename": "salinity_2025-07-14T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.29222657364219
+        32.200840886659876
       ],
       "mercator_coordinates": [
         [
@@ -153,12 +153,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T17:00:00.000Z",
-      "filename": "salinity_2025-06-29T17-00-00.000Z.png",
+      "timestamp": "2025-07-14T23:00:00.000Z",
+      "filename": "salinity_2025-07-14T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.285800104183632
+        32.20597043355418
       ],
       "mercator_coordinates": [
         [
@@ -180,12 +180,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T18:00:00.000Z",
-      "filename": "salinity_2025-06-29T18-00-00.000Z.png",
+      "timestamp": "2025-07-15T00:00:00.000Z",
+      "filename": "salinity_2025-07-15T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.291596387018167
+        32.200469191881325
       ],
       "mercator_coordinates": [
         [
@@ -207,12 +207,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T19:00:00.000Z",
-      "filename": "salinity_2025-06-29T19-00-00.000Z.png",
+      "timestamp": "2025-07-15T01:00:00.000Z",
+      "filename": "salinity_2025-07-15T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.28061501448322
+        32.20052508097491
       ],
       "mercator_coordinates": [
         [
@@ -234,12 +234,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T20:00:00.000Z",
-      "filename": "salinity_2025-06-29T20-00-00.000Z.png",
+      "timestamp": "2025-07-15T02:00:00.000Z",
+      "filename": "salinity_2025-07-15T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.284183755853544
+        32.19538247418878
       ],
       "mercator_coordinates": [
         [
@@ -261,12 +261,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T21:00:00.000Z",
-      "filename": "salinity_2025-06-29T21-00-00.000Z.png",
+      "timestamp": "2025-07-15T03:00:00.000Z",
+      "filename": "salinity_2025-07-15T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.287879083895643
+        32.1817837476433
       ],
       "mercator_coordinates": [
         [
@@ -288,12 +288,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T22:00:00.000Z",
-      "filename": "salinity_2025-06-29T22-00-00.000Z.png",
+      "timestamp": "2025-07-15T04:00:00.000Z",
+      "filename": "salinity_2025-07-15T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.28088041026145
+        32.15613079940026
       ],
       "mercator_coordinates": [
         [
@@ -315,12 +315,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-29T23:00:00.000Z",
-      "filename": "salinity_2025-06-29T23-00-00.000Z.png",
+      "timestamp": "2025-07-15T05:00:00.000Z",
+      "filename": "salinity_2025-07-15T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.265239720318068
+        32.13516268607941
       ],
       "mercator_coordinates": [
         [
@@ -342,12 +342,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T00:00:00.000Z",
-      "filename": "salinity_2025-06-30T00-00-00.000Z.png",
+      "timestamp": "2025-07-15T06:00:00.000Z",
+      "filename": "salinity_2025-07-15T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.26345773807547
+        32.12170841491605
       ],
       "mercator_coordinates": [
         [
@@ -369,12 +369,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T01:00:00.000Z",
-      "filename": "salinity_2025-06-30T01-00-00.000Z.png",
+      "timestamp": "2025-07-15T07:00:00.000Z",
+      "filename": "salinity_2025-07-15T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.25692538637942
+        32.11957707019279
       ],
       "mercator_coordinates": [
         [
@@ -396,12 +396,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T02:00:00.000Z",
-      "filename": "salinity_2025-06-30T02-00-00.000Z.png",
+      "timestamp": "2025-07-15T08:00:00.000Z",
+      "filename": "salinity_2025-07-15T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.269120340632725
+        32.11800223697587
       ],
       "mercator_coordinates": [
         [
@@ -423,12 +423,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T03:00:00.000Z",
-      "filename": "salinity_2025-06-30T03-00-00.000Z.png",
+      "timestamp": "2025-07-15T09:00:00.000Z",
+      "filename": "salinity_2025-07-15T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.280171074476364
+        32.11310261346183
       ],
       "mercator_coordinates": [
         [
@@ -450,12 +450,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T04:00:00.000Z",
-      "filename": "salinity_2025-06-30T04-00-00.000Z.png",
+      "timestamp": "2025-07-15T10:00:00.000Z",
+      "filename": "salinity_2025-07-15T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.298904950442772
+        32.110115236046866
       ],
       "mercator_coordinates": [
         [
@@ -477,12 +477,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T05:00:00.000Z",
-      "filename": "salinity_2025-06-30T05-00-00.000Z.png",
+      "timestamp": "2025-07-15T11:00:00.000Z",
+      "filename": "salinity_2025-07-15T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.318154105188384
+        32.10163306814155
       ],
       "mercator_coordinates": [
         [
@@ -504,12 +504,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T06:00:00.000Z",
-      "filename": "salinity_2025-06-30T06-00-00.000Z.png",
+      "timestamp": "2025-07-15T12:00:00.000Z",
+      "filename": "salinity_2025-07-15T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.344319319300293
+        32.077415272423444
       ],
       "mercator_coordinates": [
         [
@@ -531,12 +531,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T07:00:00.000Z",
-      "filename": "salinity_2025-06-30T07-00-00.000Z.png",
+      "timestamp": "2025-07-15T13:00:00.000Z",
+      "filename": "salinity_2025-07-15T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.35093498069516
+        32.067627056258445
       ],
       "mercator_coordinates": [
         [
@@ -558,12 +558,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T08:00:00.000Z",
-      "filename": "salinity_2025-06-30T08-00-00.000Z.png",
+      "timestamp": "2025-07-15T14:00:00.000Z",
+      "filename": "salinity_2025-07-15T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.366654190240105
+        32.05039440230457
       ],
       "mercator_coordinates": [
         [
@@ -585,12 +585,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T09:00:00.000Z",
-      "filename": "salinity_2025-06-30T09-00-00.000Z.png",
+      "timestamp": "2025-07-15T15:00:00.000Z",
+      "filename": "salinity_2025-07-15T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.380907547539188
+        32.032971244467824
       ],
       "mercator_coordinates": [
         [
@@ -612,12 +612,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T10:00:00.000Z",
-      "filename": "salinity_2025-06-30T10-00-00.000Z.png",
+      "timestamp": "2025-07-15T16:00:00.000Z",
+      "filename": "salinity_2025-07-15T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.41365057634488
+        32.0261130207534
       ],
       "mercator_coordinates": [
         [
@@ -639,12 +639,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T11:00:00.000Z",
-      "filename": "salinity_2025-06-30T11-00-00.000Z.png",
+      "timestamp": "2025-07-15T17:00:00.000Z",
+      "filename": "salinity_2025-07-15T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.445801831700496
+        32.000114136888556
       ],
       "mercator_coordinates": [
         [
@@ -666,12 +666,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T12:00:00.000Z",
-      "filename": "salinity_2025-06-30T12-00-00.000Z.png",
+      "timestamp": "2025-07-15T18:00:00.000Z",
+      "filename": "salinity_2025-07-15T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.45099812275363
+        31.99812970113581
       ],
       "mercator_coordinates": [
         [
@@ -693,12 +693,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T13:00:00.000Z",
-      "filename": "salinity_2025-06-30T13-00-00.000Z.png",
+      "timestamp": "2025-07-15T19:00:00.000Z",
+      "filename": "salinity_2025-07-15T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.468032849617128
+        32.01360906474708
       ],
       "mercator_coordinates": [
         [
@@ -720,12 +720,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T14:00:00.000Z",
-      "filename": "salinity_2025-06-30T14-00-00.000Z.png",
+      "timestamp": "2025-07-15T20:00:00.000Z",
+      "filename": "salinity_2025-07-15T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.46028163218051
+        31.99702533578736
       ],
       "mercator_coordinates": [
         [
@@ -747,12 +747,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T15:00:00.000Z",
-      "filename": "salinity_2025-06-30T15-00-00.000Z.png",
+      "timestamp": "2025-07-15T21:00:00.000Z",
+      "filename": "salinity_2025-07-15T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.456606609312548
+        31.973358483412515
       ],
       "mercator_coordinates": [
         [
@@ -774,12 +774,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T16:00:00.000Z",
-      "filename": "salinity_2025-06-30T16-00-00.000Z.png",
+      "timestamp": "2025-07-15T22:00:00.000Z",
+      "filename": "salinity_2025-07-15T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.46914494739228
+        31.957902407296636
       ],
       "mercator_coordinates": [
         [
@@ -801,12 +801,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T17:00:00.000Z",
-      "filename": "salinity_2025-06-30T17-00-00.000Z.png",
+      "timestamp": "2025-07-15T23:00:00.000Z",
+      "filename": "salinity_2025-07-15T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.454593329488937
+        31.928483048332172
       ],
       "mercator_coordinates": [
         [
@@ -828,12 +828,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T18:00:00.000Z",
-      "filename": "salinity_2025-06-30T18-00-00.000Z.png",
+      "timestamp": "2025-07-16T00:00:00.000Z",
+      "filename": "salinity_2025-07-16T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.435498361941217
+        31.909880788279196
       ],
       "mercator_coordinates": [
         [
@@ -855,12 +855,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T19:00:00.000Z",
-      "filename": "salinity_2025-06-30T19-00-00.000Z.png",
+      "timestamp": "2025-07-16T01:00:00.000Z",
+      "filename": "salinity_2025-07-16T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.441400884788198
+        31.88450140334773
       ],
       "mercator_coordinates": [
         [
@@ -882,12 +882,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T20:00:00.000Z",
-      "filename": "salinity_2025-06-30T20-00-00.000Z.png",
+      "timestamp": "2025-07-16T02:00:00.000Z",
+      "filename": "salinity_2025-07-16T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.433312251568246
+        31.86587594577883
       ],
       "mercator_coordinates": [
         [
@@ -909,12 +909,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T21:00:00.000Z",
-      "filename": "salinity_2025-06-30T21-00-00.000Z.png",
+      "timestamp": "2025-07-16T03:00:00.000Z",
+      "filename": "salinity_2025-07-16T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.426267691505434
+        31.849803334095824
       ],
       "mercator_coordinates": [
         [
@@ -936,12 +936,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T22:00:00.000Z",
-      "filename": "salinity_2025-06-30T22-00-00.000Z.png",
+      "timestamp": "2025-07-16T04:00:00.000Z",
+      "filename": "salinity_2025-07-16T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.417970646138837
+        31.834798909518607
       ],
       "mercator_coordinates": [
         [
@@ -963,12 +963,12 @@
       ]
     },
     {
-      "timestamp": "2025-06-30T23:00:00.000Z",
-      "filename": "salinity_2025-06-30T23-00-00.000Z.png",
+      "timestamp": "2025-07-16T05:00:00.000Z",
+      "filename": "salinity_2025-07-16T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.436313906697865
+        31.8251066429501
       ],
       "mercator_coordinates": [
         [
@@ -990,12 +990,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T00:00:00.000Z",
-      "filename": "salinity_2025-07-01T00-00-00.000Z.png",
+      "timestamp": "2025-07-16T06:00:00.000Z",
+      "filename": "salinity_2025-07-16T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.429473897202485
+        31.812310306299263
       ],
       "mercator_coordinates": [
         [
@@ -1017,12 +1017,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T01:00:00.000Z",
-      "filename": "salinity_2025-07-01T01-00-00.000Z.png",
+      "timestamp": "2025-07-16T07:00:00.000Z",
+      "filename": "salinity_2025-07-16T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.42187348547693
+        31.800182324170347
       ],
       "mercator_coordinates": [
         [
@@ -1044,12 +1044,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T02:00:00.000Z",
-      "filename": "salinity_2025-07-01T02-00-00.000Z.png",
+      "timestamp": "2025-07-16T08:00:00.000Z",
+      "filename": "salinity_2025-07-16T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.42693804863421
+        31.794367015307735
       ],
       "mercator_coordinates": [
         [
@@ -1071,12 +1071,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T03:00:00.000Z",
-      "filename": "salinity_2025-07-01T03-00-00.000Z.png",
+      "timestamp": "2025-07-16T09:00:00.000Z",
+      "filename": "salinity_2025-07-16T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.422546656983418
+        31.78601766851799
       ],
       "mercator_coordinates": [
         [
@@ -1098,12 +1098,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T04:00:00.000Z",
-      "filename": "salinity_2025-07-01T04-00-00.000Z.png",
+      "timestamp": "2025-07-16T10:00:00.000Z",
+      "filename": "salinity_2025-07-16T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.417736511509343
+        31.770683288675162
       ],
       "mercator_coordinates": [
         [
@@ -1125,12 +1125,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T05:00:00.000Z",
-      "filename": "salinity_2025-07-01T05-00-00.000Z.png",
+      "timestamp": "2025-07-16T11:00:00.000Z",
+      "filename": "salinity_2025-07-16T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.424761585847516
+        31.770006023977327
       ],
       "mercator_coordinates": [
         [
@@ -1152,12 +1152,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T06:00:00.000Z",
-      "filename": "salinity_2025-07-01T06-00-00.000Z.png",
+      "timestamp": "2025-07-16T12:00:00.000Z",
+      "filename": "salinity_2025-07-16T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.42260946331298
+        31.738097492380263
       ],
       "mercator_coordinates": [
         [
@@ -1179,12 +1179,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T07:00:00.000Z",
-      "filename": "salinity_2025-07-01T07-00-00.000Z.png",
+      "timestamp": "2025-07-16T13:00:00.000Z",
+      "filename": "salinity_2025-07-16T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.431993546280125
+        31.72731331878928
       ],
       "mercator_coordinates": [
         [
@@ -1206,12 +1206,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T08:00:00.000Z",
-      "filename": "salinity_2025-07-01T08-00-00.000Z.png",
+      "timestamp": "2025-07-16T14:00:00.000Z",
+      "filename": "salinity_2025-07-16T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.436578309898405
+        31.7078344428926
       ],
       "mercator_coordinates": [
         [
@@ -1233,12 +1233,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T09:00:00.000Z",
-      "filename": "salinity_2025-07-01T09-00-00.000Z.png",
+      "timestamp": "2025-07-16T15:00:00.000Z",
+      "filename": "salinity_2025-07-16T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.441775371495787
+        31.690828217996533
       ],
       "mercator_coordinates": [
         [
@@ -1260,12 +1260,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T10:00:00.000Z",
-      "filename": "salinity_2025-07-01T10-00-00.000Z.png",
+      "timestamp": "2025-07-16T16:00:00.000Z",
+      "filename": "salinity_2025-07-16T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.463640530786325
+        31.681175632266342
       ],
       "mercator_coordinates": [
         [
@@ -1287,12 +1287,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T11:00:00.000Z",
-      "filename": "salinity_2025-07-01T11-00-00.000Z.png",
+      "timestamp": "2025-07-16T17:00:00.000Z",
+      "filename": "salinity_2025-07-16T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.47220443132271
+        31.659929191759733
       ],
       "mercator_coordinates": [
         [
@@ -1314,12 +1314,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T12:00:00.000Z",
-      "filename": "salinity_2025-07-01T12-00-00.000Z.png",
+      "timestamp": "2025-07-16T18:00:00.000Z",
+      "filename": "salinity_2025-07-16T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.471554666697163
+        31.65663396609901
       ],
       "mercator_coordinates": [
         [
@@ -1341,12 +1341,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T13:00:00.000Z",
-      "filename": "salinity_2025-07-01T13-00-00.000Z.png",
+      "timestamp": "2025-07-16T19:00:00.000Z",
+      "filename": "salinity_2025-07-16T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.47296147425764
+        31.628669098218943
       ],
       "mercator_coordinates": [
         [
@@ -1368,12 +1368,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T14:00:00.000Z",
-      "filename": "salinity_2025-07-01T14-00-00.000Z.png",
+      "timestamp": "2025-07-16T20:00:00.000Z",
+      "filename": "salinity_2025-07-16T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.46450845989908
+        31.594832892820214
       ],
       "mercator_coordinates": [
         [
@@ -1395,12 +1395,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T15:00:00.000Z",
-      "filename": "salinity_2025-07-01T15-00-00.000Z.png",
+      "timestamp": "2025-07-16T21:00:00.000Z",
+      "filename": "salinity_2025-07-16T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.46225884471285
+        31.586357283249992
       ],
       "mercator_coordinates": [
         [
@@ -1422,12 +1422,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T16:00:00.000Z",
-      "filename": "salinity_2025-07-01T16-00-00.000Z.png",
+      "timestamp": "2025-07-16T22:00:00.000Z",
+      "filename": "salinity_2025-07-16T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.472445303040168
+        31.55983470435726
       ],
       "mercator_coordinates": [
         [
@@ -1449,12 +1449,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T17:00:00.000Z",
-      "filename": "salinity_2025-07-01T17-00-00.000Z.png",
+      "timestamp": "2025-07-16T23:00:00.000Z",
+      "filename": "salinity_2025-07-16T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.491139205529944
+        31.55665217451761
       ],
       "mercator_coordinates": [
         [
@@ -1476,12 +1476,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T18:00:00.000Z",
-      "filename": "salinity_2025-07-01T18-00-00.000Z.png",
+      "timestamp": "2025-07-17T00:00:00.000Z",
+      "filename": "salinity_2025-07-17T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.48710844910467
+        31.533233025121657
       ],
       "mercator_coordinates": [
         [
@@ -1503,12 +1503,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T19:00:00.000Z",
-      "filename": "salinity_2025-07-01T19-00-00.000Z.png",
+      "timestamp": "2025-07-17T01:00:00.000Z",
+      "filename": "salinity_2025-07-17T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.49813017633089
+        31.524620203136404
       ],
       "mercator_coordinates": [
         [
@@ -1530,12 +1530,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T20:00:00.000Z",
-      "filename": "salinity_2025-07-01T20-00-00.000Z.png",
+      "timestamp": "2025-07-17T02:00:00.000Z",
+      "filename": "salinity_2025-07-17T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.519299481104813
+        31.514425899734224
       ],
       "mercator_coordinates": [
         [
@@ -1557,12 +1557,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T21:00:00.000Z",
-      "filename": "salinity_2025-07-01T21-00-00.000Z.png",
+      "timestamp": "2025-07-17T03:00:00.000Z",
+      "filename": "salinity_2025-07-17T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.524941315533333
+        31.507717394794433
       ],
       "mercator_coordinates": [
         [
@@ -1584,12 +1584,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T22:00:00.000Z",
-      "filename": "salinity_2025-07-01T22-00-00.000Z.png",
+      "timestamp": "2025-07-17T04:00:00.000Z",
+      "filename": "salinity_2025-07-17T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.529436286424172
+        31.517027741929425
       ],
       "mercator_coordinates": [
         [
@@ -1611,12 +1611,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-01T23:00:00.000Z",
-      "filename": "salinity_2025-07-01T23-00-00.000Z.png",
+      "timestamp": "2025-07-17T05:00:00.000Z",
+      "filename": "salinity_2025-07-17T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.54635553424729
+        31.524246819177087
       ],
       "mercator_coordinates": [
         [
@@ -1638,12 +1638,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T00:00:00.000Z",
-      "filename": "salinity_2025-07-02T00-00-00.000Z.png",
+      "timestamp": "2025-07-17T06:00:00.000Z",
+      "filename": "salinity_2025-07-17T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.56946487759184
+        31.554918661781876
       ],
       "mercator_coordinates": [
         [
@@ -1665,12 +1665,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T01:00:00.000Z",
-      "filename": "salinity_2025-07-02T01-00-00.000Z.png",
+      "timestamp": "2025-07-17T07:00:00.000Z",
+      "filename": "salinity_2025-07-17T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.573278734591735
+        31.57996407823852
       ],
       "mercator_coordinates": [
         [
@@ -1692,12 +1692,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T02:00:00.000Z",
-      "filename": "salinity_2025-07-02T02-00-00.000Z.png",
+      "timestamp": "2025-07-17T08:00:00.000Z",
+      "filename": "salinity_2025-07-17T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.571657339641657
+        31.57761571622127
       ],
       "mercator_coordinates": [
         [
@@ -1719,12 +1719,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T03:00:00.000Z",
-      "filename": "salinity_2025-07-02T03-00-00.000Z.png",
+      "timestamp": "2025-07-17T09:00:00.000Z",
+      "filename": "salinity_2025-07-17T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.581601666034807
+        31.596146839111412
       ],
       "mercator_coordinates": [
         [
@@ -1746,12 +1746,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T04:00:00.000Z",
-      "filename": "salinity_2025-07-02T04-00-00.000Z.png",
+      "timestamp": "2025-07-17T10:00:00.000Z",
+      "filename": "salinity_2025-07-17T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.584432681991483
+        31.59381818676617
       ],
       "mercator_coordinates": [
         [
@@ -1773,12 +1773,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T05:00:00.000Z",
-      "filename": "salinity_2025-07-02T05-00-00.000Z.png",
+      "timestamp": "2025-07-17T11:00:00.000Z",
+      "filename": "salinity_2025-07-17T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.582123531696944
+        31.596570272174926
       ],
       "mercator_coordinates": [
         [
@@ -1800,12 +1800,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T06:00:00.000Z",
-      "filename": "salinity_2025-07-02T06-00-00.000Z.png",
+      "timestamp": "2025-07-17T12:00:00.000Z",
+      "filename": "salinity_2025-07-17T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.58566333372517
+        31.56870005414316
       ],
       "mercator_coordinates": [
         [
@@ -1827,12 +1827,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T07:00:00.000Z",
-      "filename": "salinity_2025-07-02T07-00-00.000Z.png",
+      "timestamp": "2025-07-17T13:00:00.000Z",
+      "filename": "salinity_2025-07-17T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.587923683282536
+        31.555309101308357
       ],
       "mercator_coordinates": [
         [
@@ -1854,12 +1854,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T08:00:00.000Z",
-      "filename": "salinity_2025-07-02T08-00-00.000Z.png",
+      "timestamp": "2025-07-17T14:00:00.000Z",
+      "filename": "salinity_2025-07-17T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.586317604533345
+        31.54178728561421
       ],
       "mercator_coordinates": [
         [
@@ -1881,12 +1881,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T09:00:00.000Z",
-      "filename": "salinity_2025-07-02T09-00-00.000Z.png",
+      "timestamp": "2025-07-17T15:00:00.000Z",
+      "filename": "salinity_2025-07-17T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.599463163715395
+        31.52073407315271
       ],
       "mercator_coordinates": [
         [
@@ -1908,12 +1908,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T10:00:00.000Z",
-      "filename": "salinity_2025-07-02T10-00-00.000Z.png",
+      "timestamp": "2025-07-17T16:00:00.000Z",
+      "filename": "salinity_2025-07-17T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.5847281509771
+        31.50886431955165
       ],
       "mercator_coordinates": [
         [
@@ -1935,12 +1935,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T11:00:00.000Z",
-      "filename": "salinity_2025-07-02T11-00-00.000Z.png",
+      "timestamp": "2025-07-17T17:00:00.000Z",
+      "filename": "salinity_2025-07-17T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.578836490828362
+        31.491000894127033
       ],
       "mercator_coordinates": [
         [
@@ -1962,12 +1962,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T12:00:00.000Z",
-      "filename": "salinity_2025-07-02T12-00-00.000Z.png",
+      "timestamp": "2025-07-17T18:00:00.000Z",
+      "filename": "salinity_2025-07-17T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.577075693242854
+        31.464112311455583
       ],
       "mercator_coordinates": [
         [
@@ -1989,12 +1989,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T13:00:00.000Z",
-      "filename": "salinity_2025-07-02T13-00-00.000Z.png",
+      "timestamp": "2025-07-17T19:00:00.000Z",
+      "filename": "salinity_2025-07-17T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.56829066232807
+        31.465464255022454
       ],
       "mercator_coordinates": [
         [
@@ -2016,12 +2016,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T14:00:00.000Z",
-      "filename": "salinity_2025-07-02T14-00-00.000Z.png",
+      "timestamp": "2025-07-17T20:00:00.000Z",
+      "filename": "salinity_2025-07-17T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.559097015103585
+        31.460841616728114
       ],
       "mercator_coordinates": [
         [
@@ -2043,12 +2043,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T15:00:00.000Z",
-      "filename": "salinity_2025-07-02T15-00-00.000Z.png",
+      "timestamp": "2025-07-17T21:00:00.000Z",
+      "filename": "salinity_2025-07-17T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.55626741997896
+        31.453987335496663
       ],
       "mercator_coordinates": [
         [
@@ -2070,12 +2070,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T16:00:00.000Z",
-      "filename": "salinity_2025-07-02T16-00-00.000Z.png",
+      "timestamp": "2025-07-17T22:00:00.000Z",
+      "filename": "salinity_2025-07-17T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.557658450378494
+        31.451662251750445
       ],
       "mercator_coordinates": [
         [
@@ -2097,12 +2097,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T17:00:00.000Z",
-      "filename": "salinity_2025-07-02T17-00-00.000Z.png",
+      "timestamp": "2025-07-17T23:00:00.000Z",
+      "filename": "salinity_2025-07-17T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.565438803260736
+        31.45264195825784
       ],
       "mercator_coordinates": [
         [
@@ -2124,12 +2124,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T18:00:00.000Z",
-      "filename": "salinity_2025-07-02T18-00-00.000Z.png",
+      "timestamp": "2025-07-18T00:00:00.000Z",
+      "filename": "salinity_2025-07-18T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.578728326257632
+        31.46121893872776
       ],
       "mercator_coordinates": [
         [
@@ -2151,12 +2151,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T19:00:00.000Z",
-      "filename": "salinity_2025-07-02T19-00-00.000Z.png",
+      "timestamp": "2025-07-18T01:00:00.000Z",
+      "filename": "salinity_2025-07-18T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.58807747348139
+        31.468944791579066
       ],
       "mercator_coordinates": [
         [
@@ -2178,12 +2178,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T20:00:00.000Z",
-      "filename": "salinity_2025-07-02T20-00-00.000Z.png",
+      "timestamp": "2025-07-18T02:00:00.000Z",
+      "filename": "salinity_2025-07-18T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.601786787164848
+        31.452771521090593
       ],
       "mercator_coordinates": [
         [
@@ -2205,12 +2205,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T21:00:00.000Z",
-      "filename": "salinity_2025-07-02T21-00-00.000Z.png",
+      "timestamp": "2025-07-18T03:00:00.000Z",
+      "filename": "salinity_2025-07-18T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.603710910211674
+        31.44296359295804
       ],
       "mercator_coordinates": [
         [
@@ -2232,12 +2232,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T22:00:00.000Z",
-      "filename": "salinity_2025-07-02T22-00-00.000Z.png",
+      "timestamp": "2025-07-18T04:00:00.000Z",
+      "filename": "salinity_2025-07-18T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.614315060042482
+        31.452116762529343
       ],
       "mercator_coordinates": [
         [
@@ -2259,12 +2259,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-02T23:00:00.000Z",
-      "filename": "salinity_2025-07-02T23-00-00.000Z.png",
+      "timestamp": "2025-07-18T05:00:00.000Z",
+      "filename": "salinity_2025-07-18T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.62351804885019
+        31.44480743498439
       ],
       "mercator_coordinates": [
         [
@@ -2286,12 +2286,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T00:00:00.000Z",
-      "filename": "salinity_2025-07-03T00-00-00.000Z.png",
+      "timestamp": "2025-07-18T06:00:00.000Z",
+      "filename": "salinity_2025-07-18T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.6217294160599
+        31.43862120163547
       ],
       "mercator_coordinates": [
         [
@@ -2313,12 +2313,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T01:00:00.000Z",
-      "filename": "salinity_2025-07-03T01-00-00.000Z.png",
+      "timestamp": "2025-07-18T07:00:00.000Z",
+      "filename": "salinity_2025-07-18T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.609851301676965
+        31.439839724025806
       ],
       "mercator_coordinates": [
         [
@@ -2340,12 +2340,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T02:00:00.000Z",
-      "filename": "salinity_2025-07-03T02-00-00.000Z.png",
+      "timestamp": "2025-07-18T08:00:00.000Z",
+      "filename": "salinity_2025-07-18T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.585631253773393
+        31.44131352805832
       ],
       "mercator_coordinates": [
         [
@@ -2367,12 +2367,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T03:00:00.000Z",
-      "filename": "salinity_2025-07-03T03-00-00.000Z.png",
+      "timestamp": "2025-07-18T09:00:00.000Z",
+      "filename": "salinity_2025-07-18T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.573003387928146
+        31.435673943956488
       ],
       "mercator_coordinates": [
         [
@@ -2394,12 +2394,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T04:00:00.000Z",
-      "filename": "salinity_2025-07-03T04-00-00.000Z.png",
+      "timestamp": "2025-07-18T10:00:00.000Z",
+      "filename": "salinity_2025-07-18T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.554343573595272
+        31.43529757069136
       ],
       "mercator_coordinates": [
         [
@@ -2421,12 +2421,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T05:00:00.000Z",
-      "filename": "salinity_2025-07-03T05-00-00.000Z.png",
+      "timestamp": "2025-07-18T11:00:00.000Z",
+      "filename": "salinity_2025-07-18T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.528267272203777
+        31.422100298464137
       ],
       "mercator_coordinates": [
         [
@@ -2448,12 +2448,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T06:00:00.000Z",
-      "filename": "salinity_2025-07-03T06-00-00.000Z.png",
+      "timestamp": "2025-07-18T12:00:00.000Z",
+      "filename": "salinity_2025-07-18T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.52091025695006
+        31.41503812376361
       ],
       "mercator_coordinates": [
         [
@@ -2475,12 +2475,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T07:00:00.000Z",
-      "filename": "salinity_2025-07-03T07-00-00.000Z.png",
+      "timestamp": "2025-07-18T13:00:00.000Z",
+      "filename": "salinity_2025-07-18T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.546347746506505
+        31.400448667628716
       ],
       "mercator_coordinates": [
         [
@@ -2502,12 +2502,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T08:00:00.000Z",
-      "filename": "salinity_2025-07-03T08-00-00.000Z.png",
+      "timestamp": "2025-07-18T14:00:00.000Z",
+      "filename": "salinity_2025-07-18T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.55658438633679
+        31.367957942605994
       ],
       "mercator_coordinates": [
         [
@@ -2529,12 +2529,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T09:00:00.000Z",
-      "filename": "salinity_2025-07-03T09-00-00.000Z.png",
+      "timestamp": "2025-07-18T15:00:00.000Z",
+      "filename": "salinity_2025-07-18T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.594226048053052
+        31.348881871216673
       ],
       "mercator_coordinates": [
         [
@@ -2556,12 +2556,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T10:00:00.000Z",
-      "filename": "salinity_2025-07-03T10-00-00.000Z.png",
+      "timestamp": "2025-07-18T16:00:00.000Z",
+      "filename": "salinity_2025-07-18T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.618492532079095
+        31.32125641264284
       ],
       "mercator_coordinates": [
         [
@@ -2583,12 +2583,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T11:00:00.000Z",
-      "filename": "salinity_2025-07-03T11-00-00.000Z.png",
+      "timestamp": "2025-07-18T17:00:00.000Z",
+      "filename": "salinity_2025-07-18T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.66755490296389
+        31.297674607700415
       ],
       "mercator_coordinates": [
         [
@@ -2610,12 +2610,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T12:00:00.000Z",
-      "filename": "salinity_2025-07-03T12-00-00.000Z.png",
+      "timestamp": "2025-07-18T18:00:00.000Z",
+      "filename": "salinity_2025-07-18T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.687172931111206
+        31.28808734098226
       ],
       "mercator_coordinates": [
         [
@@ -2637,12 +2637,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T13:00:00.000Z",
-      "filename": "salinity_2025-07-03T13-00-00.000Z.png",
+      "timestamp": "2025-07-18T19:00:00.000Z",
+      "filename": "salinity_2025-07-18T19-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.708109294559293
+        31.260000021208125
       ],
       "mercator_coordinates": [
         [
@@ -2664,12 +2664,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T14:00:00.000Z",
-      "filename": "salinity_2025-07-03T14-00-00.000Z.png",
+      "timestamp": "2025-07-18T20:00:00.000Z",
+      "filename": "salinity_2025-07-18T20-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.70918487220832
+        31.25383093416203
       ],
       "mercator_coordinates": [
         [
@@ -2691,12 +2691,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T15:00:00.000Z",
-      "filename": "salinity_2025-07-03T15-00-00.000Z.png",
+      "timestamp": "2025-07-18T21:00:00.000Z",
+      "filename": "salinity_2025-07-18T21-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.723119454479782
+        31.254267447640885
       ],
       "mercator_coordinates": [
         [
@@ -2718,12 +2718,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T16:00:00.000Z",
-      "filename": "salinity_2025-07-03T16-00-00.000Z.png",
+      "timestamp": "2025-07-18T22:00:00.000Z",
+      "filename": "salinity_2025-07-18T22-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.72570814257178
+        31.25431933152324
       ],
       "mercator_coordinates": [
         [
@@ -2745,12 +2745,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T17:00:00.000Z",
-      "filename": "salinity_2025-07-03T17-00-00.000Z.png",
+      "timestamp": "2025-07-18T23:00:00.000Z",
+      "filename": "salinity_2025-07-18T23-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.76200554712617
+        31.2439038243221
       ],
       "mercator_coordinates": [
         [
@@ -2772,12 +2772,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T18:00:00.000Z",
-      "filename": "salinity_2025-07-03T18-00-00.000Z.png",
+      "timestamp": "2025-07-19T00:00:00.000Z",
+      "filename": "salinity_2025-07-19T00-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.79194105650801
+        31.246881262453478
       ],
       "mercator_coordinates": [
         [
@@ -2799,12 +2799,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T19:00:00.000Z",
-      "filename": "salinity_2025-07-03T19-00-00.000Z.png",
+      "timestamp": "2025-07-19T01:00:00.000Z",
+      "filename": "salinity_2025-07-19T01-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.82123321497198
+        31.242967317728173
       ],
       "mercator_coordinates": [
         [
@@ -2826,12 +2826,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T20:00:00.000Z",
-      "filename": "salinity_2025-07-03T20-00-00.000Z.png",
+      "timestamp": "2025-07-19T02:00:00.000Z",
+      "filename": "salinity_2025-07-19T02-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.851241027160665
+        31.223833390568362
       ],
       "mercator_coordinates": [
         [
@@ -2853,12 +2853,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T21:00:00.000Z",
-      "filename": "salinity_2025-07-03T21-00-00.000Z.png",
+      "timestamp": "2025-07-19T03:00:00.000Z",
+      "filename": "salinity_2025-07-19T03-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.88282193985448
+        31.219139011153683
       ],
       "mercator_coordinates": [
         [
@@ -2880,12 +2880,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T22:00:00.000Z",
-      "filename": "salinity_2025-07-03T22-00-00.000Z.png",
+      "timestamp": "2025-07-19T04:00:00.000Z",
+      "filename": "salinity_2025-07-19T04-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.8992272026331
+        31.192112702517313
       ],
       "mercator_coordinates": [
         [
@@ -2907,12 +2907,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-03T23:00:00.000Z",
-      "filename": "salinity_2025-07-03T23-00-00.000Z.png",
+      "timestamp": "2025-07-19T05:00:00.000Z",
+      "filename": "salinity_2025-07-19T05-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.90914842508407
+        31.170098764940143
       ],
       "mercator_coordinates": [
         [
@@ -2934,12 +2934,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T00:00:00.000Z",
-      "filename": "salinity_2025-07-04T00-00-00.000Z.png",
+      "timestamp": "2025-07-19T06:00:00.000Z",
+      "filename": "salinity_2025-07-19T06-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.90666455246466
+        31.16391417073722
       ],
       "mercator_coordinates": [
         [
@@ -2961,12 +2961,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T01:00:00.000Z",
-      "filename": "salinity_2025-07-04T01-00-00.000Z.png",
+      "timestamp": "2025-07-19T07:00:00.000Z",
+      "filename": "salinity_2025-07-19T07-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.899862894510996
+        31.153800797235853
       ],
       "mercator_coordinates": [
         [
@@ -2988,12 +2988,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T02:00:00.000Z",
-      "filename": "salinity_2025-07-04T02-00-00.000Z.png",
+      "timestamp": "2025-07-19T08:00:00.000Z",
+      "filename": "salinity_2025-07-19T08-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.888324123153296
+        31.14729261274
       ],
       "mercator_coordinates": [
         [
@@ -3015,12 +3015,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T03:00:00.000Z",
-      "filename": "salinity_2025-07-04T03-00-00.000Z.png",
+      "timestamp": "2025-07-19T09:00:00.000Z",
+      "filename": "salinity_2025-07-19T09-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.867626901134045
+        31.12892495050781
       ],
       "mercator_coordinates": [
         [
@@ -3042,12 +3042,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T04:00:00.000Z",
-      "filename": "salinity_2025-07-04T04-00-00.000Z.png",
+      "timestamp": "2025-07-19T10:00:00.000Z",
+      "filename": "salinity_2025-07-19T10-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.85194668576369
+        31.13207107008125
       ],
       "mercator_coordinates": [
         [
@@ -3069,12 +3069,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T05:00:00.000Z",
-      "filename": "salinity_2025-07-04T05-00-00.000Z.png",
+      "timestamp": "2025-07-19T11:00:00.000Z",
+      "filename": "salinity_2025-07-19T11-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.828764160978825
+        31.139839299050134
       ],
       "mercator_coordinates": [
         [
@@ -3096,12 +3096,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T06:00:00.000Z",
-      "filename": "salinity_2025-07-04T06-00-00.000Z.png",
+      "timestamp": "2025-07-19T12:00:00.000Z",
+      "filename": "salinity_2025-07-19T12-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.818063697677506
+        31.148164484870208
       ],
       "mercator_coordinates": [
         [
@@ -3123,12 +3123,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T07:00:00.000Z",
-      "filename": "salinity_2025-07-04T07-00-00.000Z.png",
+      "timestamp": "2025-07-19T13:00:00.000Z",
+      "filename": "salinity_2025-07-19T13-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.804290050928902
+        31.1719602047689
       ],
       "mercator_coordinates": [
         [
@@ -3150,12 +3150,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T08:00:00.000Z",
-      "filename": "salinity_2025-07-04T08-00-00.000Z.png",
+      "timestamp": "2025-07-19T14:00:00.000Z",
+      "filename": "salinity_2025-07-19T14-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.796865546651922
+        31.18914852073523
       ],
       "mercator_coordinates": [
         [
@@ -3177,12 +3177,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T09:00:00.000Z",
-      "filename": "salinity_2025-07-04T09-00-00.000Z.png",
+      "timestamp": "2025-07-19T15:00:00.000Z",
+      "filename": "salinity_2025-07-19T15-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.81054720240067
+        31.216565505709212
       ],
       "mercator_coordinates": [
         [
@@ -3204,12 +3204,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T10:00:00.000Z",
-      "filename": "salinity_2025-07-04T10-00-00.000Z.png",
+      "timestamp": "2025-07-19T16:00:00.000Z",
+      "filename": "salinity_2025-07-19T16-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.81747833123556
+        31.24628070917926
       ],
       "mercator_coordinates": [
         [
@@ -3231,12 +3231,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T11:00:00.000Z",
-      "filename": "salinity_2025-07-04T11-00-00.000Z.png",
+      "timestamp": "2025-07-19T17:00:00.000Z",
+      "filename": "salinity_2025-07-19T17-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.82717887680489
+        31.341835163976736
       ],
       "mercator_coordinates": [
         [
@@ -3258,12 +3258,12 @@
       ]
     },
     {
-      "timestamp": "2025-07-04T12:00:00.000Z",
-      "filename": "salinity_2025-07-04T12-00-00.000Z.png",
+      "timestamp": "2025-07-19T18:00:00.000Z",
+      "filename": "salinity_2025-07-19T18-00-00.000Z.png",
       "data_points": 2363,
       "value_range": [
         0.0,
-        30.849187078125286
+        31.45178227911546
       ],
       "mercator_coordinates": [
         [

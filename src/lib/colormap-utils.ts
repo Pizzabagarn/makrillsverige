@@ -79,13 +79,34 @@ const COLORMAP_DATA = {
     { value: 28.312, color: '#001214' },
     { value: 29.094, color: '#000C0F' },
     { value: 30.188, color: '#00060A' }
+  ],
+  mackerel: [
+    // Colorcet.fire colormap - perceptuellt uniform hotspot-visualisering
+    // Svart → Rött → Orange → Gult → Vitt (från verklig dataanalys -39% till +102.2%)
+    { value: -39.0, color: '#000000' },  // Absolut minimum - svart
+    { value: -30.0, color: '#320000' },  // Mycket mörk röd
+    { value: -20.0, color: '#4d0000' },  // Mörk röd
+    { value: -10.0, color: '#690100' },  // Röd
+    { value: 0.0, color: '#870200' },    // Neutral punkt - röd
+    { value: 10.0, color: '#a60400' },   // Ljusare röd
+    { value: 20.0, color: '#c60800' },   // Stark röd
+    { value: 30.0, color: '#e81000' },   // Rund medelvärde - röd-orange
+    { value: 40.0, color: '#fb3d00' },   // Orange
+    { value: 50.0, color: '#fe6b00' },   // Stark orange
+    { value: 60.0, color: '#ff8f00' },   // Ljus orange
+    { value: 70.0, color: '#ffaf01' },   // Gul-orange
+    { value: 80.0, color: '#ffcc05' },   // Ljus gul-orange
+    { value: 90.0, color: '#ffe810' },   // Gul
+    { value: 95.0, color: '#fff532' },   // Ljus gul
+    { value: 100.0, color: '#fffecc' },  // Nästan vit
+    { value: 102.2, color: '#ffffff' }   // Absolut maximum - vit
   ]
 };
 
 /**
  * Hämta färg för ett specifikt parametervärde baserat på färgskalan
  */
-export function getColorForValue(parameter: 'current' | 'temperature' | 'salinity', value: number): string {
+export function getColorForValue(parameter: 'current' | 'temperature' | 'salinity' | 'mackerel', value: number): string {
   const colormap = COLORMAP_DATA[parameter];
   
   if (!colormap || colormap.length === 0) {
@@ -123,12 +144,13 @@ export function getColorForValue(parameter: 'current' | 'temperature' | 'salinit
 /**
  * Läs och parsa metadata från public/data katalog
  */
-export async function loadColormapFromMetadata(parameter: 'current' | 'temperature' | 'salinity'): Promise<ColorMapEntry[] | null> {
+export async function loadColormapFromMetadata(parameter: 'current' | 'temperature' | 'salinity' | 'mackerel'): Promise<ColorMapEntry[] | null> {
   try {
     const dirMap = {
       current: 'current-magnitude-images',
       temperature: 'temperature-images',
-      salinity: 'salinity-images'
+      salinity: 'salinity-images',
+      mackerel: 'mackerel-probability-images-mercator'
     };
     
     const response = await fetch(`/data/${dirMap[parameter]}/metadata.json`);

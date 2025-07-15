@@ -7,3 +7,4 @@ Pillow>=8.0.0
 scikit-learn>=1.0.0
 pyproj>=3.0.0
 argparse 
+colorcet>=3.0.0 

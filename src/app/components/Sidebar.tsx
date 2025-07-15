@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import ClockKnob from './ClockKnob';
 import { getLayoutType, type LayoutType } from '../../lib/layoutUtils';
 import { useImageLayer, type ImageLayerType } from '../context/ImageLayerContext';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SidebarProps {
   isHamburgerMenu?: boolean;
@@ -25,6 +26,7 @@ export default function Sidebar({
   const [showVectorsInfo, setShowVectorsInfo] = useState(false);
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const { activeLayer, setActiveLayer } = useImageLayer();
 
@@ -49,6 +51,7 @@ export default function Sidebar({
   const isMobile = isMobilePortrait || isMobileLandscape; // Only small mobile orientations
   const isTablet = layoutType === 'tablet';
   const isMobileOrTablet = isMobile || isTablet;
+  const isDesktop = layoutType === 'desktop';
   
   // Responsiv styling baserat på om det är hamburgermenyn eller vanlig sidebar
   const getResponsiveStyles = () => {
@@ -147,10 +150,32 @@ export default function Sidebar({
           <circle cx="18" cy="19" r="1"/>
         </svg>
       ),
-              description: 'Salthalt från 0 g/kg (röd) till 30 g/kg (mörkblå). Östersjön har låg salthalt (7-15 g/kg).',
+      description: 'Salthalt från 0 g/kg (röd) till 30 g/kg (mörkblå). Östersjön har låg salthalt (7-15 g/kg).',
       color: 'amber'
+    },
+    mackerel: {
+      name: 'Makrillsannolikhet',
+      icon: (
+        <div className="w-3 h-3 mr-2 bg-gradient-to-r from-black via-gray-600 via-blue-500 via-cyan-400 via-yellow-400 to-orange-500 rounded-full border border-white/20"></div>
+      ),
+      description: 'Sannolikhet för makrill från -39% (svart) till 102% (orange hotspot). Vetenskapligt optimerad för att framhäva hotspots som lyser upp i mörkret.',
+      color: 'orange'
+    },
+    vectors: {
+      name: 'Strömpilar',
+      icon: (
+        <svg className="w-3 h-3 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      ),
+      description: 'Strömpilar visar riktning och styrka för vattenströmmar. Pilarna pekar i strömriktningen.',
+      color: 'white'
     }
   };
+
+  // Hitta aktivt lager för dropdown
+  const activeLayerConfig = activeLayer ? imageLayerConfigs[activeLayer] : 
+    (showCurrentVectors ? imageLayerConfigs.vectors : null);
   
   return (
     <>
@@ -170,178 +195,211 @@ export default function Sidebar({
           </p>
         )}
 
-          {/* KARTLAGER - nu huvudinnehållet istället för meny */}
+          {/* KARTLAGER */}
           {onToggleCurrentVectors && (
             <div className="space-y-3">
               <h2 className={`font-semibold text-white/95 ${isHamburgerMenu ? 'text-sm' : 'text-base'}`}>
                 Kartlager
               </h2>
               
-              {/* Bildlager - Toggle button style */}
-              <div className="space-y-2">
-                {(Object.keys(imageLayerConfigs) as ImageLayerType[]).map((layer) => {
-                  if (layer === null) return null;
-                  const config = imageLayerConfigs[layer];
-                  const isActive = activeLayer === layer;
-                  
-                  return (
-                    <div key={layer} className={`backdrop-blur-md bg-white/5 border border-white/10 rounded-lg shadow-lg ${
-                      (layoutType === 'desktop' || layoutType === 'tabletLandscape') ? 'p-1.5' : 'p-2'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          {/* Info-ikon på vänster sida för mobil */}
-                          {isMobileOrTablet && (
-                            <button
-                              onClick={() => handleImageLayerInfoClick(layer)}
-                              className="mr-2 p-1 hover:bg-white/20 rounded-full transition-all duration-200"
-                            >
-                              <svg className="w-3 h-3 text-white/70" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                              </svg>
-                            </button>
-                          )}
-                          
-                          <span 
-                            className={`text-white/90 flex items-center ${isHamburgerMenu ? 'text-xs' : 'text-sm'} ${!isMobileOrTablet ? 'cursor-help' : ''}`}
-                            onMouseEnter={!isMobileOrTablet ? (e) => handleTooltipMouseEnter(layer, e) : undefined}
-                            onMouseLeave={!isMobileOrTablet ? handleTooltipMouseLeave : undefined}
-                          >
-                            {config.icon}
-                            {config.name}
-                          </span>
-                        </div>
-                        
-                        {/* Radio button style */}
-                        <button
-                          onClick={() => setActiveLayer(isActive ? null : layer)}
-                          className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg border-2 ${
-                            isActive 
-                              ? 'border-white bg-white/20 shadow-white/30' 
-                              : 'border-gray-500 bg-transparent shadow-gray-600/20'
-                          } hover:scale-105 active:scale-95`}
-                        >
-                          {isActive && (
-                            <div className={`w-2 h-2 rounded-full bg-white`}></div>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Strömpilar toggle - nu samma som andra lager */}
-                <div className={`backdrop-blur-md bg-white/5 border border-white/10 rounded-lg shadow-lg ${
-                  (layoutType === 'desktop' || layoutType === 'tabletLandscape') ? 'p-1.5' : 'p-2'
-                }`}>
-                  <div className="flex items-center justify-between">
+              {/* Desktop: Dropdown-meny för bildlager */}
+              {isDesktop && !isHamburgerMenu && (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full backdrop-blur-md bg-white/10 border border-white/20 rounded-lg shadow-lg p-3 flex items-center justify-between hover:bg-white/15 transition-all duration-200"
+                  >
                     <div className="flex items-center">
-                      {/* Info-ikon på vänster sida för mobil */}
-                      {isMobileOrTablet && (
-                        <button
-                          onClick={handleVectorsInfoClick}
-                          className="mr-2 p-1 hover:bg-white/20 rounded-full transition-all duration-200"
-                        >
-                          <svg className="w-3 h-3 text-white/70" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                        </button>
+                      {activeLayerConfig ? (
+                        <>
+                          {activeLayerConfig.icon}
+                          <span className="text-sm font-medium">{activeLayerConfig.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-3 h-3 mr-2 bg-gray-400 rounded-full"></div>
+                          <span className="text-sm font-medium">Välj lager</span>
+                        </>
                       )}
-                      
-                      <span 
-                        className={`text-white/90 flex items-center ${isHamburgerMenu ? 'text-xs' : 'text-sm'} ${!isMobileOrTablet ? 'cursor-help' : ''}`}
-                        onMouseEnter={!isMobileOrTablet ? (e) => handleTooltipMouseEnter('vectors', e) : undefined}
-                        onMouseLeave={!isMobileOrTablet ? handleTooltipMouseLeave : undefined}
-                      >
-                        <svg className="w-2.5 h-2.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          <path fillRule="evenodd" d="M3 10a1 1 0 011-1h10a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                        </svg>         
-                        Strömpilar
-                      </span>
                     </div>
-                    
-                    <button
-                      onClick={() => {
-                        onToggleCurrentVectors(!showCurrentVectors);
-                      }}
-                      className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg border-2 ${
-                        showCurrentVectors 
-                          ? 'border-white bg-white/20 shadow-white/30' 
-                          : 'border-gray-500 bg-transparent shadow-gray-600/20'
-                      } hover:scale-105 active:scale-95`}
-                    >
-                      {showCurrentVectors && (
-                        <div className={`w-2 h-2 rounded-full bg-white`}></div>
-                      )}
-                    </button>
-                  </div>
+                    {isDropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                  
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 backdrop-blur-md bg-white/10 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                      {/* Inget lager aktivt */}
+                      <button
+                        onClick={() => {
+                          setActiveLayer(null);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-white/15 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                          activeLayer === null ? 'bg-white/20' : ''
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 mr-2 bg-gray-400 rounded-full"></div>
+                          <span>Inget lager</span>
+                        </div>
+                      </button>
+                      
+                      {/* Alla tillgängliga lager */}
+                      {(Object.keys(imageLayerConfigs) as (keyof typeof imageLayerConfigs)[]).map((layer) => {
+                        if (layer === null) return null;
+                        const config = imageLayerConfigs[layer];
+                        const isActive = layer === 'vectors' ? showCurrentVectors : activeLayer === layer;
+                        
+                        return (
+                          <button
+                            key={layer}
+                            onClick={() => {
+                              if (layer === 'vectors') {
+                                // Toggle current vectors
+                                if (onToggleCurrentVectors) {
+                                  onToggleCurrentVectors(!showCurrentVectors);
+                                }
+                              } else {
+                                // Handle regular image layers
+                                const imageLayer = layer as ImageLayerType;
+                                setActiveLayer(isActive ? null : imageLayer);
+                              }
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-white/15 transition-colors last:rounded-b-lg ${
+                              isActive ? 'bg-white/20' : ''
+                            }`}
+                            title={config.description}
+                          >
+                            <div className="flex items-center">
+                              {config.icon}
+                              <span>{config.name}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+              
+              {/* Mobil/Tablet: Ursprunglig layout med alla lager synliga */}
+              {(isMobileOrTablet || isHamburgerMenu) && (
+                <div className="space-y-2">
+                  {(Object.keys(imageLayerConfigs) as (keyof typeof imageLayerConfigs)[]).map((layer) => {
+                    if (layer === null) return null;
+                    const config = imageLayerConfigs[layer];
+                    const isActive = layer === 'vectors' ? showCurrentVectors : activeLayer === layer;
+                    
+                    return (
+                      <div key={layer} className={`backdrop-blur-md bg-white/5 border border-white/10 rounded-lg shadow-lg ${
+                        (layoutType === 'desktop' || layoutType === 'tabletLandscape') ? 'p-1.5' : 'p-2'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            {/* Info-ikon på vänster sida för mobil */}
+                            {isMobileOrTablet && (
+                              <button
+                                onClick={() => layer === 'vectors' ? handleVectorsInfoClick() : handleImageLayerInfoClick(layer)}
+                                className="mr-2 p-1 hover:bg-white/20 rounded-full transition-all duration-200"
+                              >
+                                <svg className="w-3 h-3 text-white/70" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
+                            
+                            <span 
+                              className={`text-white/90 flex items-center ${isHamburgerMenu ? 'text-xs' : 'text-sm'} ${!isMobileOrTablet ? 'cursor-help' : ''}`}
+                              onMouseEnter={!isMobileOrTablet ? (e) => handleTooltipMouseEnter(layer, e) : undefined}
+                              onMouseLeave={!isMobileOrTablet ? handleTooltipMouseLeave : undefined}
+                            >
+                              {config.icon}
+                              {config.name}
+                            </span>
+                          </div>
+                          
+                          {/* Radio button style */}
+                          <button
+                            onClick={() => {
+                              if (layer === 'vectors') {
+                                // Toggle current vectors
+                                if (onToggleCurrentVectors) {
+                                  onToggleCurrentVectors(!showCurrentVectors);
+                                }
+                              } else {
+                                // Handle regular image layers
+                                const imageLayer = layer as ImageLayerType;
+                                setActiveLayer(isActive ? null : imageLayer);
+                              }
+                            }}
+                            className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg border-2 ${
+                              isActive 
+                                ? 'border-white bg-white/20 shadow-white/30' 
+                                : 'border-gray-500 bg-transparent shadow-gray-600/20'
+                            } hover:scale-105 active:scale-95`}
+                          >
+                            {isActive && (
+                              <div className={`w-2 h-2 rounded-full bg-white`}></div>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
-      </div>
-
-      {/* Clock - dölj för små mobila lägen och hamburgermenyn */}
-      {styles.showClock && !isMobile && (
-          <div className={`${(isMobileLandscape || isTabletLandscape) ? 'mt-2' : 'mt-6'}`}>
-          <ClockKnob />
         </div>
-      )}
         
-        {/* Mobile Toast Notifications - fixed positioned */}
-        {isMobileOrTablet && (showImageLayerInfo || showVectorsInfo) && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] max-w-sm mx-4">
-            <div className="bg-black/90 text-white text-sm rounded-lg p-4 shadow-2xl border border-white/20 backdrop-blur-sm">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  {showImageLayerInfo && showImageLayerInfo in imageLayerConfigs && (
-                    <div className="flex items-start space-x-2">
-                      {imageLayerConfigs[showImageLayerInfo].icon}
-                      <div>
-                        <p className="font-medium mb-1">{imageLayerConfigs[showImageLayerInfo].name}</p>
-                        <p className="text-xs text-white/80 leading-relaxed">
-                          {imageLayerConfigs[showImageLayerInfo].description}
-                        </p>
-                      </div>
+        {/* KLOCKA - längst ner på mobil/tablet */}
+        <div className="mt-4">
+          {styles.showClock && (
+            <div>
+              <div className="flex-1">
+                {showImageLayerInfo && showImageLayerInfo in imageLayerConfigs && (
+                  <div className="flex items-start space-x-2">
+                    {imageLayerConfigs[showImageLayerInfo].icon}
+                    <div>
+                      <p className="font-medium mb-1">{imageLayerConfigs[showImageLayerInfo].name}</p>
+                      <p className="text-xs text-white/80 leading-relaxed">
+                        {imageLayerConfigs[showImageLayerInfo].description}
+                      </p>
                     </div>
-                  )}
-                  {showVectorsInfo && (
-                    <div className="flex items-start space-x-2">
-                      <svg className="w-3 h-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        <path fillRule="evenodd" d="M3 10a1 1 0 011-1h10a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                      </svg>
-                      <div>
-                        <p className="font-medium mb-1">Strömpilar</p>
-                        <p className="text-xs text-white/80 leading-relaxed">
-                          Visar riktning och styrka för vattenströmmar. Pilarna pekar i strömriktningen.
-                        </p>
-                      </div>
+                  </div>
+                )}
+                {showVectorsInfo && (
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-3 h-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M3 10a1 1 0 011-1h10a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <p className="font-medium mb-1">Strömpilar</p>
+                      <p className="text-xs text-white/80 leading-relaxed">
+                        Visar riktning och styrka för vattenströmmar. Pilarna pekar i strömriktningen.
+                      </p>
                     </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    setShowImageLayerInfo(null);
-                    setShowVectorsInfo(false);
-                  }}
-                  className="ml-3 text-white/60 hover:text-white/80 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
+                  </div>
+                )}
               </div>
+              
+                             <div className={`mx-auto ${
+                 isHamburgerMenu ? 'mt-2' : 
+                 isMobileLandscape ? 'mt-2' : 
+                 'mt-4'
+               }`}>
+                 <ClockKnob />
+               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-
-      {/* Desktop Fixed Tooltips - rendered to body via portal */}
-      {typeof window !== 'undefined' && !isMobileOrTablet && hoveredTooltip && createPortal(
+      
+      {/* DESKTOP TOOLTIPS */}
+      {!isMobileOrTablet && hoveredTooltip && createPortal(
         <>
-          {hoveredTooltip in imageLayerConfigs && (
+          {hoveredTooltip && hoveredTooltip in imageLayerConfigs && (
             <div 
               className="fixed w-64 bg-black/95 text-white text-xs rounded-lg p-3 shadow-2xl border border-white/30 backdrop-blur-md pointer-events-none"
               style={{
