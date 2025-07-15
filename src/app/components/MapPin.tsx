@@ -7,8 +7,13 @@ import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { getColorForValue } from '../../lib/colormap-utils';
 
-// Cache för makrill-värden
+// Cache för makrill-värden - FÖRBÄTTRAD CACHING
 const mackerelValuesCache = new Map<string, any>();
+const mackerelCacheTimestamps = new Map<string, number>();
+const MACKEREL_CACHE_DURATION = 1000 * 60 * 60 * 2; // 2 timmar cache för makrill-värden
+
+// Preloading status för makrill-data
+const mackerelPreloadingStatus = new Map<string, boolean>();
 
 // Cache för vattenmask
 let waterMaskCache: any = null;
@@ -81,16 +86,28 @@ function pointInPolygon(point: [number, number], polygon: any[]): boolean {
   return inside;
 }
 
-// Hjälpfunktion för att ladda makrill-värden via API (hanterar .gz filer)
+// Hjälpfunktion för att ladda makrill-värden via API (hanterar .gz filer) - FÖRBÄTTRAD CACHING
 async function loadMackerelValues(timestamp: string): Promise<any> {
   const cacheKey = timestamp;
+  const now = Date.now();
   
-  // Kolla cache först
+  // Kolla cache först med TTL
   if (mackerelValuesCache.has(cacheKey)) {
-    return mackerelValuesCache.get(cacheKey);
+    const cacheTime = mackerelCacheTimestamps.get(cacheKey) || 0;
+    if (now - cacheTime < MACKEREL_CACHE_DURATION) {
+      console.log(`⚡ Använder cachad makrill-data för ${timestamp}`);
+      return mackerelValuesCache.get(cacheKey);
+    } else {
+      // Cache expired, rensa
+      mackerelValuesCache.delete(cacheKey);
+      mackerelCacheTimestamps.delete(cacheKey);
+    }
   }
   
   try {
+    console.log(`🗜️ Laddar makrill-värden för ${timestamp}...`);
+    const startTime = performance.now();
+    
     // Använd API-route som hanterar dekomprimering på servern
     const response = await fetch(`/api/mackerel-values/${encodeURIComponent(timestamp)}`);
     
@@ -100,14 +117,37 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
     }
     
     const data = await response.json();
+    const loadTime = performance.now() - startTime;
     
-    // Spara i cache
+    // Spara i cache med timestamp
     mackerelValuesCache.set(cacheKey, data);
+    mackerelCacheTimestamps.set(cacheKey, now);
     
+    console.log(`✅ Makrill-värden laddad på ${loadTime.toFixed(0)}ms för ${timestamp}`);
     return data;
   } catch (error) {
     console.warn(`⚠️ Fel vid laddning av makrill-värden för ${timestamp}:`, error);
     return null;
+  }
+}
+
+// Preloading-funktion för makrill-data
+async function preloadMackerelData(timestamp: string): Promise<void> {
+  if (mackerelPreloadingStatus.get(timestamp)) {
+    console.log(`⚡ Makrill-data för ${timestamp} laddas redan`);
+    return;
+  }
+  
+  mackerelPreloadingStatus.set(timestamp, true);
+  
+  try {
+    console.log(`🚀 Preloading makrill-data för ${timestamp}...`);
+    await loadMackerelValues(timestamp);
+    console.log(`✅ Makrill-data preloaded för ${timestamp}`);
+  } catch (error) {
+    console.warn(`⚠️ Kunde inte preloada makrill-data för ${timestamp}:`, error);
+  } finally {
+    mackerelPreloadingStatus.set(timestamp, false);
   }
 }
 
@@ -232,6 +272,45 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     
     return closestTimestamp;
   }, [selectedHour, baseTime, areaData?.metadata?.timestamps]);
+
+  // Preload makrill-data för nuvarande tid + några timmar framåt/bakåt
+  useEffect(() => {
+    if (!targetTimestamp || !areaData?.metadata?.timestamps) return;
+    
+    const currentIndex = areaData.metadata.timestamps.indexOf(targetTimestamp);
+    if (currentIndex === -1) return;
+    
+    const preloadTimestamps: string[] = [];
+    
+    // Lägg till aktuell tid (högst prioritet)
+    preloadTimestamps.push(targetTimestamp);
+    
+    // Lägg till 2 timmar framåt och bakåt
+    for (let i = 1; i <= 2; i++) {
+      if (currentIndex + i < areaData.metadata.timestamps.length) {
+        preloadTimestamps.push(areaData.metadata.timestamps[currentIndex + i]);
+      }
+      if (currentIndex - i >= 0) {
+        preloadTimestamps.push(areaData.metadata.timestamps[currentIndex - i]);
+      }
+    }
+    
+    // Starta preloading med aktuell tid först
+    const startPreloading = async () => {
+      // Ladda aktuell tid omedelbart (ingen delay)
+      await preloadMackerelData(targetTimestamp);
+      
+      // Ladda resten med pauser
+      for (let i = 1; i < preloadTimestamps.length; i++) {
+        await preloadMackerelData(preloadTimestamps[i]);
+        // Kort paus mellan preloads för att inte blockera UI
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    };
+    
+    // Starta preloading omedelbart
+    startPreloading();
+  }, [targetTimestamp, areaData?.metadata?.timestamps]);
 
   // Hitta närmaste datapunkt och extrahera parametrar
   const findNearestDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
@@ -604,7 +683,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     return () => {
       map.off('click', handleMapClick);
     };
-  }, [map, visible, findNearestDataPoint, showPopup, targetTimestamp]);
+  }, [map, visible, findNearestDataPoint, showPopup, targetTimestamp, findInterpolatedDataPoint]);
 
   // Hantera klick för att stänga popup (endast för UI-element)
   useEffect(() => {

@@ -50,7 +50,7 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
   // Throttle image updates during dragging
   const throttledTime = useHeavyThrottle(currentTime, isDragging ? 500 : 100);
 
-  // 1) Ladda metadata vid komponentstart
+  // 1) Ladda metadata vid komponentstart - EAGER LOADING
   useEffect(() => {
     const loadMetadata = async () => {
       try {
@@ -58,7 +58,7 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
         if (response.ok) {
           const data = await response.json();
           setMetadata(data);
-          console.log('✅ Temperature Mercator metadata laddad:', data);
+          console.log('✅ Temperature Mercator metadata laddad (eager):', data);
         } else if (response.status === 404) {
           console.warn('⚠️ Temperature Mercator metadata inte funnen - bilder behöver genereras först');
         } else {
@@ -69,10 +69,9 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
       }
     };
 
-    if (visible) {
-      loadMetadata();
-    }
-  }, [visible]);
+    // Ladda metadata direkt vid komponentstart - ingen visible check
+    loadMetadata();
+  }, []);
 
   // 1.5) Preload bilder i bakgrunden EFTER metadata laddats
   useEffect(() => {
@@ -114,6 +113,40 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
     // Start preloading after a short delay to let initial render complete
     setTimeout(preloadImages, 1000);
   }, [metadata]);
+
+  // 1.8) Ladda initial bild direkt när metadata finns (inte vänta på interaction)
+  useEffect(() => {
+    if (!metadata?.images || metadata.images.length === 0) return;
+    
+    // Hitta närmaste tidsstämpel till nuvarande tid
+    const now = new Date().toISOString().slice(0, 13);
+    const initialImage = metadata.images.find(img => img.timestamp.startsWith(now)) || metadata.images[0];
+    
+    if (initialImage) {
+      const imageUrl = `/data/temperature-images-mercator/${initialImage.filename}`;
+      
+      console.log('🎯 Laddar initial Temperature Mercator bild:', initialImage.filename);
+      setCurrentImageUrl(imageUrl);
+      
+      // Ladda bilden direkt även om den inte är preloaded
+      const preloadedImg = preloadedImages.get(initialImage.filename);
+      if (preloadedImg) {
+        setImageLoaded(true);
+        console.log('⚡ Initial Temperature Mercator bild från cache:', initialImage.filename);
+      } else {
+        // Ladda bilden manuellt om den inte är preloaded
+        const img = new Image();
+        img.onload = () => {
+          setImageLoaded(true);
+          console.log('✅ Initial Temperature Mercator bild laddad:', initialImage.filename);
+        };
+        img.onerror = () => {
+          console.log('❌ Kunde inte ladda initial Temperature Mercator bild:', initialImage.filename);
+        };
+        img.src = imageUrl;
+      }
+    }
+  }, [metadata, preloadedImages]);
 
   // 2) Hitta närmaste bild baserat på tid
   const findNearestImage = useCallback((time: Date) => {

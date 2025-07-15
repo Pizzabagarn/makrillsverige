@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fishingDataManager, FishingReport } from '@/lib/fishingDataManager';
 import { mackerelCalibration, CalibrationResult } from '@/lib/mackerelModelCalibration';
 import { X, TrendingUp, AlertTriangle, CheckCircle, BarChart3, Calendar, MapPin, Settings } from 'lucide-react';
@@ -106,7 +106,7 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
   };
 
   // Beräkna validering för alla rapporter
-  const calculateValidation = () => {
+  const calculateValidation = useCallback(() => {
     setLoading(true);
     
     try {
@@ -153,13 +153,13 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTimeframe, setLoading, setValidationResults]);
 
   useEffect(() => {
     if (isOpen) {
       calculateValidation();
     }
-  }, [isOpen, selectedTimeframe]);
+  }, [isOpen, selectedTimeframe, calculateValidation]);
 
   // Beräkna sammanfattande statistik
   const stats = useMemo(() => {
@@ -491,7 +491,7 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
                     
                     {result.report.notes && (
                       <div className="mt-2 text-sm text-gray-600 italic">
-                        "{result.report.notes}"
+                        &quot;{result.report.notes}&quot;
                       </div>
                     )}
                   </div>

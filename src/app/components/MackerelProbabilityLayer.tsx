@@ -72,7 +72,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
     return [];
   }, [metadata?.images, metadata?.timestamps]);
 
-  // 1) Ladda metadata FÖRST, sedan preload bilder i bakgrunden
+  // 1) Ladda metadata FÖRST, sedan preload bilder i bakgrunden - EAGER LOADING
   useEffect(() => {
     const loadMetadata = async () => {
       try {
@@ -85,19 +85,18 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
-        console.log('✅ Makrill metadata laddad:', data);
+        console.log('✅ Makrill metadata laddad (eager):', data);
         
       } catch (error) {
         console.warn('⚠️ Kunde inte ladda makrill metadata:', error);
       }
     };
     
-    if (visible) {
-      loadMetadata();
-    }
-  }, [visible]);
+    // Ladda metadata direkt vid komponentstart - ingen visible check
+    loadMetadata();
+  }, []);
 
-  // 1.5) Preload bilder i bakgrunden EFTER metadata laddats  
+  // 1.5) Preload bilder i bakgrunden EFTER metadata laddats - IMMEDIATE PRELOADING
   useEffect(() => {
     if (availableImages.length === 0) return;
     
@@ -128,14 +127,14 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         img.src = imageUrl;
         
         // Small delay to prevent blocking the UI
-        await new Promise(resolve => setTimeout(resolve, 15));
+        await new Promise(resolve => setTimeout(resolve, 8));
       }
       
       console.log(`🎉 Alla ${loadedCount} makrillbilder preloadade!`);
     };
     
-    // Start preloading after a short delay to let initial render complete
-    setTimeout(preloadImages, 1000);
+    // Start preloading immediately with small delay after current images
+    setTimeout(preloadImages, 300);
   }, [availableImages]);
 
   // 2) Memoized timestamp prefix - DEFAULT till current time om baseTime saknas

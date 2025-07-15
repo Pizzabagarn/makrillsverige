@@ -4,10 +4,10 @@ import { createReadStream } from 'fs';
 import { createGunzip } from 'zlib';
 import path from 'path';
 
-// Cache för makrill-värden (per timestamp)
+// Cache för makrill-värden (per timestamp) - FÖRBÄTTRAD CACHING
 const mackerelValuesCache = new Map<string, any>();
 const cacheTimestamps = new Map<string, number>();
-const CACHE_DURATION = 1000 * 60 * 30; // 30 minuter cache
+const CACHE_DURATION = 1000 * 60 * 60 * 2; // 2 timmar cache (längre för bättre prestanda)
 
 // Ladda och dekomprimera makrill-värden
 async function loadMackerelValues(timestamp: string): Promise<any> {
@@ -77,10 +77,10 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
 
 export async function GET(
   request: Request,
-  { params }: { params: { timestamp: string } }
+  { params }: { params: Promise<{ timestamp: string }> }
 ) {
   try {
-    const { timestamp } = params;
+    const { timestamp } = await params;
     
     if (!timestamp) {
       return NextResponse.json({ error: 'Timestamp krävs' }, { status: 400 });

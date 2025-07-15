@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../lib/layoutUtils';
 import { useLayer } from './context/LayerContext';
+import LayerPreloadingManager from '@/lib/layerPreloadingManager';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
@@ -24,6 +25,12 @@ export default function Home() {
     checkLayout();
     window.addEventListener('resize', checkLayout);
     window.addEventListener('orientationchange', checkLayout);
+    
+    // Starta global layer preloading
+    const preloadingManager = LayerPreloadingManager.getInstance();
+    preloadingManager.startPreloading().catch(error => {
+      console.error('❌ Fel vid global layer preloading:', error);
+    });
     
     return () => {
       window.removeEventListener('resize', checkLayout);

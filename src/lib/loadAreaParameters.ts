@@ -1,10 +1,10 @@
 // Helper för att dekomprimera area-parameters data
 import pako from 'pako';
 
-// Cache för att undvika omkomprimering
+// Cache för att undvika omkomprimering - FÖRBÄTTRAD CACHING
 let cachedData: any = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minuter
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minuter för bättre prestanda
 
 export async function loadAreaParameters(): Promise<any> {
   // Returnera cached data om den finns och inte är för gammal

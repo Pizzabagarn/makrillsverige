@@ -52,7 +52,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
     );
   }, [metadata?.timestamps]);
 
-  // Load metadata - samma som CurrentMagnitudeLayer
+  // Load metadata - EAGER LOADING
   useEffect(() => {
     const loadMetadata = async () => {
       try {
@@ -64,20 +64,23 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
+        console.log('✅ Salinity metadata laddad (eager)');
         
       } catch (error) {
         // Tyst fail - ta bort console.warn för bättre prestanda
       }
     };
     
+    // Ladda metadata direkt vid komponentstart - ingen visible check
     loadMetadata();
   }, []);
 
-  // Preload bilder i bakgrunden EFTER metadata laddats - samma som CurrentMagnitudeLayer
+  // Preload bilder i bakgrunden EFTER metadata laddats - IMMEDIATE PRELOADING
   useEffect(() => {
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
+      console.log(`🧂 Bakgrundspreloading av ${availableImages.length} salinity bilder...`);
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -89,6 +92,9 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
           loadedCount++;
+          if (loadedCount % 10 === 0) {
+            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} salinity bilder`);
+          }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
         };
@@ -100,12 +106,14 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         img.src = imageUrl;
         
         // Small delay to prevent blocking the UI
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, 7));
       }
+      
+      console.log(`🎉 Alla ${loadedCount} salinity bilder preloadade!`);
     };
     
-    // Start preloading after a short delay to let initial render complete
-    setTimeout(preloadImages, 1000);
+    // Start preloading immediately with delay after temperature images
+    setTimeout(preloadImages, 400);
   }, [availableImages]);
 
   // Memoized timestamp prefix - samma som CurrentMagnitudeLayer
@@ -128,25 +136,28 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/salinity-images/salinity_${safeTimestamp}.png`;
       
+      console.log('🎯 Laddar initial salinity bild:', safeTimestamp);
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
+        console.log('⚡ Initial salinity bild från cache:', safeTimestamp);
       } else {
         // Ladda bilden manuellt om den inte är preloaded
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
+          console.log('✅ Initial salinity bild laddad:', safeTimestamp);
         };
         img.onerror = () => {
-          // Tyst fail
+          console.log('❌ Kunde inte ladda initial salinity bild:', safeTimestamp);
         };
         img.src = imageUrl;
       }
     }
-  }, [metadata?.timestamps, currentImageUrl, preloadedImages]);
+  }, [metadata?.timestamps, preloadedImages]);
 
   // Hitta rätt bild för nuvarande tidsstämpel - samma som CurrentMagnitudeLayer
   const findImageForTimestamp = useCallback((prefix: string) => {
@@ -212,7 +223,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         setImageLoaded(false);
       }
     }
-  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages]);
+  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages, currentImageUrl]);
 
   // Skapa MapLibre GL Source/Layer för raster - samma som CurrentMagnitudeLayer
   const rasterSource = useMemo(() => {

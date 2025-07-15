@@ -52,7 +52,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
     );
   }, [metadata?.timestamps]);
 
-  // Load metadata - samma som CurrentMagnitudeLayer
+  // Load metadata - EAGER LOADING
   useEffect(() => {
     const loadMetadata = async () => {
       try {
@@ -64,20 +64,23 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
+        console.log('✅ Temperature metadata laddad (eager)');
         
       } catch (error) {
         // Tyst fail - ta bort console.warn för bättre prestanda
       }
     };
     
+    // Ladda metadata direkt vid komponentstart - ingen visible check
     loadMetadata();
   }, []);
 
-  // Preload bilder i bakgrunden EFTER metadata laddats - samma som CurrentMagnitudeLayer
+  // Preload bilder i bakgrunden EFTER metadata laddats - IMMEDIATE PRELOADING
   useEffect(() => {
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
+      console.log(`🌡️ Bakgrundspreloading av ${availableImages.length} temperature bilder...`);
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -89,6 +92,9 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
           loadedCount++;
+          if (loadedCount % 10 === 0) {
+            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} temperature bilder`);
+          }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
         };
@@ -100,12 +106,14 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         img.src = imageUrl;
         
         // Small delay to prevent blocking the UI
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, 6));
       }
+      
+      console.log(`🎉 Alla ${loadedCount} temperature bilder preloadade!`);
     };
     
-    // Start preloading after a short delay to let initial render complete
-    setTimeout(preloadImages, 1000);
+    // Start preloading immediately with delay after current images
+    setTimeout(preloadImages, 200);
   }, [availableImages]);
 
   // Memoized timestamp prefix - samma som CurrentMagnitudeLayer
@@ -128,20 +136,23 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
       
+      console.log('🎯 Laddar initial temperature bild:', safeTimestamp);
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
+        console.log('⚡ Initial temperature bild från cache:', safeTimestamp);
       } else {
         // Ladda bilden manuellt om den inte är preloaded
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
+          console.log('✅ Initial temperature bild laddad:', safeTimestamp);
         };
         img.onerror = () => {
-          // Tyst fail
+          console.log('❌ Kunde inte ladda initial temperature bild:', safeTimestamp);
         };
         img.src = imageUrl;
       }
@@ -212,7 +223,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         setImageLoaded(false);
       }
     }
-  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages]);
+  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages, currentImageUrl]);
 
   // Skapa MapLibre GL Source/Layer för raster - samma som CurrentMagnitudeLayer
   const rasterSource = useMemo(() => {
