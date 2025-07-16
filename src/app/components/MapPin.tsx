@@ -5,6 +5,7 @@ import { useMap } from 'react-map-gl/maplibre';
 import { Source, Layer, Popup } from 'react-map-gl/maplibre';
 import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import { useManualPoints } from '../context/ManualPointsContext';
 import { getColorForValue } from '../../lib/colormap-utils';
 
 // Cache för makrill-värden - FÖRBÄTTRAD CACHING
@@ -246,6 +247,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   const { current: map } = useMap();
   const { data: areaData } = useAreaParameters();
   const { selectedHour, baseTime } = useTimeSlider();
+  const { isManualPointMode } = useManualPoints();
   
   const [pinLocation, setPinLocation] = useState<{lat: number, lon: number} | null>(null);
   const [pinData, setPinData] = useState<PinData | null>(null);
@@ -639,9 +641,16 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     }
   }, [showPopup]);
 
+  // Stäng popup när man går in i manual point mode
+  useEffect(() => {
+    if (isManualPointMode && showPopup) {
+      setShowPopup(false);
+    }
+  }, [isManualPointMode, showPopup]);
+
   // Hantera klick på kartan
   useEffect(() => {
-    if (!map || !visible) return;
+    if (!map || !visible || isManualPointMode) return;
 
     const handleMapClick = async (e: maplibregl.MapMouseEvent) => {
       // Om popup redan är öppen, stäng den istället för att skapa ny pin
@@ -683,7 +692,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     return () => {
       map.off('click', handleMapClick);
     };
-  }, [map, visible, findNearestDataPoint, showPopup, targetTimestamp, findInterpolatedDataPoint]);
+  }, [map, visible, isManualPointMode, findNearestDataPoint, showPopup, targetTimestamp, findInterpolatedDataPoint]);
 
   // Hantera klick för att stänga popup (endast för UI-element)
   useEffect(() => {

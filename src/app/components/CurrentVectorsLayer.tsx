@@ -22,9 +22,21 @@ function calculateRotation(u: number, v: number): number {
   return (90 - angleDeg) % 360;
 }
 
-// Check if a point is a manual point (used for calculations but not rendered)
-function isManualPoint(lat: number, lon: number): boolean {
-  return DMI_GRID_POINTS.some(point => 
+// Check if a point is a FIXED Öresund point (those without IDs)
+function isFixedOresundPoint(lat: number, lon: number): boolean {
+  // Öresund-punkter är de som saknar ID (första 11 punkterna i DMI_GRID_POINTS)
+  const oresundPoints = DMI_GRID_POINTS.filter(point => !point.id && point.name.includes('Öresund'));
+  
+  return oresundPoints.some(point => 
+    Math.abs(point.lat - lat) < 0.001 && Math.abs(point.lon - lon) < 0.001
+  );
+}
+
+// Check if a point is a USER-ADDED manual point (has ID starting with "manual_")
+function isUserAddedManualPoint(lat: number, lon: number): boolean {
+  const manualPoints = DMI_GRID_POINTS.filter(point => point.id && point.id.startsWith('manual_'));
+  
+  return manualPoints.some(point => 
     Math.abs(point.lat - lat) < 0.001 && Math.abs(point.lon - lon) < 0.001
   );
 }
@@ -283,6 +295,11 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     // Detect mobile devices
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     
+    // Debug log för zoom-nivå
+    if (zoomLevel > 8) {
+      console.log(`🔍 Zoom nivå: ${zoomLevel.toFixed(1)} - Användarskapade manuella punkter aktiverade`);
+    }
+    
     // Collect all valid points with their vectors, excluding manual points
     const validPoints: Array<{
       pt: GridPoint;
@@ -301,13 +318,27 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     }> = [];
     
     for (const pt of gridData) {
-      // Skip manual points - they're used for calculations but not rendered as arrows
-      if (isManualPoint(pt.lat, pt.lon)) {
+      // UTESLUT bara de fasta Öresund-punkterna (alla andra pilar ska visas)
+      const isOresundPoint = isFixedOresundPoint(pt.lat, pt.lon);
+      
+      // Hoppa över fasta Öresund-punkter
+      if (isOresundPoint) {
         continue;
       }
       
+      // Kontrollera om det är en manuell punkt från UI:et
+      const isManualPoint = isUserAddedManualPoint(pt.lat, pt.lon);
+      
+      // Manuella punkter visas bara på höga zoom-nivåer (>11)
+      if (isManualPoint && zoomLevel <= 11) {
+        continue;
+      }
+      
+      
       const v = pt.vectors.find(v => v.time.startsWith(timestampPrefix));
-      if (!v || v.u == null || v.v == null) continue;
+      if (!v || v.u == null || v.v == null) {
+        continue;
+      }
 
       const mag = Math.hypot(v.u, v.v);
       
@@ -344,6 +375,12 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
           return hash % 20 === 0; // Samma logik som för pilar
         })
       : stillPoints;
+    
+    // Debug log för resultat
+    if (zoomLevel > 8) {
+      console.log(`📊 Pilar att rendera: ${pointsToRender.length} (exkluderar Öresund-punkter)`);
+      console.log(`📊 Prickar att rendera: ${stillPointsToRender.length} (exkluderar Öresund-punkter)`);
+    }
     
     // Generate arrow features för strömpilar
     for (const point of pointsToRender) {
@@ -396,7 +433,8 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
           magnitude: point.magnitude,
           opacity: performanceMode ? 0.6 : 0.8, // Lite genomskinlig
           size: dotSize,
-          symbolType: 'dot'
+          symbolType: 'dot',
+          color: 'white'
         },
         geometry: {
           type: 'Point',

@@ -9,6 +9,7 @@ import { TimeSliderProvider } from "./context/TimeSliderContext";
 import { LayerProvider } from "./context/LayerContext";
 import { AreaParametersProvider } from "./context/AreaParametersContext";
 import { ImageLayerProvider } from "./context/ImageLayerContext";
+import { ManualPointsProvider } from "./context/ManualPointsContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +35,11 @@ export default function RootLayout({
           <TimeSliderProvider>
             <LayerProvider>
               <ImageLayerProvider>
-                <SidebarWithToggle>
-                  {children}
-                </SidebarWithToggle>
+                <ManualPointsProvider>
+                  <SidebarWithToggle>
+                    {children}
+                  </SidebarWithToggle>
+                </ManualPointsProvider>
               </ImageLayerProvider>
             </LayerProvider>
           </TimeSliderProvider>

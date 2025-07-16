@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { fishingDataManager } from '@/lib/fishingDataManager';
-import { Fish, BarChart3, Upload, X, TrendingUp, Download } from 'lucide-react';
+import { Fish, BarChart3, Upload, X, TrendingUp, Download, MapPin, Target } from 'lucide-react';
+import { useManualPoints } from '../context/ManualPointsContext';
 
 interface MapContextMenuProps {
   isOpen: boolean;
@@ -19,6 +20,13 @@ const MapContextMenu: React.FC<MapContextMenuProps> = ({
   onRegisterFishingData,
   onOpenValidation,
 }) => {
+  const { 
+    isManualPointMode, 
+    setManualPointMode, 
+    manualPoints,
+    exportManualPoints 
+  } = useManualPoints();
+
   React.useEffect(() => {
     const handleClickOutside = () => {
       if (isOpen) {
@@ -70,6 +78,11 @@ const MapContextMenu: React.FC<MapContextMenuProps> = ({
     onClose();
   };
 
+  const handleToggleManualPointMode = () => {
+    setManualPointMode(!isManualPointMode);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -105,6 +118,50 @@ const MapContextMenu: React.FC<MapContextMenuProps> = ({
         <Fish size={16} />
         Registrera fiskdata
       </button>
+      
+      {/* Manual Points */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggleManualPointMode();
+        }}
+        className={`w-full text-left px-4 py-2 text-sm hover:bg-orange-50 flex items-center gap-2 ${
+          isManualPointMode ? 'bg-orange-100 text-orange-800' : ''
+        }`}
+      >
+        <Target size={16} />
+        <div className="flex-1">
+          <div>{isManualPointMode ? 'Avsluta manuella punkter' : 'Sätt ut manuella punkter'}</div>
+          <div className="text-xs text-gray-500">
+            {manualPoints.length} punkter sparade
+          </div>
+        </div>
+        {isManualPointMode && (
+          <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+            Aktivt
+          </div>
+        )}
+      </button>
+      
+      {/* Export Manual Points - endast om det finns punkter */}
+      {manualPoints.length > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            exportManualPoints();
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+        >
+          <MapPin size={16} />
+          <div className="flex-1">
+            <div>Exportera punkter</div>
+            <div className="text-xs text-gray-500">
+              {manualPoints.length} punkter för backend
+            </div>
+          </div>
+        </button>
+      )}
       
       {/* Validering - endast om det finns rapporter */}
       {stats.totalReports > 0 && (

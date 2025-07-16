@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate:grid": "ts-node scripts/generateGrid.ts"
+    "generate:grid": "ts-node scripts/generateGrid.ts",
+    "fetch:area-parameters": "tsx scripts/fetchAreaParametersExtended.ts"
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "^7.2.0",
@@ -34,7 +35,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/chroma-js": "^3.1.1",
-    "@types/node": "^20",
+    "@types/node": "^20.19.8",
     "@types/rbush": "^4.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -43,6 +44,6 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }

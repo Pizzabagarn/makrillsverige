@@ -22,8 +22,14 @@ import OffsetDebugger from './OffsetDebugger';
 import MapContextMenu from './MapContextMenu';
 import FishingDataForm from './FishingDataForm';
 import FishingValidationDashboard from './FishingValidationDashboard';
+import ManualPointsIndicator from './ManualPointsIndicator';
+import ManualPointsLayer from './ManualPointsLayer';
+import ManualPointPopup from './ManualPointPopup';
+import DeletePointPopup from './DeletePointPopup';
 import { useLayerVisibility } from '../context/LayerContext';
 import { useImageLayer } from '../context/ImageLayerContext';
+import { useManualPoints } from '../context/ManualPointsContext';
+import { ManualGridPoint } from '@/lib/points';
 
 interface MapViewProps {
   showZoom?: boolean;
@@ -39,6 +45,14 @@ export default function MapView({
 }: MapViewProps) {
   const { showCurrentVectors: contextShowCurrentVectors } = useLayerVisibility();
   const { activeLayer } = useImageLayer();
+  const { 
+    isManualPointMode, 
+    addManualPoint, 
+    removeManualPoint,
+    hasPointAt, 
+    checkDataAvailability,
+    manualPoints 
+  } = useManualPoints();
   
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [isDesktop, setIsDesktop] = useState(true);
@@ -55,6 +69,14 @@ export default function MapView({
     location: { lat: 0, lng: 0 }
   });
   const [validationDashboardOpen, setValidationDashboardOpen] = useState(false);
+  const [manualPointPopupState, setManualPointPopupState] = useState<{
+    isOpen: boolean;
+    coordinates: { lat: number; lng: number };
+  }>({ isOpen: false, coordinates: { lat: 0, lng: 0 } });
+  const [deletePointPopupState, setDeletePointPopupState] = useState<{
+    isOpen: boolean;
+    point: ManualGridPoint | null;
+  }>({ isOpen: false, point: null });
   
   useEffect(() => {
     const check = () => setIsDesktop(window.matchMedia('(min-width: 768px)').matches);
@@ -75,6 +97,16 @@ export default function MapView({
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
+
+  // Stäng manual point popup när man lämnar manual point mode
+  useEffect(() => {
+    if (!isManualPointMode && manualPointPopupState.isOpen) {
+      setManualPointPopupState(prev => ({ ...prev, isOpen: false }));
+    }
+    if (!isManualPointMode && deletePointPopupState.isOpen) {
+      setDeletePointPopupState(prev => ({ ...prev, isOpen: false }));
+    }
+  }, [isManualPointMode, manualPointPopupState.isOpen, deletePointPopupState.isOpen]);
   
   // Beräkna maximal utzoomning för att visa hela maxBounds-området
   const getInitialZoom = () => {
@@ -111,6 +143,11 @@ export default function MapView({
   const handleMapContextMenu = (e: maplibregl.MapMouseEvent) => {
     e.preventDefault();
     
+    // Don't show context menu in manual point mode
+    if (isManualPointMode) {
+      return;
+    }
+    
     const { lngLat, point } = e;
     setContextMenuState({
       isOpen: true,
@@ -125,20 +162,71 @@ export default function MapView({
   };
 
   // Handle map click - close context menu but prevent other popups when fishing UI is active
-  const handleMapClick = (e: maplibregl.MapMouseEvent) => {
-    // Always close context menu on click
-    if (contextMenuState.isOpen) {
-      handleContextMenuClose();
-      return; // Don't propagate click if we're closing context menu
+  const handleMapClick = async (e: maplibregl.MapMouseEvent) => {
+    try {
+      // Always close context menu on click
+      if (contextMenuState.isOpen) {
+        handleContextMenuClose();
+        return; // Don't propagate click if we're closing context menu
+      }
+      
+      // Don't show other popups if fishing form is open
+      if (fishingFormState.isOpen) {
+        return;
+      }
+      
+      // Handle manual point mode
+      if (isManualPointMode) {
+        // If any popup is open, close it
+        if (manualPointPopupState.isOpen) {
+          setManualPointPopupState(prev => ({ ...prev, isOpen: false }));
+          return;
+        }
+        if (deletePointPopupState.isOpen) {
+          setDeletePointPopupState(prev => ({ ...prev, isOpen: false }));
+          return;
+        }
+        
+        const { lngLat } = e;
+        const lat = lngLat.lat;
+        const lon = lngLat.lng;
+        
+        // Check if point already exists at this location - with error handling
+        let pointExists = false;
+        let existingPoint = null;
+        try {
+          pointExists = hasPointAt(lat, lon);
+          if (pointExists) {
+            // Find the existing point to show its coordinates
+            existingPoint = manualPoints.find((point: any) => 
+              Math.abs(point.lat - lat) < 0.001 && 
+              Math.abs(point.lon - lon) < 0.001
+            );
+          }
+        } catch (error) {
+          console.error('Error checking point existence:', error);
+          pointExists = false;
+        }
+        
+        if (pointExists && existingPoint) {
+          return;
+        }
+        
+        // Show manual point popup
+        setManualPointPopupState({
+          isOpen: true,
+          coordinates: { lat, lng: lon }
+        });
+        
+        return; // Don't propagate click further in manual point mode
+      }
+      
+      // Allow normal map click behavior for other popups
+      // (this is where other click handlers would go)
+    } catch (error) {
+      console.error('Error in handleMapClick:', error);
+      // Don't let click errors crash the app
     }
-    
-    // Don't show other popups if fishing form is open
-    if (fishingFormState.isOpen) {
-      return;
-    }
-    
-    // Allow normal map click behavior for other popups
-    // (this is where other click handlers would go)
   };
 
   // Handle fishing data registration
@@ -169,6 +257,54 @@ export default function MapView({
     setValidationDashboardOpen(false);
   };
 
+  const handleManualPointPopupClose = () => {
+    setManualPointPopupState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleManualPointConfirm = (lat: number, lon: number) => {
+    try {
+      if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+        console.error('Invalid coordinates for manual point:', { lat, lon });
+        return;
+      }
+      
+      addManualPoint(lat, lon);
+      console.log('🎯 Manual point added at:', lat, lon);
+    } catch (error) {
+      console.error('Error in handleManualPointConfirm:', error);
+    }
+  };
+
+  const handlePointClick = (point: ManualGridPoint) => {
+    try {
+      // Close any existing popups
+      setManualPointPopupState(prev => ({ ...prev, isOpen: false }));
+      
+      // Open delete popup
+      setDeletePointPopupState({
+        isOpen: true,
+        point: point
+      });
+    } catch (error) {
+      console.error('Error in handlePointClick:', error);
+    }
+  };
+
+  const handleDeletePointConfirm = (id: string) => {
+    try {
+      removeManualPoint(id);
+      console.log('🗑️ Manual point removed:', id);
+    } catch (error) {
+      console.error('Error in handleDeletePointConfirm:', error);
+    }
+  };
+
+  const handleDeletePointPopupClose = () => {
+    setDeletePointPopupState(prev => ({ ...prev, isOpen: false }));
+  };
+
+
+
   return (
     <div className="relative w-full h-full">
       <Map
@@ -179,6 +315,13 @@ export default function MapView({
         }}
         onContextMenu={handleMapContextMenu}
         onClick={handleMapClick}
+        onLoad={(e) => {
+          try {
+            setMap(e.target);
+          } catch (error) {
+            console.error('Error setting map reference:', error);
+          }
+        }}
         maxBounds={[
           [10.3, 54.9], // sydväst (lon_min, lat_min)
           [16.6, 59.6]  // nordöst (lon_max, lat_max)
@@ -240,8 +383,32 @@ export default function MapView({
           visible={contextShowCurrentVectors}
         />
         
+        {/* MANUELLA PUNKTER - RENDERAS EFTER PILAR */}
+        <ManualPointsLayer visible={isManualPointMode} onPointClick={handlePointClick} />
+        
         {/* PIN KOMPONENT - RENDERAS SIST FÖR ATT VARA OVANPÅ ALLT */}
-        <MapPin visible={showPin} />
+        {!isManualPointMode && <MapPin visible={showPin} />}
+        
+        {/* Manual Point Popup */}
+        {manualPointPopupState.isOpen && (
+          <ManualPointPopup
+            longitude={manualPointPopupState.coordinates.lng}
+            latitude={manualPointPopupState.coordinates.lat}
+            onClose={handleManualPointPopupClose}
+            onConfirm={handleManualPointConfirm}
+          />
+        )}
+        
+        {/* Delete Point Popup */}
+        {deletePointPopupState.isOpen && deletePointPopupState.point && (
+          <DeletePointPopup
+            point={deletePointPopupState.point}
+            onClose={handleDeletePointPopupClose}
+            onConfirm={handleDeletePointConfirm}
+          />
+        )}
+        
+
       </Map>
       
       {/* Legender - bara en synlig åt gången baserat på aktivt lager */}
@@ -293,6 +460,9 @@ export default function MapView({
         isOpen={validationDashboardOpen}
         onClose={handleCloseValidation}
       />
+
+      {/* Manual Points Indicator */}
+      <ManualPointsIndicator />
     </div>
   );
 }

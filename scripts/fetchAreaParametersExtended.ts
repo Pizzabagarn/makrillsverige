@@ -6,13 +6,49 @@ import * as dotenv from 'dotenv';
 import { createGzip } from 'zlib';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
+import * as readline from 'readline';
 // ⭐ NYTT: Importera kritiska punkter
 import { DMI_GRID_POINTS } from '../src/lib/points.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 🔧 Haversine-distansfunktion för att beräkna avståndet mellan två punkter
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Jordens radie i km
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance;
+}
+
+
+
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+
+// Hjälpfunktion för att fråga användaren y/n
+function askUser(question: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase().trim() === 'y' || answer.toLowerCase().trim() === 'yes');
+    });
+  });
+}
 
 const API_KEY = process.env.DMI_API_KEY;
 if (!API_KEY) throw new Error('DMI_API_KEY saknas i .env.local');
@@ -287,94 +323,113 @@ async function processCoverageJSON(coverageData: any, parameterNames: string[]) 
 }
 
 async function main() {
-  console.log('🚀 Startar utökad area-parameters hämtning MED punktspecifik data...');
-  console.log(`📊 Konfiguration:
-  - Kollektion: ${config.collection} (grid) + ${config.pointCollection} (punkter)
-  - Parametrar: ${config.parameters.join(', ')}
-  - FOKUS BBOX: ${config.bbox} (svenska västkusten + Öresund + sydkusten)
-  - Kritiska punkter: ${DMI_GRID_POINTS.length} st
-  - Format: ${config.format}
-  - Batch-storlek: ${config.batchSize}
-  - Fördröjning: ${config.delayBetweenRequests}ms`);
-
   try {
-    // 📊 STEG 1: Hämta grid-data (som tidigare)
-    console.log('\n🔲 STEG 1: Hämtar grid-data från cube API...');
-    
-    // Dela upp parametrar i batches för att undvika rate limiting
-    const parameterBatches: string[][] = [];
-    for (let i = 0; i < config.parameters.length; i += config.batchSize) {
-      parameterBatches.push(config.parameters.slice(i, i + config.batchSize));
+    // 📍 STEG 1: Hämta grid-data (cube-anrop)
+    console.log('🌊 STEG 1: Hämtar grid-data för utökad area...');
+    const allResults = {
+      points: [] as any[],
+      timestamps: [] as string[]
+    };
+
+    // Hämta alla parametrar i batches
+    const batches = [];
+    for (let i = 0; i < config.parameters.length; i += 2) {
+      batches.push(config.parameters.slice(i, i + 2));
     }
 
-    console.log(`📦 Kommer att hämta ${parameterBatches.length} grid-batches...`);
-
-    // Hämta första batch
-    const firstBatch = parameterBatches[0];
-    console.log(`\n📦 Grid Batch 1/${parameterBatches.length}: ${firstBatch.join(', ')}`);
-    
-    const firstData = await fetchParameterBatch(firstBatch);
-    let allResults = await processCoverageJSON(firstData, firstBatch);
-
-    // Hämta resterande batches och merga data
-    for (let i = 1; i < parameterBatches.length; i++) {
-      const batch = parameterBatches[i];
-      console.log(`\n📦 Grid Batch ${i + 1}/${parameterBatches.length}: ${batch.join(', ')}`);
-      
-      // Vänta mellan requests
-      console.log(`⏳ Väntar ${config.delayBetweenRequests}ms...`);
-      await new Promise(resolve => setTimeout(resolve, config.delayBetweenRequests));
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
       
       try {
+        console.log(`\n📦 Batch ${batchIndex + 1}/${batches.length}: ${batch.join(', ')}`);
         const batchData = await fetchParameterBatch(batch);
-        const batchResults = await processCoverageJSON(batchData, batch);
         
-        // Merga data in i befintliga punkter
-        for (let pointIdx = 0; pointIdx < allResults.points.length; pointIdx++) {
-          const existingPoint = allResults.points[pointIdx];
-          const newPoint = batchResults.points[pointIdx];
+                 if (batchData) {
+           const processedData = await processCoverageJSON(batchData, batch);
           
-          if (existingPoint && newPoint) {
-            // Merga data för varje tidssteg
-            for (let timeIdx = 0; timeIdx < existingPoint.data.length; timeIdx++) {
-              const existingTimeData = existingPoint.data[timeIdx];
-              const newTimeData = newPoint.data[timeIdx];
-              
-              if (existingTimeData && newTimeData && existingTimeData.time === newTimeData.time) {
-                // Kopiera nya parametrar
-                Object.keys(newTimeData).forEach(key => {
-                  if (key !== 'time') {
-                    if (key === 'current') {
-                      if (!existingTimeData.current) {
-                        existingTimeData.current = {};
-                      }
-                      if (newTimeData.current) {
-                        Object.assign(existingTimeData.current, newTimeData.current);
-                      }
-                    } else {
-                      existingTimeData[key] = newTimeData[key];
-                    }
-                  }
-                });
-              }
+          if (processedData) {
+            // Första batch sätter timestamps
+            if (batchIndex === 0) {
+              allResults.timestamps = processedData.timestamps;
             }
+            
+                         // Merga punkter från denna batch
+             if (allResults.points.length === 0) {
+               allResults.points = processedData.points;
+             } else {
+               // Merga ny data in i befintliga punkter
+               for (let pointIdx = 0; pointIdx < allResults.points.length; pointIdx++) {
+                 const existingPoint = allResults.points[pointIdx];
+                 const newPoint = processedData.points[pointIdx];
+                 
+                 if (existingPoint && newPoint) {
+                   // Merga data för varje tidssteg
+                   for (let timeIdx = 0; timeIdx < existingPoint.data.length; timeIdx++) {
+                     const existingTimeData = existingPoint.data[timeIdx];
+                     const newTimeData = newPoint.data[timeIdx];
+                     
+                     if (existingTimeData && newTimeData && existingTimeData.time === newTimeData.time) {
+                       // Kopiera nya parametrar
+                       Object.keys(newTimeData).forEach(key => {
+                         if (key !== 'time') {
+                           if (key === 'current') {
+                             if (!existingTimeData.current) {
+                               existingTimeData.current = {};
+                             }
+                             if (newTimeData.current) {
+                               Object.assign(existingTimeData.current, newTimeData.current);
+                             }
+                           } else {
+                             existingTimeData[key] = newTimeData[key];
+                           }
+                         }
+                       });
+                     }
+                   }
+                 }
+               }
+             }
+            
+            console.log(`✅ Batch ${batchIndex + 1} klar: ${processedData.points.length} punkter`);
           }
         }
+      } catch (error) {
+        console.error(`❌ Batch ${batchIndex + 1} misslyckades:`, error);
         
-        console.log(`✅ Grid Batch ${i + 1} mergad`);
-      } catch (batchError) {
-        console.error(`❌ Grid Batch ${i + 1} misslyckades:`, batchError);
+        // Fråga om användaren vill fortsätta eller avbryta
+        const shouldContinue = await askUser(`Vill du fortsätta med nästa batch? (y/n): `);
+        if (!shouldContinue) {
+          console.log('❌ Avbryter på användarens begäran');
+          process.exit(1);
+        }
         console.log('🔄 Fortsätter med nästa batch...');
       }
     }
 
-    // 📍 STEG 2: Hämta punktspecifik data för kritiska passager
-    console.log('\n🎯 STEG 2: Hämtar punktspecifik data för kritiska passager...');
-    console.log(`📍 Kommer att hämta data för ${DMI_GRID_POINTS.length} kritiska punkter...`);
+    // 📍 STEG 2: Hämta punktspecifik data
+    console.log('\n🎯 STEG 2: Hämtar punktspecifik data...');
+    console.log(`📍 Punkter att hämta: ${DMI_GRID_POINTS.length} st`);
+
+    // Förbättrad feedback - visa vilka punkter som är manuella
+    const manualPoints = DMI_GRID_POINTS.filter(p => p.id && p.id.startsWith('manual-'));
+    const regularPoints = DMI_GRID_POINTS.filter(p => !p.id || !p.id.startsWith('manual-'));
+    
+    if (manualPoints.length > 0) {
+      console.log(`\n🔧 Manuella punkter: ${manualPoints.length} st`);
+      manualPoints.forEach(point => {
+        console.log(`   🎯 ${point.name} (${point.lat.toFixed(3)}, ${point.lon.toFixed(3)})`);
+      });
+    }
+    
+    if (regularPoints.length > 0) {
+      console.log(`\n📍 Fördefinierade punkter: ${regularPoints.length} st`);
+    }
 
     const pointSpecificResults: any[] = [];
     let successfulPoints = 0;
+    let manualPointsSuccessful = 0;
 
+    // Hämta data för alla punkter
     for (let i = 0; i < DMI_GRID_POINTS.length; i++) {
       const point = DMI_GRID_POINTS[i];
       console.log(`\n📍 Punkt ${i + 1}/${DMI_GRID_POINTS.length}: ${point.name} (${point.lat.toFixed(3)}, ${point.lon.toFixed(3)})`);
@@ -394,17 +449,36 @@ async function main() {
           if (processedPoint) {
             pointSpecificResults.push(processedPoint);
             successfulPoints++;
-            console.log(`✅ Punkt ${point.name} - Data hämtad`);
-          } else {
-            console.warn(`⚠️  Punkt ${point.name} - Kunde inte bearbeta data`);
+            
+            // Räkna manuella punkter
+            if (point.id && point.id.startsWith('manual-')) {
+              manualPointsSuccessful++;
+            }
           }
         }
-      } catch (pointError) {
-        console.error(`❌ Punkt ${point.name} misslyckades:`, pointError);
+      } catch (error) {
+        console.error(`❌ Fel vid hämtning av punkt ${point.name}:`, error);
       }
     }
 
-    console.log(`\n📊 Punktdata sammanfattning: ${successfulPoints}/${DMI_GRID_POINTS.length} punkter hämtade`);
+    console.log(`\n📊 Punktspecifik data klar: ${successfulPoints}/${DMI_GRID_POINTS.length} lyckades`);
+    
+    if (manualPoints.length > 0) {
+      console.log(`🎯 Manuella punkter: ${manualPointsSuccessful}/${manualPoints.length} lyckades`);
+      
+      // Visa vilka punkter som lyckades/misslyckades
+      manualPoints.forEach(point => {
+        const wasSuccessful = pointSpecificResults.some(result => 
+          result.name === point.name && Math.abs(result.lat - point.lat) < 0.001 && Math.abs(result.lon - point.lon) < 0.001
+        );
+        
+        if (wasSuccessful) {
+          console.log(`   ✅ ${point.name} - Data hämtad och kommer att inkluderas i visualiseringen`);
+        } else {
+          console.log(`   ❌ ${point.name} - Ingen data hämtad (punkt kan vara på land eller utanför datatäckning)`);
+        }
+      });
+    }
 
     // 🔄 STEG 3: Merga grid-data + punktspecifik data
     console.log('\n🔄 STEG 3: Mergar grid-data med punktspecifik data...');
@@ -458,6 +532,51 @@ async function main() {
    - Parametrar: ${finalData.metadata.parameters.join(', ')}
    - UTÖKAD geografisk täckning: ${config.bbox}
    - Kollektion: ${config.collection}`);
+
+    // 🧹 Interaktiv rensning av misslyckade manuella punkter
+    if (manualPoints.length > 0) {
+      const failedManualPoints = manualPoints.filter(point => {
+        const wasSuccessful = pointSpecificResults.some(result => 
+          result.name === point.name && Math.abs(result.lat - point.lat) < 0.001 && Math.abs(result.lon - point.lon) < 0.001
+        );
+        return !wasSuccessful;
+      });
+
+      if (failedManualPoints.length > 0) {
+        console.log(`\n🧹 Upptäckte ${failedManualPoints.length} misslyckade manuella punkter:`);
+        failedManualPoints.forEach(point => {
+          console.log(`   ❌ ${point.name} (${point.lat.toFixed(6)}, ${point.lon.toFixed(6)})`);
+        });
+        
+        const shouldCleanup = await askUser(`\nVill du ta bort dessa misslyckade punkter från points.ts? (y/n): `);
+        
+        if (shouldCleanup) {
+          console.log('\n🔧 Renser misslyckade punkter...');
+          
+          // Uppdatera points.ts filen
+          const pointsPath = path.resolve(__dirname, '../src/lib/points.ts');
+          let pointsContent = await fs.readFile(pointsPath, 'utf-8');
+          
+          // Ta bort de misslyckade punkterna
+          const failedIds = failedManualPoints.map(p => p.id).filter(id => id != null);
+          
+          let newPointsContent = pointsContent;
+          failedIds.forEach(id => {
+            const regex = new RegExp(`\\s*{[^}]*id:\\s*['"]${id}['"][^}]*},?\\s*`, 'g');
+            newPointsContent = newPointsContent.replace(regex, '');
+          });
+          
+          // Rensa upp extra komman
+          newPointsContent = newPointsContent.replace(/,(\s*[\]\}])/g, '$1');
+          
+          await fs.writeFile(pointsPath, newPointsContent, 'utf-8');
+          
+          console.log(`✅ ${failedManualPoints.length} misslyckade punkter har tagits bort från points.ts`);
+        }
+      } else {
+        console.log(`✅ Alla manuella punkter lyckades - ingen rensning behövs`);
+      }
+    }
 
     // Visa geografisk täckning
     const lats = finalData.points.map(p => p.lat);
