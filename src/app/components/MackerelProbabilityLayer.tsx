@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
+import type { GeoJSON } from 'geojson';
 
 interface MackerelProbabilityMetadata {
   parameter: string;
@@ -34,6 +35,13 @@ interface MackerelProbabilityLayerProps {
   opacity?: number;
 }
 
+interface HotspotData {
+  lat: number;
+  lon: number;
+  value: number;
+  timestamp: string;
+}
+
 const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({ 
   visible = true, 
   opacity = 0.8 
@@ -53,6 +61,8 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [hotspotData, setHotspotData] = useState<HotspotData[]>([]);
+  const [hotspotGeoJSON, setHotspotGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
 
   // Dynamisk upptäckt av tillgängliga bilder från metadata
   const availableImages = useMemo(() => {
@@ -189,45 +199,39 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
   }, [metadata, preloadedImages]);
 
   // 3) Hitta rätt bild för nuvarande tidsstämpel
-  const findImageForTimestamp = useCallback((prefix: string) => {
-    if (!metadata) return null;
-    
-    let matchingImage = null;
-    
-    if (metadata.images) {
-      // Nytt format - sök i images array
-      matchingImage = metadata.images.find(img => 
-        img.timestamp.startsWith(prefix)
-      );
-    } else if (metadata.timestamps) {
-      // Gammalt format - sök i timestamps array
-      const matchingTimestamp = metadata.timestamps.find(ts => 
-        ts.startsWith(prefix)
-      );
-      if (matchingTimestamp) {
-        matchingImage = { 
-          timestamp: matchingTimestamp, 
-          filename: `mackerel_probability_${matchingTimestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.png`
-        };
+  const findImageForTimestamp = useMemo(() => {
+    return (prefix: string) => {
+      if (!metadata) return null;
+      
+      let matchingImage = null;
+      
+      if (metadata.images) {
+        // Nytt format - sök i images array
+        matchingImage = metadata.images.find(img => 
+          img.timestamp.startsWith(prefix)
+        );
+      } else if (metadata.timestamps) {
+        // Gammalt format - sök i timestamps array
+        const matchingTimestamp = metadata.timestamps.find(ts => 
+          ts.startsWith(prefix)
+        );
+        if (matchingTimestamp) {
+          matchingImage = { 
+            timestamp: matchingTimestamp, 
+            filename: `mackerel_probability_${matchingTimestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.png` 
+          };
+        }
       }
-    }
-    
-    if (!matchingImage) {
-      return null; // Tyst fail - inga warnings
-    }
-    
-    // Extrahera safe timestamp från filename
-    const safeTimestamp = matchingImage.filename.replace('.png', '').replace('mackerel_probability_', '');
-    const isAvailable = availableImages.includes(safeTimestamp);
-    
-    if (!isAvailable) {
-      return null; // Tyst fail för bilder som inte finns
-    }
-    
-    // Skapa URL för bilden baserat på tidsstämpel
-    const imageUrl = `/data/mackerel-probability-images-mercator/mackerel_probability_${safeTimestamp}.png`;
-    
-    return imageUrl;
+      
+      if (!matchingImage) {
+        return null;
+      }
+      
+      const safeTimestamp = matchingImage.filename.replace('.png', '').replace('mackerel_probability_', '');
+      const imageUrl = `/data/mackerel-probability-images-mercator/mackerel_probability_${safeTimestamp}.png`;
+      
+      return imageUrl;
+    };
   }, [metadata, availableImages]);
 
   // 4) Smart bildväxling - använd preloaded om tillgänglig, annars ladda direkt
@@ -319,6 +323,134 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
     };
   }, [visible, opacity]);
 
+  // Load hotspot data for current timestamp
+  useEffect(() => {
+    if (!visible || !effectiveSelectedHour) {
+      setHotspotData([]);
+      return;
+    }
+
+    const timestampISO = new Date(baseTime + effectiveSelectedHour * 3600_000).toISOString();
+    const safeTimestamp = timestampISO.replace(/:/g, '-').replace(/\+/g, 'plus');
+    
+    // Load compressed mackerel values
+    const loadHotspotData = async () => {
+      try {
+        const response = await fetch(`/data/mackerel-probability-images-mercator/mackerel-values/mackerel_values_${safeTimestamp}.json.gz`);
+        
+        if (!response.ok) {
+          console.log(`📊 Ingen makrill-data för ${safeTimestamp}`);
+          setHotspotData([]);
+          return;
+        }
+
+        // Try to decompress gzip data if DecompressionStream is available
+        let jsonText: string;
+        try {
+          if (typeof DecompressionStream !== 'undefined' && response.body) {
+            const decompressed = await new Response(
+              response.body.pipeThrough(new DecompressionStream('gzip'))
+            ).text();
+            jsonText = decompressed;
+          } else {
+            // Fallback: try to read as text directly (might not work for compressed data)
+            console.log('⚠️ DecompressionStream not available, trying direct text read');
+            jsonText = await response.text();
+          }
+        } catch (decompressionError) {
+          console.log('⚠️ Decompression failed, trying direct text read:', decompressionError);
+          jsonText = await response.text();
+        }
+        
+        const data = JSON.parse(jsonText);
+        
+        // Filter for hotspots (≥90% probability)
+        const hotspots = data.values.filter((point: any) => point.value >= 90.0);
+        
+        setHotspotData(hotspots);
+        console.log(`🔥 Laddade ${hotspots.length} hotspots för ${safeTimestamp}`);
+        
+      } catch (error) {
+        console.log(`⚠️ Kunde inte ladda makrill-värden: ${error}`);
+        setHotspotData([]);
+      }
+    };
+
+    loadHotspotData();
+  }, [visible, effectiveSelectedHour, baseTime]);
+
+  // Generate hotspot text GeoJSON
+  useEffect(() => {
+    if (!visible || !hotspotData.length) {
+      setHotspotGeoJSON(null);
+      return;
+    }
+
+    // Sample hotspots to avoid overcrowding (every 3rd point)
+    const sampledHotspots = hotspotData.filter((_, index) => index % 3 === 0);
+    
+    const features: GeoJSON.Feature[] = sampledHotspots.map((hotspot, index) => ({
+      type: 'Feature',
+      properties: {
+        id: `hotspot-${index}`,
+        value: hotspot.value,
+        text: 'HOT',
+        textColor: '#FFD700',
+        textHaloColor: '#000000',
+        textHaloWidth: 2,
+        textSize: 11
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [hotspot.lon, hotspot.lat]
+      }
+    }));
+
+    setHotspotGeoJSON({
+      type: 'FeatureCollection',
+      features
+    });
+  }, [visible, hotspotData]);
+
+  // Force hotspot text to render above arrows
+  useEffect(() => {
+    if (!map || !hotspotGeoJSON || !visible) return;
+    
+    const forceHotspotTextToTop = () => {
+      try {
+        // Get all layers in the map
+        const layers = map.getStyle().layers || [];
+        
+        // Check if our hotspot text layer exists
+        const hotspotLayerExists = layers.some(layer => layer.id === 'hotspot-text-layer');
+        
+        if (hotspotLayerExists) {
+          // Move hotspot text layer to the very top (above arrows)
+          map.moveLayer('hotspot-text-layer');
+          console.log('🔥 Hotspot text forced to TOP (above arrows)');
+        }
+      } catch (error) {
+        // Ignore errors if layer doesn't exist yet
+      }
+    };
+    
+    // Force to top with slight delay
+    setTimeout(forceHotspotTextToTop, 200);
+    
+    // Also force to top whenever any new layer is added
+    const handleDataChange = () => {
+      setTimeout(forceHotspotTextToTop, 100);
+    };
+    
+    map.on('data', handleDataChange);
+    map.on('styledata', handleDataChange);
+    
+    return () => {
+      map.off('data', handleDataChange);
+      map.off('styledata', handleDataChange);
+    };
+  }, [map, hotspotGeoJSON, visible]);
+
   // Debug info
   useEffect(() => {
     if (metadata && currentImageUrl) {
@@ -336,10 +468,45 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
     return null;
   }
 
+  // Render both raster and hotspot text layers
   return (
-    <Source id="mackerel-probability-source" {...rasterSource}>
-      <Layer {...rasterLayer} />
-    </Source>
+    <>
+      {/* Raster layer */}
+      {visible && rasterSource && rasterLayer && (
+        <Source id="mackerel-probability-source" {...rasterSource}>
+          <Layer {...rasterLayer} />
+        </Source>
+      )}
+      
+      {/* Hotspot text layer */}
+      {visible && hotspotGeoJSON && (
+        <Source 
+          id="hotspot-text-source" 
+          type="geojson" 
+          data={hotspotGeoJSON}
+        >
+          <Layer
+            id="hotspot-text-layer"
+            type="symbol"
+            layout={{
+              'text-field': ['get', 'text'],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+              'text-size': ['get', 'textSize'],
+              'text-anchor': 'center',
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
+              'symbol-sort-key': 999 // Highest priority
+            }}
+            paint={{
+              'text-color': ['get', 'textColor'],
+              'text-halo-color': ['get', 'textHaloColor'],
+              'text-halo-width': ['get', 'textHaloWidth'],
+              'text-opacity': 0.9
+            }}
+          />
+        </Source>
+      )}
+    </>
   );
 });
 

@@ -117,60 +117,41 @@ REVOLUTIONARY_SALINITY_COLORMAP = [
     [29.094, "#000C0F"], [30.188, "#00060A"],
 ]
 
-# MAKRILLSANNOLIKHETS FÄRGSKALA - MJUKA FÄRGÖVERGÅNGAR: Svart → Grå → Blå → Orange
-# Eliminerar hårda breaks för naturlig progression med många mellansteg
+# MAKRILLSANNOLIKHETS FÄRGSKALA - MATCHAR LEGENDEN EXAKT
+# Samma som MackerelLegend.tsx: Svart → Brun → Guld → Gul → Vit
 # Värdeintervall: -39% till +102.2% (från verklig dataanalys)
-# Design: Mjuka övergångar för bättre visualisering
 MACKEREL_PROBABILITY_COLORMAP = [
-    # === SVART TILL MYCKET MÖRK GRÅ (0-25%) ===
+    # === SVART BAS FÖR LÅGA VÄRDEN ===
     [-39.0, "#000000"],    # Absolut minimum - svart
-    [-35.0, "#000000"],    # Svart
-    [-30.0, "#000000"],    # Svart
-    [-25.0, "#000000"],    # Svart
     [-20.0, "#000000"],    # Svart
-    [-15.0, "#000000"],    # Svart
-    [-10.0, "#000000"],    # Svart
-    [-5.0, "#000000"],     # Svart
     [0.0, "#000000"],      # Svart vid neutral punkt
-    [2.0, "#030303"],      # Nästan omärklig övergång
-    [5.0, "#070707"],      # Mycket mörk grå
-    [8.0, "#0C0C0C"],      # Mörk grå
-    [12.0, "#121212"],     # Fortsatt mörk grå
-    [15.0, "#1A1A1A"],     # Grå
-    [18.0, "#222222"],     # Ljusare grå
-    [22.0, "#2C2C2C"],     # Grå
-    [25.0, "#363636"],     # Ljus grå
     
-    # === MJUK ÖVERGÅNG GRÅTT TILL BLÅTT (25-50%) ===
-    [27.0, "#2A2A3A"],     # Grå med blå antydan
-    [30.0, "#1E1E44"],     # Mörk grå-blå
-    [32.0, "#191955"],     # Grå-blå
-    [35.0, "#141966"],     # Blå-grå
-    [37.0, "#0F1A77"],     # Blå-grå
-    [40.0, "#0A1B88"],     # Blå
-    [42.0, "#051C99"],     # Blå
-    [45.0, "#001DAA"],     # Stark blå
-    [47.0, "#001EBB"],     # Starkare blå
-    [50.0, "#001FCC"],     # Ljus blå
-    
-    # === MJUK ÖVERGÅNG BLÅTT TILL ORANGE (50-100%) ===
-    [52.0, "#1A2FDD"],     # Ljus blå
-    [55.0, "#4A5500"],     # Blå-grön övergång
-    [57.0, "#6A6600"],     # Gulgrön
-    [60.0, "#8A7700"],     # Gul-brun
-    [62.0, "#AA8800"],     # Gul-orange
-    [65.0, "#CC9900"],     # Orange
-    [67.0, "#DDAA00"],     # Ljus orange
-    [70.0, "#EEBB00"],     # Gul-orange
-    [72.0, "#FFCC00"],     # Gul-orange
-    [75.0, "#FFDD11"],     # Gul
-    [77.0, "#FFEE22"],     # Ljus gul
-    [80.0, "#FFFF33"],     # Gul
-    [82.0, "#FFFF44"],     # Ljus gul
-    [85.0, "#FFFF55"],     # Mycket ljus gul
-    [87.0, "#FFFF66"],     # Ljusare gul
-    [90.0, "#FFFF77"],     # Ljus gul
-    [92.0, "#FFFF88"],     # Mycket ljus gul
+    # === SMIDIG PROGRESSION TILL BRUN (MATCHAR LEGENDEN) ===
+    [20.0, "#0A0800"],     # Mycket mörk brun
+    [25.0, "#151000"],     # Mörk brun
+    [30.0, "#201800"],     # Mörkbrun
+    [35.0, "#2B2000"],     # Mörkbrun
+    [40.0, "#362800"],     # Mörkbrun
+    [45.0, "#413000"],     # Mörkbrun
+    [50.0, "#4C3800"],     # Mörkbrun
+    [52.0, "#574000"],     # Brun
+    [55.0, "#624800"],     # Brun
+    [58.0, "#6D5000"],     # Brun
+    [60.0, "#785800"],     # Brun
+    [62.0, "#836000"],     # Brun-gul
+    [65.0, "#8E6800"],     # Brun-gul
+    [67.0, "#997000"],     # Brun-gul
+    [69.0, "#A47800"],     # Gul-brun
+    [70.0, "#BB8800"],     # Guld-brun
+    [72.0, "#CC9900"],     # Orange-guld
+    [75.0, "#DDAA00"],     # Ljus orange
+    [77.0, "#EEBB00"],     # Gul-orange
+    [80.0, "#FFCC00"],     # Gul-orange
+    [82.0, "#FFDD11"],     # Gul
+    [85.0, "#FFEE22"],     # Ljus gul
+    [87.0, "#FFFF33"],     # Gul
+    [90.0, "#FFFF55"],     # Ljus gul
+    [92.0, "#FFFF77"],     # Mycket ljus gul
     [95.0, "#FFFF99"],     # Nästan vit-gul
     [97.0, "#FFFFAA"],     # Ljus vit-gul
     [100.0, "#FFFFCC"],    # Nästan vit
@@ -789,7 +770,7 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
 
 def create_interpolated_image_mercator(
     lons, lats, values, water_mask_grid, output_path, timestamp, 
-    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter
+    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False
 ):
     """
     Skapa interpolerad PNG-bild i Mercator-projektion
@@ -879,7 +860,7 @@ def create_interpolated_image_mercator(
         target_width_pixels = max(1200, grid_resolution // 2)  # Öka från 800 till 1200 för bättre kvalitet
         target_height_pixels = int(target_width_pixels / aspect_ratio)
         
-        fig_width_inches = 12  # Öka från 10 till 12 tum
+        fig_width_inches = 12
         fig_height_inches = fig_width_inches / aspect_ratio
         
         dpi = max(target_width_pixels / fig_width_inches, 200)  # Öka från 150 till 200 DPI
@@ -927,34 +908,56 @@ def create_interpolated_image_mercator(
                 interpolation='bicubic'  # Samma som de andra lagren
             )
         
-        # === HOTSPOT KONTURLINJER (75%-100%) ===
-        print("   📊 Skapar hotspot-konturlinjer...")
+        # === ELEGANTA GYLLENE KONTURLINJER ===
+        print("   📊 Skapar eleganta gyllene konturlinjer...")
         
-        # Bara hotspots över 75%
-        contour_levels = [75, 90]
+        # Konturnivåer för hotspots
+        contour_levels = [75, 85, 95]  # Fler nivåer för finare gradation
         
-        # Exakt samma glowiga ljusgglansguldiga färg som glow-effekten
-        # Matchar glow_colors: ren gul och vit för maximal glow-effekt
-        # Dessa färger glowar mycket och lyser som guld
-        contour_colors = ['#FFFF00', '#FFFFFF']  # Samma glowiga färger som glow-effekten
+        # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner
+        # Från mörk guld till ljus vit-guld för maximal elegans
+        contour_colors = [
+            '#B8860B',  # Mörk guld (75%)
+            '#DAA520',  # Guld (85%)
+            '#FFD700'   # Ljus guld (95%)
+        ]
         
-        # Progressiv linjetjocklek - viktigare nivåer = tjockare linjer
-        contour_linewidths = [2.0, 2.5]
+        # Finare linjetjocklek för elegans
+        contour_linewidths = [1.5, 2.0, 2.5]  # Gradvis tjockare för viktiga nivåer
         
-        # Rita konturlinjer med gyllene färger
+        # Rita eleganta konturlinjer med glow-effekt
         try:
-            contour_plot = ax.contour(
+            # Första passagen: Bred glow-effekt i genomskinlig guld
+            contour_glow = ax.contour(
+                x_mesh, y_mesh, grid_values,
+                levels=contour_levels,
+                colors=['#FFD700', '#FFD700', '#FFD700'],  # Samma gyllene färg för alla
+                linewidths=[6.0, 7.0, 8.0],  # Mycket bred för glow
+                alpha=0.3,  # Mycket genomskinlig för glow-effekt
+                zorder=2
+            )
+            
+            # Andra passagen: Huvudkonturlinjer med eleganta färger
+            contour_main = ax.contour(
                 x_mesh, y_mesh, grid_values,
                 levels=contour_levels,
                 colors=contour_colors,
                 linewidths=contour_linewidths,
-                alpha=0.9,  # Lite högre alpha för att de ska lysa mer
-                zorder=3  # Konturlinjer över allt annat
+                alpha=0.9,  # Stark men inte helt opak
+                zorder=3
             )
             
-            # Ingen procenttext på konturlinjer
+            # Tredje passagen: Fin vit highlight för extra glow
+            contour_highlight = ax.contour(
+                x_mesh, y_mesh, grid_values,
+                levels=contour_levels,
+                colors=['#FFFFFF', '#FFFFFF', '#FFFFFF'],  # Vit highlight
+                linewidths=[0.8, 1.0, 1.2],  # Mycket tunn för subtil highlight
+                alpha=0.7,  # Genomskinlig för att blenda fint
+                zorder=4
+            )
             
-            print(f"   📈 Hotspot-konturlinjer tillagda: {contour_levels}% (utan procenttext)")
+            print(f"   ✨ Eleganta gyllene konturlinjer tillagda: {contour_levels}% med glow-effekt")
             
         except Exception as e:
             print(f"   ⚠️ Konturlinjer hoppades över: {e}")
@@ -971,59 +974,10 @@ def create_interpolated_image_mercator(
             interpolation='bicubic'  # Samma som de andra lagren
         )
         
-        # === LÄGG TILL TEXTÖVERLÄGG FÖR FISKZONER ===
-        if parameter == 'mackerel':
-            print("   🎣 Skapar textöverlägg för hotspots...")
-            
-            # Konvertera grid-koordinater till WGS84 för textplacering
-            x_sample = np.linspace(actual_x_min, actual_x_max, 15)
-            y_sample = np.linspace(actual_y_min, actual_y_max, 15)
-            x_mesh_sample, y_mesh_sample = np.meshgrid(x_sample, y_sample)
-            
-            # Interpolera värden för textplacering
-            from scipy.interpolate import griddata as gd
-            x_flat = x_mesh.flatten()
-            y_flat = y_mesh.flatten()
-            values_flat = grid_values.flatten()
-            
-            # Ta bort NaN-värden
-            valid_mask = ~np.isnan(values_flat)
-            x_valid = x_flat[valid_mask]
-            y_valid = y_flat[valid_mask]
-            values_valid = values_flat[valid_mask]
-            
-            if len(values_valid) > 0:
-                # Interpolera på sampling grid
-                sample_values = gd(
-                    (x_valid, y_valid), values_valid, 
-                    (x_mesh_sample, y_mesh_sample), 
-                    method='linear', fill_value=0
-                )
-                
-                # Bara hotspots (75%+)
-                hotspot_mask = sample_values >= 75.0
-                
-                # Placera "Hotspot" text utan bakgrund
-                if np.any(hotspot_mask):
-                    hotspot_y_indices, hotspot_x_indices = np.where(hotspot_mask)
-                    for i in range(0, len(hotspot_y_indices), 4):  # Var 4:e punkt för mindre tätt
-                        x_pos = x_sample[hotspot_x_indices[i]]
-                        y_pos = y_sample[hotspot_y_indices[i]]
-                        
-                        # Fri text utan bakgrund - högsta zorder för att vara överst
-                        ax.text(x_pos, y_pos, 'Hotspot', 
-                               fontsize=11, fontweight='bold',
-                               color='white', ha='center', va='center',
-                               # Ingen bbox = fri text
-                               path_effects=[
-                                   patheffects.withStroke(linewidth=2, foreground='black')
-                               ],
-                               zorder=10  # Högsta zorder för att vara överst (även över strömpilar)
-                               )
-                print(f"   🎣 Lade till hotspot-text för {np.sum(hotspot_mask)} områden")
+        # Hotspot-text borttagen på användarens begäran
         
         # Spara makrill-värden för popup-användning (samma struktur som andra parametrar)
-        if parameter == 'mackerel':
+        if parameter == 'mackerel' and not skip_values:
             print("   💾 Sparar makrill-värden för popup (samma struktur som andra parametrar)...")
             
             # Använd samma struktur som andra parametrar - bara spara för ursprungliga punkter
@@ -1052,6 +1006,8 @@ def create_interpolated_image_mercator(
                 }, f, indent=2)
             
             print(f"   ✅ Sparade {len(mackerel_data)} makrill-värden till {mackerel_values_file}")
+        elif parameter == 'mackerel' and skip_values:
+            print("   ⚡ Hoppade över makrill-värden (--skip-values)")
         
         # Spara med högre DPI för bättre kvalitet
         plt.savefig(
@@ -1118,25 +1074,15 @@ def create_interpolated_image_mercator(
         print(f"✅ Sparade Mercator-bild: {output_path}")
         print(f"📄 Uppdaterade metadata med Mercator-koordinater")
         return True
-        
-    except Exception as e:
-        print(f"❌ Mercator interpolation misslyckades: {e}")
-        return False
 
-def clear_directory(directory):
-    """Rensa directory från gamla filer"""
-    if directory.exists():
-        for file in directory.glob('*.png'):
-            file.unlink()
-        metadata_file = directory / 'metadata.json'
-        if metadata_file.exists():
-            metadata_file.unlink()
-        print(f"🗑️ Rensade {directory}")
+    except Exception as e:
+        print(f"❌ Fel vid skapande av {param_name}-bild: {e}")
+        return False
 
 def generate_parameter_images_mercator(
     parameter, area_data, water_point_cache, water_mask_grid, 
     wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84,
-    output_base_dir, resolution, max_images, force
+    output_base_dir, resolution, max_images, force, skip_values=False
 ):
     """
     Generera Mercator-bilder för en specifik parameter
@@ -1147,6 +1093,8 @@ def generate_parameter_images_mercator(
     output_dir.mkdir(parents=True, exist_ok=True)
     
     print(f"\n🚀 Genererar Mercator {param_name}-bilder...")
+    if skip_values and parameter == 'mackerel':
+        print("⚡ Snabbläge: Hoppar över makrill-värden")
     
     if force:
         clear_directory(output_dir)
@@ -1179,7 +1127,7 @@ def generate_parameter_images_mercator(
             success = create_interpolated_image_mercator(
                 lons, lats, values, water_mask_grid, 
                 output_path, timestamp, wgs84_bbox, mercator_bbox,
-                wgs84_to_mercator, mercator_to_wgs84, parameter
+                wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values
             )
             if success:
                 successful_count += 1
@@ -1188,6 +1136,13 @@ def generate_parameter_images_mercator(
     
     print(f"\n🎉 Mercator {param_name.title()}: {successful_count}/{len(timestamps)} bilder klara")
     return successful_count, len(timestamps)
+
+def clear_directory(directory):
+    """Ta bort alla PNG-filer i en directory"""
+    import shutil
+    for file in Path(directory).glob('*.png'):
+        file.unlink()
+    print(f"🗑️ Rensade {directory}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -1207,6 +1162,8 @@ def main():
                        help='Max antal bilder per parameter (för testning)')
     parser.add_argument('--force', action='store_true',
                        help='Skriv över befintliga bilder')
+    parser.add_argument('--skip-values', action='store_true',
+                       help='Hoppa över makrill-värden JSON-filer för snabbare testning')
     
     args = parser.parse_args()
     
@@ -1217,6 +1174,8 @@ def main():
     print("🔄 Identisk interpolation och färglogik som original")
     print("🌐 Perfekt kartplacering utan korrigeringar")
     print("🐟 Inkluderar vetenskaplig makrillsannolikhet")
+    if args.skip_values:
+        print("⚡ Snabbläge: Hoppar över makrill-värden")
     
     # Bestäm parametrar
     if args.parameter == 'all':
@@ -1263,30 +1222,32 @@ def main():
         successful, total = generate_parameter_images_mercator(
             parameter, area_data, water_point_cache, water_mask_grid,
             wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84,
-            args.output_dir, args.resolution, args.max_images, args.force
+            args.output_dir, args.resolution, args.max_images, args.force, args.skip_values
         )
         total_successful += successful
         total_images += total
     
-    # Automatisk komprimering av makrill-värden om makrill genererades
-    if 'mackerel' in parameters:
+    # Automatisk komprimering av makrill-värden om makrill genererades OCH inte skip_values
+    if 'mackerel' in parameters and not args.skip_values:
         print("\n" + "=" * 50)
         print("🗜️ AUTOMATISK KOMPRIMERING AV MAKRILL-VÄRDEN")
         compress_mackerel_values()
+    elif 'mackerel' in parameters and args.skip_values:
+        print("\n⚡ Hoppade över komprimering av makrill-värden (--skip-values)")
     
     print("\n" + "=" * 50)
     print("🎉 MERCATOR BILDGENERERING KLAR!")
     print(f"📊 Resultat: {total_successful}/{total_images} Mercator-bilder")
     print(f"📁 Sparade i: {Path(args.output_dir).absolute()}")
     
+    # Visa mapparna som skapades
     for parameter in parameters:
         config = get_parameter_config(parameter)
-        param_dir = Path(args.output_dir) / config['output_dir']
-        print(f"   • {config['name'].title()}: {param_dir}")
+        print(f"   • {config['name'].title()}: {Path(args.output_dir) / config['output_dir']}")
     
-    print("\n🗺️ Projektion: Web Mercator (EPSG:3857)")
-    print("✅ Inga offset-korrigeringar behövs")
-    print("🎯 Perfekt kartplacering garanterad")
+    print(f"\n🗺️ Projektion: Web Mercator (EPSG:3857)")
+    print(f"✅ Inga offset-korrigeringar behövs")
+    print(f"🎯 Perfekt kartplacering garanterad")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main() 
