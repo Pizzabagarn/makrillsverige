@@ -6,13 +6,18 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../lib/layoutUtils';
 import { useLayer } from './context/LayerContext';
+import { useImageLayer, type ImageLayerType } from './context/ImageLayerContext';
+import { useSimulationLayer } from './layout';
 import LayerPreloadingManager from '@/lib/layerPreloadingManager';
+import PopupPreloadManager from '@/lib/popupPreloadManager';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
+const SimulationPlayer = dynamic(() => import('./components/SimulationPlayer'), { ssr: false });
 
 export default function Home() {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
+  const { simulationLayer, setSimulationLayer } = useSimulationLayer();
   
   // Layer state från LayerContext - kontrolleras nu från sidebaren
   const { showCurrentVectors } = useLayer();
@@ -30,6 +35,12 @@ export default function Home() {
     const preloadingManager = LayerPreloadingManager.getInstance();
     preloadingManager.startPreloading().catch(error => {
       console.error('❌ Fel vid global layer preloading:', error);
+    });
+    
+    // Starta popup preloading för snabbare första klick
+    const popupPreloadManager = PopupPreloadManager.getInstance();
+    popupPreloadManager.startPreloading().catch(error => {
+      console.error('❌ Fel vid popup preloading:', error);
     });
     
     return () => {
@@ -53,6 +64,12 @@ export default function Home() {
         />
         
         {/* Lager-kontroller flyttade till sidebaren - ingen overlay längre */}
+        
+        {/* Simulation Player */}
+        <SimulationPlayer 
+          simulationLayer={simulationLayer}
+          onLayerChange={setSimulationLayer}
+        />
       </div>
 
       {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): ClockKnob under/över kartan */}

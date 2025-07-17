@@ -91,12 +91,10 @@ class LayerPreloadingManager {
   // Starta preloading av alla lager
   async startPreloading(): Promise<void> {
     if (this.isPreloading) {
-      console.log('🔄 Preloading pågår redan...');
       return;
     }
 
     this.isPreloading = true;
-    console.log('🚀 Startar global layer preloading...');
     
     // Ladda metadata för alla lager först
     await this.loadAllMetadata();
@@ -107,12 +105,10 @@ class LayerPreloadingManager {
     }
     
     this.isPreloading = false;
-    console.log('🎉 Global layer preloading klar!');
   }
 
   // Ladda metadata för alla lager
   private async loadAllMetadata(): Promise<void> {
-    console.log('📋 Laddar metadata för alla lager...');
     
     const metadataPromises = this.LAYER_PRIORITY.map(async (layer) => {
       try {
@@ -133,7 +129,6 @@ class LayerPreloadingManager {
           status.totalImages = metadata.total_images || 0;
         }
         
-        console.log(`✅ Metadata laddad för ${layer}: ${metadata.total_images} bilder`);
       } catch (error) {
         console.warn(`❌ Fel vid laddning av metadata för ${layer}:`, error);
       }
@@ -155,8 +150,6 @@ class LayerPreloadingManager {
 
     status.status = 'loading';
     status.startTime = Date.now();
-    
-    console.log(`🔄 Startar preloading av ${layer}...`);
     
     // Förbered image cache för detta lager
     this.imageCache.set(layer, new Map());
@@ -182,10 +175,6 @@ class LayerPreloadingManager {
         status.loadedImages = loadedCount;
         status.progress = (loadedCount / timestamps.length) * 100;
         
-        if (loadedCount % 10 === 0) {
-          console.log(`✅ Preloaded ${loadedCount}/${timestamps.length} bilder för ${layer}`);
-        }
-        
         // Liten delay mellan bilder
         await new Promise(resolve => setTimeout(resolve, config.batchDelay));
       } catch (error) {
@@ -197,7 +186,6 @@ class LayerPreloadingManager {
     status.endTime = Date.now();
     const loadTime = status.endTime - (status.startTime || 0);
     
-    console.log(`🎉 Preloading klar för ${layer}: ${loadedCount} bilder på ${loadTime}ms`);
   }
 
   // Preload en bild

@@ -1,17 +1,17 @@
 {
   "calibration": {
-    "interceptOffset": 1.9337924835720823,
-    "totalReports": 7,
+    "interceptOffset": 1.4009108513513606,
+    "totalReports": 5,
     "qualityDistribution": {
       "excellent": 2,
-      "none": 3,
-      "good": 2
+      "good": 1,
+      "none": 2
     },
-    "averageQuality": 0.5142857142857142,
-    "baseSuccessRate": 0.5714285714285714,
-    "recommendedIntercept": -6.066207516427918,
+    "averageQuality": 0.5599999999999999,
+    "baseSuccessRate": 0.6,
+    "recommendedIntercept": -6.599089148648639,
     "confidence": "medium",
-    "lastUpdated": "2025-07-14T16:52:13.332Z",
+    "lastUpdated": "2025-07-17T12:43:30.785Z",
     "useSlopeCalibration": false
   },
   "reports": [
@@ -56,26 +56,6 @@
       "createdAt": "2025-07-14T14:48:50.842Z"
     },
     {
-      "id": "md384mwl6okyu1av8eu",
-      "quality": "none",
-      "qualityNumeric": 0,
-      "dateRange": {
-        "start": "2025-07-02",
-        "end": "2025-07-02"
-      },
-      "location": {
-        "bounds": {
-          "north": 55.3958,
-          "south": 55.3052,
-          "east": 13.0057,
-          "west": 12.4912
-        },
-        "centerLat": 55.3505,
-        "centerLng": 12.748449999999998
-      },
-      "createdAt": "2025-07-14T14:53:52.245Z"
-    },
-    {
       "id": "md385lylhn1ywlv5yra",
       "quality": "good",
       "qualityNumeric": 0.8,
@@ -94,26 +74,6 @@
         "centerLng": 12.748449999999998
       },
       "createdAt": "2025-07-14T14:54:37.677Z"
-    },
-    {
-      "id": "md3862741a9gxriqeep",
-      "quality": "none",
-      "qualityNumeric": 0,
-      "dateRange": {
-        "start": "2025-07-01",
-        "end": "2025-07-01"
-      },
-      "location": {
-        "bounds": {
-          "north": 55.3958,
-          "south": 55.3052,
-          "east": 13.0057,
-          "west": 12.4912
-        },
-        "centerLat": 55.3505,
-        "centerLng": 12.748449999999998
-      },
-      "createdAt": "2025-07-14T14:54:58.720Z"
     },
     {
       "id": "md389gy13ze2o7s1lcj",
@@ -136,26 +96,26 @@
       "createdAt": "2025-07-14T14:57:37.801Z"
     },
     {
-      "id": "md3ccu4vzrdzxjmxp1",
-      "quality": "good",
-      "qualityNumeric": 0.8,
+      "id": "md6b937nh0e54ldjz8",
+      "quality": "none",
+      "qualityNumeric": 0,
       "dateRange": {
-        "start": "2025-07-03",
-        "end": "2025-07-03"
+        "start": "2025-07-16",
+        "end": "2025-07-16"
       },
       "location": {
         "bounds": {
-          "north": 58.34,
-          "south": 57.45,
-          "east": 11.56,
-          "west": 11.04
+          "north": 55.3958,
+          "south": 55.3052,
+          "east": 13.0057,
+          "west": 12.4912
         },
-        "centerLat": 57,
-        "centerLng": 12
+        "centerLat": 55.3505,
+        "centerLng": 12.748449999999998
       },
-      "createdAt": "2025-07-14T16:52:13.327Z"
+      "createdAt": "2025-07-16T18:44:37.379Z"
     }
   ],
-  "exportedAt": "2025-07-14T16:52:13.332Z",
+  "exportedAt": "2025-07-17T12:43:30.785Z",
   "exportedBy": "React mackerelModelCalibration.ts"
 }

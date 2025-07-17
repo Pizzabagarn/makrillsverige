@@ -1,0 +1,39 @@
+{
+  "snapshots": [
+    {
+      "reportId": "md37wc8b1k6o2022w18",
+      "timestamp": "2025-07-17T13:20:25.853Z",
+      "location": {
+        "bounds": {
+          "north": 55.3958,
+          "south": 55.3052,
+          "east": 13.0057,
+          "west": 12.4912
+        },
+        "centerLat": 55.3505,
+        "centerLng": 12.748449999999998
+      },
+      "timeWindow": {
+        "start": "2025-06-27T01:00:00.000Z",
+        "end": "2025-06-30T01:00:00.000Z",
+        "reportTime": "2025-06-30T01:00:00.000Z"
+      },
+      "marineData": [],
+      "fishingQuality": 0.8,
+      "qualityLabel": "good",
+      "customPercentage": 50,
+      "createdAt": "2025-07-17T13:20:25.853Z",
+      "dataSource": "fallback"
+    }
+  ],
+  "exportedAt": "2025-07-17T13:20:28.266Z",
+  "format": "marine_data_snapshots_v1",
+  "metadata": {
+    "totalSnapshots": 1,
+    "totalDataPoints": 0,
+    "dateRange": {
+      "start": 1752758425853,
+      "end": 1752758425853
+    }
+  }
+}

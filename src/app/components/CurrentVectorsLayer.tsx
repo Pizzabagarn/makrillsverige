@@ -62,7 +62,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
   visible = true 
 }) => {
   const { current: map } = useMap();
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   const { data: areaData, isLoading: areaDataLoading } = useAreaParameters();
   
   const [arrowImageLoaded, setArrowImageLoaded] = useState(false);
@@ -74,8 +74,8 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
   
   // Performance optimizations - same as CurrentMagnitudeLayer
   const isDragging = useDraggingDetection(selectedHour);
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 100);   // Faster when not dragging
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 500);   // Slower when dragging
+  const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
+  const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   // Simple color scale
@@ -285,7 +285,7 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     };
   }, [map]);
 
-  // Generate arrows with performance optimizations
+  // Generate arrows with simplified logic (no performance mode needed)
   const generateArrows = useCallback((performanceMode: boolean = false) => {
     if (!gridData.length || !timestampPrefix) return null;
     
@@ -294,28 +294,6 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     
     // Detect mobile devices
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    
-    // Debug log för zoom-nivå
-    if (zoomLevel > 8) {
-      console.log(`🔍 Zoom nivå: ${zoomLevel.toFixed(1)} - Användarskapade manuella punkter aktiverade`);
-    }
-    
-    // Collect all valid points with their vectors, excluding manual points
-    const validPoints: Array<{
-      pt: GridPoint;
-      vector: CurrentVector;
-      magnitude: number;
-      lat: number;
-      lon: number;
-    }> = [];
-    
-    const stillPoints: Array<{
-      pt: GridPoint;
-      vector: CurrentVector;
-      magnitude: number;
-      lat: number;
-      lon: number;
-    }> = [];
     
     for (const pt of gridData) {
       // UTESLUT bara de fasta Öresund-punkterna (alla andra pilar ska visas)
@@ -334,7 +312,6 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
         continue;
       }
       
-      
       const v = pt.vectors.find(v => v.time.startsWith(timestampPrefix));
       if (!v || v.u == null || v.v == null) {
         continue;
@@ -342,106 +319,65 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
 
       const mag = Math.hypot(v.u, v.v);
       
-      const pointData = {
-        pt,
-        vector: v,
-        magnitude: mag,
-        lat: pt.lat,
-        lon: pt.lon
-      };
-      
-      // Dela upp i strömpilar och stillastående punkter
+      // Generate arrow or dot based on magnitude
       if (mag < 0.01) {
-        stillPoints.push(pointData);
+        // Stillastående punkt
+        let dotSize = 0.015;
+        if (isMobile) {
+          dotSize = 0.012;
+        }
+        
+        const stillPointFeature: GeoJSON.Feature = {
+          type: 'Feature',
+          properties: {
+            magnitude: mag,
+            opacity: 0.8,
+            size: dotSize,
+            symbolType: 'dot',
+            color: 'white'
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [pt.lon, pt.lat]
+          }
+        };
+        stillPointsFeatures.push(stillPointFeature);
       } else {
-        validPoints.push(pointData);
-      }
-    }
-    
-    // Performance mode: Keep only 15% of arrows (remove 85%) based on geographic position
-    const pointsToRender = performanceMode 
-      ? validPoints.filter((point) => {
-          // Create deterministic hash from lat/lon coordinates 
-          // This ensures same geographic points are always kept/removed
-          const hash = Math.floor(point.lat * 1000) + Math.floor(point.lon * 1000);
-          return hash % 20 === 0; // Keep every 20th point (15% remaining, 85% removed)
-        })
-      : validPoints; // Keep all arrows when not in performance mode
-    
-    // Performance mode för stillastående punkter också
-    const stillPointsToRender = performanceMode 
-      ? stillPoints.filter((point) => {
-          const hash = Math.floor(point.lat * 1000) + Math.floor(point.lon * 1000);
-          return hash % 20 === 0; // Samma logik som för pilar
-        })
-      : stillPoints;
-    
-    // Debug log för resultat
-    if (zoomLevel > 8) {
-      console.log(`📊 Pilar att rendera: ${pointsToRender.length} (exkluderar Öresund-punkter)`);
-      console.log(`📊 Prickar att rendera: ${stillPointsToRender.length} (exkluderar Öresund-punkter)`);
-    }
-    
-    // Generate arrow features för strömpilar
-    for (const point of pointsToRender) {
-      const color = colorScale(point.magnitude).toString();
-      const rotation = calculateRotation(point.vector.u, point.vector.v);
-      
-      // Adjust arrow size based on device
-      let baseSize = 0.03;
-      if (isMobile) {
-        if (zoomLevel < 6) {
-          baseSize = 0.010;
-        } else if (zoomLevel < 7) {
-          baseSize = 0.013;
+        // Strömmpil
+        const color = colorScale(mag).toString();
+        const rotation = calculateRotation(v.u, v.v);
+        
+        // Adjust arrow size based on device
+        let baseSize = 0.03;
+        if (isMobile) {
+          if (zoomLevel < 6) {
+            baseSize = 0.010;
+          } else if (zoomLevel < 7) {
+            baseSize = 0.013;
+          } else {
+            baseSize = 0.016;
+          }
         } else {
-          baseSize = 0.016;
+          baseSize = 0.025;
         }
-      } else {
-        baseSize = 0.025;
+        
+        const arrowFeature: GeoJSON.Feature = {
+          type: 'Feature',
+          properties: {
+            color: color,
+            magnitude: mag,
+            opacity: 1,
+            rotation: rotation,
+            size: baseSize,
+            symbolType: 'arrow'
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [pt.lon, pt.lat]
+          }
+        };
+        arrowsFeatures.push(arrowFeature);
       }
-      
-      const arrowFeature: GeoJSON.Feature = {
-        type: 'Feature',
-        properties: {
-          color: color,
-          magnitude: point.magnitude,
-          opacity: performanceMode ? 0.8 : 1, // Slightly transparent during performance mode
-          rotation: rotation,
-          size: baseSize,
-          symbolType: 'arrow'
-        },
-        geometry: {
-          type: 'Point',
-          coordinates: [point.lon, point.lat]
-        }
-      };
-      arrowsFeatures.push(arrowFeature);
-    }
-    
-    // Generate point features för stillastående ström
-    for (const point of stillPointsToRender) {
-      // Stillastående punkter är lite mindre än pilar
-      let dotSize = 0.015;
-      if (isMobile) {
-        dotSize = 0.012;
-      }
-      
-      const stillPointFeature: GeoJSON.Feature = {
-        type: 'Feature',
-        properties: {
-          magnitude: point.magnitude,
-          opacity: performanceMode ? 0.6 : 0.8, // Lite genomskinlig
-          size: dotSize,
-          symbolType: 'dot',
-          color: 'white'
-        },
-        geometry: {
-          type: 'Point',
-          coordinates: [point.lon, point.lat]
-        }
-      };
-      stillPointsFeatures.push(stillPointFeature);
     }
 
     // Kombinera alla features
@@ -453,17 +389,16 @@ const CurrentVectorsLayer = React.memo<CurrentVectorsLayerProps>(({
     };
   }, [gridData, timestampPrefix, colorScale, zoomLevel]);
 
-  // Smart arrow generation with reduced flickering
+  // Smart arrow generation - hide arrows completely during dragging
   useEffect(() => {
-    if (!visible || !timestampPrefix || gridData.length === 0) {
+    // HELT ENKELT: Dölj alla pilar under dragging, visa alla när man slutar
+    if (!visible || !timestampPrefix || gridData.length === 0 || isDragging) {
       setArrowsGeoJSON(null);
       return;
     }
 
-    const performanceMode = isDragging && zoomLevel < 8;
-    
-    // Generate new arrows without setting to null first (reduces flicker)
-    const newGeoJSON = generateArrows(performanceMode);
+    // Generate arrows normally when not dragging (no performance mode needed)
+    const newGeoJSON = generateArrows(false); // Always false since we hide during dragging
     
     // Only update if valid and actually different (reduce unnecessary re-renders)
     if (newGeoJSON) {

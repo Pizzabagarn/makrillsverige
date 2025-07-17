@@ -38,17 +38,19 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [debouncedImageUrl, setDebouncedImageUrl] = useState<string | null>(null);
+  const [debouncedImageLoaded, setDebouncedImageLoaded] = useState(false);
   
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Convert selectedHour to Date for throttling
+  // Convert displayHour to Date for throttling
   const currentTime = useMemo(() => {
-    return new Date(baseTime + selectedHour * 3600 * 1000);
-  }, [baseTime, selectedHour]);
+    return new Date(baseTime + displayHour * 3600 * 1000);
+  }, [baseTime, displayHour]);
   
-  // Throttle image updates during dragging
-  const throttledTime = useHeavyThrottle(currentTime, isDragging ? 500 : 100);
+  // Much faster throttling for smooth simulation effect
+  const throttledTime = useHeavyThrottle(currentTime, isDragging ? 50 : 10);
 
   // 1) Ladda metadata vid komponentstart - EAGER LOADING
   useEffect(() => {
@@ -58,7 +60,6 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
         if (response.ok) {
           const data = await response.json();
           setMetadata(data);
-          console.log('✅ Temperature Mercator metadata laddad (eager):', data);
         } else if (response.status === 404) {
           console.warn('⚠️ Temperature Mercator metadata inte funnen - bilder behöver genereras först');
         } else {
@@ -78,7 +79,6 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
     if (!metadata?.images || metadata.images.length === 0) return;
     
     const preloadImages = async () => {
-      console.log(`🚀 Bakgrundspreloading av ${metadata.images.length} Temperature Mercator-bilder...`);
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -90,15 +90,12 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
         img.onload = () => {
           imageMap.set(imageInfo.filename, img);
           loadedCount++;
-          if (loadedCount % 5 === 0) {
-            console.log(`✅ Preloaded ${loadedCount}/${metadata.images.length} Temperature Mercator-bilder`);
-          }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [imageInfo.filename, img]]));
         };
         
         img.onerror = () => {
-          console.log(`⚠️ Kunde inte preload Temperature Mercator-bild: ${imageInfo.filename}`);
+          // Silent fail for performance
         };
         
         img.src = imageUrl;
@@ -106,8 +103,6 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
         // Small delay to prevent blocking the UI
         await new Promise(resolve => setTimeout(resolve, 20));
       }
-      
-      console.log(`🎉 Alla ${loadedCount} Temperature Mercator-bilder preloadade!`);
     };
     
     // Start preloading after a short delay to let initial render complete
@@ -125,23 +120,21 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
     if (initialImage) {
       const imageUrl = `/data/temperature-images-mercator/${initialImage.filename}`;
       
-      console.log('🎯 Laddar initial Temperature Mercator bild:', initialImage.filename);
+
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(initialImage.filename);
       if (preloadedImg) {
         setImageLoaded(true);
-        console.log('⚡ Initial Temperature Mercator bild från cache:', initialImage.filename);
       } else {
         // Ladda bilden manuellt om den inte är preloaded
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          console.log('✅ Initial Temperature Mercator bild laddad:', initialImage.filename);
         };
         img.onerror = () => {
-          console.log('❌ Kunde inte ladda initial Temperature Mercator bild:', initialImage.filename);
+          // Silent fail for performance
         };
         img.src = imageUrl;
       }
@@ -188,33 +181,54 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
         
         if (preloadedImg) {
           setImageLoaded(true); // INSTANT - bilden är redan laddad!
-          console.log('⚡ Instant Temperature Mercator bild från cache:', nearestImage.filename);
         } else {
           // Bilden är inte preloaded, ladda den direkt
           setImageLoaded(false);
-          console.log('⏳ Laddar Temperature Mercator bild (inte cached):', nearestImage.filename);
           
           const img = new Image();
+          let isCurrentRequest = true;
+          
           img.onload = () => {
-            // Dubbelkolla att detta fortfarande är rätt bild
-            if (img.src === newImageUrl) {
+            // Dubbelkolla att detta fortfarande är rätt bild OCH att requesten inte är avbruten
+            if (isCurrentRequest && img.src === newImageUrl) {
               setImageLoaded(true);
-              console.log('✅ Temperature Mercator bild laddad:', nearestImage.filename);
             }
           };
           img.onerror = () => {
-            console.error('❌ Fel vid laddning av Temperature Mercator bild:', nearestImage.filename);
-            setImageLoaded(false);
+            if (isCurrentRequest) {
+              console.error('❌ Fel vid laddning av Temperature Mercator bild:', nearestImage.filename);
+              setImageLoaded(false);
+            }
           };
           img.src = newImageUrl;
+          
+          // Cleanup function för att avbryta gamla requests
+          return () => {
+            isCurrentRequest = false;
+            img.onload = null;
+            img.onerror = null;
+            img.src = ''; // Avbryt laddningen
+          };
         }
       }
     }
   }, [visible, metadata, throttledTime, findNearestImage, currentImageUrl, preloadedImages]);
 
+  // 3.5) Debounce MapLibre Source updates för att undvika AJAX abort errors
+  useEffect(() => {
+    const debounceDelay = isDragging ? 30 : 10; // Much faster debounce for smooth simulation
+    
+    const timeoutId = setTimeout(() => {
+      setDebouncedImageUrl(currentImageUrl);
+      setDebouncedImageLoaded(imageLoaded);
+    }, debounceDelay);
+
+    return () => clearTimeout(timeoutId);
+  }, [currentImageUrl, imageLoaded, isDragging]);
+
   // 4) Skapa MapLibre GL Source för Mercator-bild
   const rasterSource = useMemo(() => {
-    if (!currentImageUrl || !imageLoaded || !metadata) {
+    if (!debouncedImageUrl || !debouncedImageLoaded || !metadata) {
       return null;
     }
     
@@ -238,10 +252,10 @@ const TemperatureLayerMercator = React.memo<TemperatureLayerMercatorProps>(({
     
     return {
       type: 'image' as const,
-      url: currentImageUrl,
+      url: debouncedImageUrl!,
       coordinates: wgs84Coordinates
     };
-  }, [currentImageUrl, imageLoaded, metadata, throttledTime, findNearestImage]);
+  }, [debouncedImageUrl, debouncedImageLoaded, metadata, throttledTime, findNearestImage]);
 
   // 5) Layer configuration
   const rasterLayer = useMemo(() => {

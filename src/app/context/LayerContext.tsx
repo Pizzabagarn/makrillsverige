@@ -10,7 +10,7 @@ interface LayerContextType {
 const LayerContext = createContext<LayerContextType | undefined>(undefined);
 
 export function LayerProvider({ children }: { children: React.ReactNode }) {
-  const [showCurrentVectors, setShowCurrentVectorsState] = useState(true);
+  const [showCurrentVectors, setShowCurrentVectorsState] = useState(false);
 
   const setShowCurrentVectors = (show: boolean) => {
     // console.log('🔄 LayerContext: setShowCurrentVectors called with:', show);

@@ -6,12 +6,15 @@ import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { getLayoutType, shouldShowSidebar, shouldShowHamburger, type LayoutType } from '../../lib/layoutUtils';
 import { useLayer } from '../context/LayerContext';
+import { type ImageLayerType } from '../context/ImageLayerContext';
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
+  simulationLayer?: ImageLayerType | null;
+  onSimulationLayerChange?: (layer: ImageLayerType | null) => void;
 }
 
-export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
+export default function SidebarWithToggle({ children, simulationLayer, onSimulationLayerChange }: SidebarLayoutProps) {
   const {
     showCurrentVectors,
     setShowCurrentVectors
@@ -62,6 +65,8 @@ export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
             <Sidebar 
               showCurrentVectors={showCurrentVectors}
               onToggleCurrentVectors={setShowCurrentVectors}
+              simulationLayer={simulationLayer}
+              onSimulationLayerChange={onSimulationLayerChange}
             />
           </div>
         )}
@@ -140,6 +145,8 @@ export default function SidebarWithToggle({ children }: SidebarLayoutProps) {
               isHamburgerMenu={true}
               showCurrentVectors={showCurrentVectors}
               onToggleCurrentVectors={setShowCurrentVectors}
+              simulationLayer={simulationLayer}
+              onSimulationLayerChange={onSimulationLayerChange}
             />
                     </div>
         </div>

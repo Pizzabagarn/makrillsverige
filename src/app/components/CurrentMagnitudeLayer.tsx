@@ -30,14 +30,14 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
   opacity = 0.8 
 }) => {
   const { current: map } = useMap();
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   
   // Detect if user is actively dragging
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Use different throttling based on dragging state  
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 100);   // Faster when not dragging
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 500);   // Slower when dragging
+  // Much faster throttling for smooth simulation effect
+  const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
+  const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [metadata, setMetadata] = useState<CurrentMagnitudeMetadata | null>(null);
@@ -68,7 +68,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
-        console.log('✅ Current magnitude metadata laddad (eager)');
+  
         
           } catch (error) {
       // console.warn('⚠️ Kunde inte ladda current magnitude metadata:', error);
@@ -84,7 +84,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
-      console.log(`🚀 Bakgrundspreloading av ${availableImages.length} current magnitude bilder...`);
+
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -97,7 +97,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
           imageMap.set(safeTimestamp, img);
           loadedCount++;
           if (loadedCount % 10 === 0) {
-            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} current magnitude bilder`);
+            // Progress tracking
           }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
@@ -113,7 +113,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         await new Promise(resolve => setTimeout(resolve, 5));
       }
       
-      console.log(`🎉 Alla ${loadedCount} current magnitude bilder preloadade!`);
+      // All images preloaded
     };
     
     // Start preloading immediately - no delay
@@ -140,20 +140,20 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.png`;
       
-      console.log('🎯 Laddar initial magnitude bild:', safeTimestamp);
+
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
-        console.log('⚡ Initial magnitude bild från cache:', safeTimestamp);
+
       } else {
         // Ladda bilden manuellt om den inte är preloaded
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          console.log('✅ Initial magnitude bild laddad:', safeTimestamp);
+
         };
         img.onerror = () => {
           console.log('❌ Kunde inte ladda initial magnitude bild:', safeTimestamp);
@@ -223,16 +223,28 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
             setImageLoaded(false);
             console.log('⏳ Laddar current magnitude bild (inte cached):', safeTimestamp);
             const img = new Image();
+            let isCurrentRequest = true;
+            
             img.onload = () => {
-              // Dubbelkolla att detta fortfarande är rätt bild (använd img.src istället för currentImageUrl)
-              if (img.src === imageUrl) {
+              // Dubbelkolla att detta fortfarande är rätt bild OCH att requesten inte är avbruten
+              if (isCurrentRequest && img.src === imageUrl) {
                 setImageLoaded(true);
               }
             };
             img.onerror = () => {
-              // console.log('❌ Kunde inte ladda magnitude bild:', safeTimestamp);
+              if (isCurrentRequest) {
+                // console.log('❌ Kunde inte ladda magnitude bild:', safeTimestamp);
+              }
             };
             img.src = imageUrl;
+            
+            // Cleanup function för att avbryta gamla requests
+            return () => {
+              isCurrentRequest = false;
+              img.onload = null;
+              img.onerror = null;
+              img.src = ''; // Avbryt laddningen
+            };
           }
         }
       } else {

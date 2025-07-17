@@ -47,14 +47,14 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
   opacity = 0.8 
 }) => {
   const { current: map } = useMap();
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   
   // Detect if user is actively dragging
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Use different throttling based on dragging state  
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 100);   // Faster when not dragging
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 500);   // Slower when dragging
+  // Much faster throttling for smooth simulation effect
+  const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
+  const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [metadata, setMetadata] = useState<MackerelProbabilityMetadata | null>(null);
@@ -95,7 +95,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
-        console.log('✅ Makrill metadata laddad (eager):', data);
+  
         
       } catch (error) {
         console.warn('⚠️ Kunde inte ladda makrill metadata:', error);
@@ -111,7 +111,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
-      console.log(`🐟 Bakgrundspreloading av ${availableImages.length} makrillbilder...`);
+
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -124,14 +124,14 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
           imageMap.set(safeTimestamp, img);
           loadedCount++;
           if (loadedCount % 10 === 0) {
-            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} makrillbilder`);
+            // Progress tracking
           }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
         };
         
         img.onerror = () => {
-          console.log(`⚠️ Kunde inte preload makrill: ${safeTimestamp}`);
+          // Silent error handling
         };
         
         img.src = imageUrl;
@@ -140,7 +140,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         await new Promise(resolve => setTimeout(resolve, 8));
       }
       
-      console.log(`🎉 Alla ${loadedCount} makrillbilder preloadade!`);
+      // All images preloaded
     };
     
     // Start preloading immediately with small delay after current images
@@ -176,7 +176,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
       const safeTimestamp = initialImage.filename.replace('.png', '').replace('mackerel_probability_', '');
       const imageUrl = `/data/mackerel-probability-images-mercator/mackerel_probability_${safeTimestamp}.png`;
       
-      console.log('🎯 Laddar initial makrill bild:', safeTimestamp);
+
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
@@ -188,10 +188,10 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          console.log('✅ Initial makrill bild laddad');
+  
         };
         img.onerror = () => {
-          console.log('❌ Kunde inte ladda initial makrill bild');
+  
         };
         img.src = imageUrl;
       }
@@ -263,7 +263,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
             }
           };
           img.onerror = () => {
-            console.log('❌ Kunde inte ladda makrill bild:', safeTimestamp);
+    
           };
           img.src = imageUrl;
         }
@@ -297,10 +297,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
       [lon_min, lat_min]  // bottom-left
     ] as [[number, number], [number, number], [number, number], [number, number]];
     
-    console.log('🐟 Makrill använder WGS84-koordinater:', {
-      wgs84Coordinates,
-      bbox
-    });
+
     
     return {
       type: 'image' as const,
@@ -339,7 +336,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         const response = await fetch(`/data/mackerel-probability-images-mercator/mackerel-values/mackerel_values_${safeTimestamp}.json.gz`);
         
         if (!response.ok) {
-          console.log(`📊 Ingen makrill-data för ${safeTimestamp}`);
+  
           setHotspotData([]);
           return;
         }
@@ -354,11 +351,11 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
             jsonText = decompressed;
           } else {
             // Fallback: try to read as text directly (might not work for compressed data)
-            console.log('⚠️ DecompressionStream not available, trying direct text read');
+  
             jsonText = await response.text();
           }
         } catch (decompressionError) {
-          console.log('⚠️ Decompression failed, trying direct text read:', decompressionError);
+          
           jsonText = await response.text();
         }
         
@@ -368,10 +365,10 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         const hotspots = data.values.filter((point: any) => point.value >= 90.0);
         
         setHotspotData(hotspots);
-        console.log(`🔥 Laddade ${hotspots.length} hotspots för ${safeTimestamp}`);
+        
         
       } catch (error) {
-        console.log(`⚠️ Kunde inte ladda makrill-värden: ${error}`);
+        
         setHotspotData([]);
       }
     };
@@ -427,7 +424,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
         if (hotspotLayerExists) {
           // Move hotspot text layer to the very top (above arrows)
           map.moveLayer('hotspot-text-layer');
-          console.log('🔥 Hotspot text forced to TOP (above arrows)');
+  
         }
       } catch (error) {
         // Ignore errors if layer doesn't exist yet
@@ -454,12 +451,7 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
   // Debug info
   useEffect(() => {
     if (metadata && currentImageUrl) {
-      console.log('🐟 Makrill debug:', {
-        parameter: metadata.parameter,
-        total_images: metadata.total_images,
-        current_image: currentImageUrl?.split('/').pop(),
-        bbox: metadata.wgs84_bbox || metadata.bbox
-      });
+
     }
   }, [metadata, currentImageUrl]);
 

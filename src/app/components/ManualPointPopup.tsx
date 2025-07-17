@@ -5,6 +5,7 @@ import { Popup } from 'react-map-gl/maplibre';
 import { Target, X, Plus, Thermometer, Droplets, Waves } from 'lucide-react';
 import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
+import PopupPreloadManager from '../../lib/popupPreloadManager';
 
 interface ManualPointPopupProps {
   longitude: number;
@@ -28,13 +29,24 @@ interface ParameterData {
 // Cache för vattenmask
 let waterMaskCache: any = null;
 
-// Hjälpfunktion för att ladda vattenmask
+// Hjälpfunktion för att ladda vattenmask - använder förladdad data
 async function loadWaterMask(): Promise<any> {
   if (waterMaskCache) {
     return waterMaskCache;
   }
   
+  // Kontrollera om vattenmasken är förladdad från popup preload manager
+  const popupPreloadManager = PopupPreloadManager.getInstance();
+  const preloadedWaterMask = popupPreloadManager.getWaterMask();
+  
+  if (preloadedWaterMask) {
+    
+    waterMaskCache = preloadedWaterMask;
+    return waterMaskCache;
+  }
+  
   try {
+
     const response = await fetch('/data/scandinavian-waters.geojson');
     if (!response.ok) {
       console.warn('⚠️ Kunde inte ladda vattenmask');
@@ -42,6 +54,7 @@ async function loadWaterMask(): Promise<any> {
     }
     
     waterMaskCache = await response.json();
+    
     return waterMaskCache;
   } catch (error) {
     console.warn('⚠️ Fel vid laddning av vattenmask:', error);

@@ -29,6 +29,7 @@ import DeletePointPopup from './DeletePointPopup';
 import { useLayerVisibility } from '../context/LayerContext';
 import { useImageLayer } from '../context/ImageLayerContext';
 import { useManualPoints } from '../context/ManualPointsContext';
+import { useSimulationLayer } from '../layout';
 import { ManualGridPoint } from '@/lib/points';
 
 interface MapViewProps {
@@ -45,6 +46,7 @@ export default function MapView({
 }: MapViewProps) {
   const { showCurrentVectors: contextShowCurrentVectors } = useLayerVisibility();
   const { activeLayer } = useImageLayer();
+  const { simulationLayer } = useSimulationLayer();
   const { 
     isManualPointMode, 
     addManualPoint, 
@@ -244,7 +246,7 @@ export default function MapView({
 
   // Handle fishing data save
   const handleFishingDataSave = (report: any) => {
-    console.log('Fishing data saved:', report);
+    
     // TODO: Add any additional handling after save
   };
 
@@ -269,7 +271,7 @@ export default function MapView({
       }
       
       addManualPoint(lat, lon);
-      console.log('🎯 Manual point added at:', lat, lon);
+  
     } catch (error) {
       console.error('Error in handleManualPointConfirm:', error);
     }
@@ -293,7 +295,7 @@ export default function MapView({
   const handleDeletePointConfirm = (id: string) => {
     try {
       removeManualPoint(id);
-      console.log('🗑️ Manual point removed:', id);
+  
     } catch (error) {
       console.error('Error in handleDeletePointConfirm:', error);
     }
@@ -380,7 +382,7 @@ export default function MapView({
         
         {/* PILAR MÅSTE RENDERAS EFTER BILDLAGER FÖR ATT VARA OVANPÅ */}
         <CurrentVectorsLayer 
-          visible={contextShowCurrentVectors}
+          visible={contextShowCurrentVectors && !simulationLayer}
         />
         
         {/* MANUELLA PUNKTER - RENDERAS EFTER PILAR */}

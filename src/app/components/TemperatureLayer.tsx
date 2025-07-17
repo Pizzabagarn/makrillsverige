@@ -27,14 +27,14 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
   opacity = 0.8 
 }) => {
   const { current: map } = useMap();
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   
   // Detect if user is actively dragging - samma som CurrentMagnitudeLayer
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Use different throttling based on dragging state  
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 100);
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 500);
+  // Much faster throttling for smooth simulation effect
+  const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
+  const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [metadata, setMetadata] = useState<TemperatureMetadata | null>(null);
@@ -64,7 +64,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
-        console.log('✅ Temperature metadata laddad (eager)');
+  
         
       } catch (error) {
         // Tyst fail - ta bort console.warn för bättre prestanda
@@ -80,7 +80,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
-      console.log(`🌡️ Bakgrundspreloading av ${availableImages.length} temperature bilder...`);
+
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -93,7 +93,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
           imageMap.set(safeTimestamp, img);
           loadedCount++;
           if (loadedCount % 10 === 0) {
-            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} temperature bilder`);
+            // Progress tracking
           }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
@@ -109,7 +109,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         await new Promise(resolve => setTimeout(resolve, 6));
       }
       
-      console.log(`🎉 Alla ${loadedCount} temperature bilder preloadade!`);
+      // All images preloaded
     };
     
     // Start preloading immediately with delay after current images
@@ -136,23 +136,23 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
       
-      console.log('🎯 Laddar initial temperature bild:', safeTimestamp);
+
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
-        console.log('⚡ Initial temperature bild från cache:', safeTimestamp);
+
       } else {
         // Ladda bilden manuellt om den inte är preloaded
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          console.log('✅ Initial temperature bild laddad:', safeTimestamp);
+
         };
         img.onerror = () => {
-          console.log('❌ Kunde inte ladda initial temperature bild:', safeTimestamp);
+
         };
         img.src = imageUrl;
       }

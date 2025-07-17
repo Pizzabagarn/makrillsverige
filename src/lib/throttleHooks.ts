@@ -37,9 +37,10 @@ export function useDraggingDetection(selectedHour: number): boolean {
       clearTimeout(dragTimer.current);
     }
     
+    // Shorter timeout for more responsive simulation
     dragTimer.current = setTimeout(() => {
       setIsDragging(false);
-    }, 300) as any;
+    }, 150) as any; // Reduced from 300ms to 150ms
 
     return () => {
       if (dragTimer.current) {

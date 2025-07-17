@@ -27,14 +27,14 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
   opacity = 0.8 
 }) => {
   const { current: map } = useMap();
-  const { selectedHour, baseTime } = useTimeSlider();
+  const { selectedHour, displayHour, baseTime } = useTimeSlider();
   
   // Detect if user is actively dragging - samma som CurrentMagnitudeLayer
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Use different throttling based on dragging state  
-  const lightThrottledHour = useHeavyThrottle(selectedHour, 100);
-  const heavyThrottledHour = useHeavyThrottle(selectedHour, 500);
+  // Much faster throttling for smooth simulation effect
+  const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
+  const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [metadata, setMetadata] = useState<SalinityMetadata | null>(null);
@@ -64,7 +64,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
-        console.log('✅ Salinity metadata laddad (eager)');
+  
         
       } catch (error) {
         // Tyst fail - ta bort console.warn för bättre prestanda
@@ -80,7 +80,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
     if (availableImages.length === 0) return;
     
     const preloadImages = async () => {
-      console.log(`🧂 Bakgrundspreloading av ${availableImages.length} salinity bilder...`);
+
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
@@ -93,7 +93,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
           imageMap.set(safeTimestamp, img);
           loadedCount++;
           if (loadedCount % 10 === 0) {
-            console.log(`✅ Preloaded ${loadedCount}/${availableImages.length} salinity bilder`);
+            // Progress tracking
           }
           // Update preloaded images incrementally
           setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
@@ -109,7 +109,7 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         await new Promise(resolve => setTimeout(resolve, 7));
       }
       
-      console.log(`🎉 Alla ${loadedCount} salinity bilder preloadade!`);
+      // All images preloaded
     };
     
     // Start preloading immediately with delay after temperature images
@@ -136,23 +136,23 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
       const imageUrl = `/data/salinity-images/salinity_${safeTimestamp}.png`;
       
-      console.log('🎯 Laddar initial salinity bild:', safeTimestamp);
+
       setCurrentImageUrl(imageUrl);
       
       // Ladda bilden direkt även om den inte är preloaded
       const preloadedImg = preloadedImages.get(safeTimestamp);
       if (preloadedImg) {
         setImageLoaded(true);
-        console.log('⚡ Initial salinity bild från cache:', safeTimestamp);
+
       } else {
         // Ladda bilden manuellt om den inte är preloaded
         const img = new Image();
         img.onload = () => {
           setImageLoaded(true);
-          console.log('✅ Initial salinity bild laddad:', safeTimestamp);
+
         };
         img.onerror = () => {
-          console.log('❌ Kunde inte ladda initial salinity bild:', safeTimestamp);
+
         };
         img.src = imageUrl;
       }

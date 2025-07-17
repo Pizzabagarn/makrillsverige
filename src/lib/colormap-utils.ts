@@ -81,54 +81,40 @@ const COLORMAP_DATA = {
     { value: 30.188, color: '#00060A' }
   ],
   mackerel: [
-    // MJUKA FÄRGÖVERGÅNGAR: Svart → Grå → Blå → Orange med många mellansteg
-    // Eliminerar hårda breaks för naturlig progression
+    // MATCHAR LEGENDEN EXAKT: Svart → Mörkbrun → Gyllene färger
+    // Samma färgprogression som MackerelLegend.tsx
     
-    // === SVART TILL MYCKET MÖRK GRÅ (0-25%) ===
+    // === SVART BAS FÖR LÅGA VÄRDEN ===
     { value: -39.0, color: '#000000' },  // Absolut minimum - svart
-    { value: -30.0, color: '#000000' },  // Svart
     { value: -20.0, color: '#000000' },  // Svart
-    { value: -10.0, color: '#000000' },  // Svart
     { value: 0.0, color: '#000000' },    // Svart vid neutral punkt
-    { value: 2.0, color: '#030303' },    // Nästan omärklig övergång
-    { value: 5.0, color: '#070707' },    // Mycket mörk grå
-    { value: 8.0, color: '#0C0C0C' },    // Mörk grå
-    { value: 12.0, color: '#121212' },   // Fortsatt mörk grå
-    { value: 15.0, color: '#1A1A1A' },   // Grå
-    { value: 18.0, color: '#222222' },   // Ljusare grå
-    { value: 22.0, color: '#2C2C2C' },   // Grå
-    { value: 25.0, color: '#363636' },   // Ljus grå
     
-    // === MJUK ÖVERGÅNG GRÅTT TILL BLÅTT (25-50%) ===
-    { value: 27.0, color: '#2A2A3A' },   // Grå med blå antydan
-    { value: 30.0, color: '#1E1E44' },   // Mörk grå-blå
-    { value: 32.0, color: '#191955' },   // Grå-blå
-    { value: 35.0, color: '#141966' },   // Blå-grå
-    { value: 37.0, color: '#0F1A77' },   // Blå-grå
-    { value: 40.0, color: '#0A1B88' },   // Blå
-    { value: 42.0, color: '#051C99' },   // Blå
-    { value: 45.0, color: '#001DAA' },   // Stark blå
-    { value: 47.0, color: '#001EBB' },   // Starkare blå
-    { value: 50.0, color: '#001FCC' },   // Ljus blå
-    
-    // === MJUK ÖVERGÅNG BLÅTT TILL ORANGE (50-100%) ===
-    { value: 52.0, color: '#1A2FDD' },   // Ljus blå
-    { value: 55.0, color: '#4A5500' },   // Blå-grön övergång
-    { value: 57.0, color: '#6A6600' },   // Gulgrön
-    { value: 60.0, color: '#8A7700' },   // Gul-brun
-    { value: 62.0, color: '#AA8800' },   // Gul-orange
-    { value: 65.0, color: '#CC9900' },   // Orange
-    { value: 67.0, color: '#DDAA00' },   // Ljus orange
-    { value: 70.0, color: '#EEBB00' },   // Gul-orange
-    { value: 72.0, color: '#FFCC00' },   // Gul-orange
-    { value: 75.0, color: '#FFDD11' },   // Gul
-    { value: 77.0, color: '#FFEE22' },   // Ljus gul
-    { value: 80.0, color: '#FFFF33' },   // Gul
-    { value: 82.0, color: '#FFFF44' },   // Ljus gul
-    { value: 85.0, color: '#FFFF55' },   // Mycket ljus gul
-    { value: 87.0, color: '#FFFF66' },   // Ljusare gul
-    { value: 90.0, color: '#FFFF77' },   // Ljus gul
-    { value: 92.0, color: '#FFFF88' },   // Mycket ljus gul
+    // === SMIDIG PROGRESSION TILL BRUN (MATCHAR LEGENDEN) ===
+    { value: 20.0, color: '#0A0800' },   // Mycket mörk brun
+    { value: 25.0, color: '#151000' },   // Mörk brun
+    { value: 30.0, color: '#201800' },   // Mörkbrun
+    { value: 35.0, color: '#2B2000' },   // Mörkbrun
+    { value: 40.0, color: '#362800' },   // Mörkbrun
+    { value: 45.0, color: '#413000' },   // Mörkbrun
+    { value: 50.0, color: '#4C3800' },   // Mörkbrun
+    { value: 52.0, color: '#574000' },   // Brun
+    { value: 55.0, color: '#624800' },   // Brun
+    { value: 58.0, color: '#6D5000' },   // Brun
+    { value: 60.0, color: '#785800' },   // Brun
+    { value: 62.0, color: '#836000' },   // Brun-gul
+    { value: 65.0, color: '#8E6800' },   // Brun-gul
+    { value: 67.0, color: '#997000' },   // Brun-gul
+    { value: 69.0, color: '#A47800' },   // Gul-brun
+    { value: 70.0, color: '#BB8800' },   // Guld-brun
+    { value: 72.0, color: '#CC9900' },   // Orange-guld
+    { value: 75.0, color: '#DDAA00' },   // Ljus orange
+    { value: 77.0, color: '#EEBB00' },   // Gul-orange
+    { value: 80.0, color: '#FFCC00' },   // Gul-orange
+    { value: 82.0, color: '#FFDD11' },   // Gul
+    { value: 85.0, color: '#FFEE22' },   // Ljus gul
+    { value: 87.0, color: '#FFFF33' },   // Gul
+    { value: 90.0, color: '#FFFF55' },   // Ljus gul
+    { value: 92.0, color: '#FFFF77' },   // Mycket ljus gul
     { value: 95.0, color: '#FFFF99' },   // Nästan vit-gul
     { value: 97.0, color: '#FFFFAA' },   // Ljus vit-gul
     { value: 100.0, color: '#FFFFCC' },  // Nästan vit

@@ -360,6 +360,10 @@ export const DMI_GRID_POINTS: ManualGridPoint[] = [
   { lat: 55.792923, lon: 12.063412, name: 'Manuell punkt 359', isManualPoint: true, id: 'manual_1752637031132_yxozemco4', createdAt: '2025-07-16T03:37:11.132Z' },
   { lat: 58.635799, lon: 16.373594, name: 'Manuell punkt 360', isManualPoint: true, id: 'manual_1752637162348_4hi4389ho', createdAt: '2025-07-16T03:39:22.348Z' },
   { lat: 58.461167, lon: 16.52125, name: 'Manuell punkt 361', isManualPoint: true, id: 'manual_1752637168908_gwt5kvgik', createdAt: '2025-07-16T03:39:28.908Z' },
+  { lat: 55.599216, lon: 12.932241, name: 'Manuell punkt 336', isManualPoint: true, id: 'manual_1752756924326_vdtzx20nh', createdAt: '2025-07-17T12:55:24.326Z' },
+  { lat: 55.595627, lon: 12.930353, name: 'Manuell punkt 337', isManualPoint: true, id: 'manual_1752756925593_w1bhns8fc', createdAt: '2025-07-17T12:55:25.594Z' },
+  { lat: 55.593106, lon: 12.927606, name: 'Manuell punkt 338', isManualPoint: true, id: 'manual_1752756927099_w4qdhqzs2', createdAt: '2025-07-17T12:55:27.099Z' },
+  { lat: 55.59068, lon: 12.925546, name: 'Manuell punkt 339', isManualPoint: true, id: 'manual_1752756928452_jw9x9xo3g', createdAt: '2025-07-17T12:55:28.452Z' },
 ];
 
 export const USER_ADDED_MANUAL_POINTS = [
@@ -3042,5 +3046,37 @@ export const USER_ADDED_MANUAL_POINTS = [
     "name": "Manuell punkt 361",
     "isManualPoint": true,
     "createdAt": "2025-07-16T03:39:28.908Z"
+  },
+  {
+    "id": "manual_1752756924326_vdtzx20nh",
+    "lat": 55.599216,
+    "lon": 12.932241,
+    "name": "Manuell punkt 336",
+    "isManualPoint": true,
+    "createdAt": "2025-07-17T12:55:24.326Z"
+  },
+  {
+    "id": "manual_1752756925593_w1bhns8fc",
+    "lat": 55.595627,
+    "lon": 12.930353,
+    "name": "Manuell punkt 337",
+    "isManualPoint": true,
+    "createdAt": "2025-07-17T12:55:25.594Z"
+  },
+  {
+    "id": "manual_1752756927099_w4qdhqzs2",
+    "lat": 55.593106,
+    "lon": 12.927606,
+    "name": "Manuell punkt 338",
+    "isManualPoint": true,
+    "createdAt": "2025-07-17T12:55:27.099Z"
+  },
+  {
+    "id": "manual_1752756928452_jw9x9xo3g",
+    "lat": 55.59068,
+    "lon": 12.925546,
+    "name": "Manuell punkt 339",
+    "isManualPoint": true,
+    "createdAt": "2025-07-17T12:55:28.452Z"
   }
 ];

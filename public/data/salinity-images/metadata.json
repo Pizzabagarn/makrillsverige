@@ -1,0 +1,10 @@
+{
+  "parameter": "salinity",
+  "generated_at": "2025-07-17T18:57:00.000Z",
+  "resolution": "400x400",
+  "wgs84_bbox": [10.3, 16.6, 54.9, 59.6],
+  "mercator_bbox": [1146590.7551707178, 1847903.5471683415, 7342482.290188272, 8311215.713002437],
+  "projection": "EPSG:3857",
+  "total_images": 0,
+  "images": []
+} 

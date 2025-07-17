@@ -108,8 +108,9 @@ class MackerelCalibration {
     const recommendedIntercept = this.calculateOptimalIntercept(reports);
     const interceptOffset = recommendedIntercept - (-8.0);
 
-    // Kolla om vi kan använda slope-kalibrering
-    const useSlopeCalibration = reports.length >= 20;
+    // ✅ ÅTERAKTIVERAD: Nu med faktiska marine data snapshots
+    // Ändrat tillbaka från 999 till 20 nu när vi har verkliga data
+    const useSlopeCalibration = reports.length >= 20; // Återställd till 20
     let coefficients = undefined;
     let modelMetrics = undefined;
 

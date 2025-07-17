@@ -8,8 +8,9 @@ import SidebarWithToggle from "./components/SidebarLayout";
 import { TimeSliderProvider } from "./context/TimeSliderContext";
 import { LayerProvider } from "./context/LayerContext";
 import { AreaParametersProvider } from "./context/AreaParametersContext";
-import { ImageLayerProvider } from "./context/ImageLayerContext";
+import { ImageLayerProvider, type ImageLayerType } from "./context/ImageLayerContext";
 import { ManualPointsProvider } from "./context/ManualPointsContext";
+import { useState, createContext, useContext } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +22,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Simulation Context
+const SimulationContext = createContext<{
+  simulationLayer: ImageLayerType | null;
+  setSimulationLayer: (layer: ImageLayerType | null) => void;
+}>({
+  simulationLayer: null,
+  setSimulationLayer: () => {},
+});
+
+export const useSimulationLayer = () => useContext(SimulationContext);
+
 // Metadata moved to separate file since this is now a client component
 
 export default function RootLayout({
@@ -28,6 +40,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [simulationLayer, setSimulationLayer] = useState<ImageLayerType | null>(null);
+
   return (
     <html lang="sv">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
@@ -36,9 +50,14 @@ export default function RootLayout({
             <LayerProvider>
               <ImageLayerProvider>
                 <ManualPointsProvider>
-                  <SidebarWithToggle>
-                    {children}
-                  </SidebarWithToggle>
+                  <SimulationContext.Provider value={{ simulationLayer, setSimulationLayer }}>
+                    <SidebarWithToggle 
+                      simulationLayer={simulationLayer}
+                      onSimulationLayerChange={setSimulationLayer}
+                    >
+                      {children}
+                    </SidebarWithToggle>
+                  </SimulationContext.Provider>
                 </ManualPointsProvider>
               </ImageLayerProvider>
             </LayerProvider>

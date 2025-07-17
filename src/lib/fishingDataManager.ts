@@ -1,12 +1,14 @@
 import type { FeatureCollection } from 'geojson';
 import { generateSamplePointsFromWaterMask } from './extractWaterPoints';
+import { marineDataSnapshotService } from './marineDataSnapshot';
+
+export type FishingQuality = 'none' | 'poor' | 'fair' | 'good' | 'excellent' | 'custom';
 
 export interface FishingReport {
   id: string;
-  timestamp: string;
   dateRange: {
-    start: string; // ISO date string
-    end: string;   // ISO date string
+    start: string; // YYYY-MM-DD format
+    end: string;   // YYYY-MM-DD format
   };
   timeRange: {
     start: string; // HH:MM format
@@ -22,9 +24,14 @@ export interface FishingReport {
     centerLat: number;
     centerLng: number;
   };
-  quality: 'excellent' | 'good' | 'fair' | 'poor' | 'none';
+  quality: FishingQuality;
+  customPercentage?: number; // For 'custom' quality
   notes?: string;
-  createdAt: string;
+  timestamp: string; // ISO string
+  createdAt: string; // ISO string
+  
+  // ✅ NYTT: Spara den faktiska sannolikheten som visades när rapporten skapades
+  historicalModelPrediction?: number; // Makrill-sannolikhet som visades vid rapportens skapande
 }
 
 export interface BBoxTemplate {
@@ -73,10 +80,11 @@ class FishingDataManager {
   private waterMaskCache: FeatureCollection | null = null;
 
   // Save fishing report
-  saveFishingReport(report: Omit<FishingReport, 'id' | 'createdAt'>): FishingReport {
+  saveFishingReport(report: Omit<FishingReport, 'id' | 'createdAt' | 'timestamp'>): FishingReport {
     const fullReport: FishingReport = {
       ...report,
       id: this.generateId(),
+      timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
 
@@ -88,7 +96,107 @@ class FishingDataManager {
     // 🔄 AUTOMATISK EXPORT av kalibrering när rapport sparas
     this.triggerCalibrationExport();
     
+    // 🔄 AUTOMATISK SNAPSHOT av marine data när rapport sparas
+    this.createMarineDataSnapshot(fullReport);
+    
+    // 🔄 AUTOMATISK HISTORISK SANNOLIKHET - spara aktuell makrill-sannolikhet
+    this.saveHistoricalModelPrediction(fullReport);
+    
     return fullReport;
+  }
+
+  // Update existing fishing report
+  updateFishingReport(id: string, reportData: Omit<FishingReport, 'id' | 'createdAt' | 'timestamp'>): FishingReport {
+    const reports = this.getAllReports();
+    const existingReportIndex = reports.findIndex(r => r.id === id);
+    
+    if (existingReportIndex === -1) {
+      throw new Error(`Report with id ${id} not found`);
+    }
+    
+    const existingReport = reports[existingReportIndex];
+    const updatedReport: FishingReport = {
+      ...reportData,
+      id: existingReport.id,
+      createdAt: existingReport.createdAt,
+      timestamp: new Date().toISOString(), // Uppdatera timestamp för senaste ändring
+      historicalModelPrediction: existingReport.historicalModelPrediction // Behåll historisk sannolikhet
+    };
+    
+    reports[existingReportIndex] = updatedReport;
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(reports));
+    
+    // 🔄 AUTOMATISK EXPORT av kalibrering när rapport uppdateras
+    this.triggerCalibrationExport();
+    
+    // 🔄 AUTOMATISK SNAPSHOT av marine data när rapport uppdateras
+    this.createMarineDataSnapshot(updatedReport);
+    
+    return updatedReport;
+  }
+
+  /**
+   * Spara den faktiska makrill-sannolikheten som visades när rapporten skapades
+   * Detta löser problemet med att gamla rapporter visar fel sannolikhet i validering
+   */
+  private async saveHistoricalModelPrediction(report: FishingReport): Promise<void> {
+    try {
+      const { centerLat: lat, centerLng: lng } = report.location;
+      const reportDate = new Date(report.dateRange.start);
+      
+      // Konvertera till samma timestamp-format som API:et använder
+      const timestamp = new Date(reportDate.getFullYear(), reportDate.getMonth(), reportDate.getDate(), 22, 0, 0).toISOString();
+      
+      // Hämta aktuell makrill-sannolikhet från API
+      const response = await fetch(`/api/mackerel-values/${timestamp}`);
+      
+      if (!response.ok) {
+        console.warn(`⚠️ Kunde inte hämta makrill-data för historisk sparning: ${response.status}`);
+        return;
+      }
+      
+      const mackerelData = await response.json();
+      
+      if (!mackerelData?.values || mackerelData.values.length === 0) {
+        console.warn(`⚠️ Tom makrill-data för historisk sparning`);
+        return;
+      }
+      
+      // Hitta närmaste makrill-punkt (samma logik som i validering)
+      let nearestValue = undefined;
+      let minDistance = Infinity;
+      
+      for (const point of mackerelData.values) {
+        const distance = Math.sqrt(
+          Math.pow(lat - point.lat, 2) + Math.pow(lng - point.lon, 2)
+        );
+        
+        if (distance < minDistance && point.value >= 0) {
+          minDistance = distance;
+          nearestValue = point.value;
+        }
+      }
+      
+      if (nearestValue === undefined) {
+        console.warn(`⚠️ Ingen giltig makrill-punkt hittad för historisk sparning`);
+        return;
+      }
+      
+      const historicalPrediction = Math.round(nearestValue);
+      
+      // Uppdatera rapporten med historisk sannolikhet
+      const reports = this.getAllReports();
+      const reportIndex = reports.findIndex(r => r.id === report.id);
+      
+      if (reportIndex !== -1) {
+        reports[reportIndex].historicalModelPrediction = historicalPrediction;
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(reports));
+        
+      }
+      
+    } catch (error) {
+      console.error(`❌ Fel vid sparning av historisk makrill-sannolikhet:`, error);
+    }
   }
 
   // Get all reports
@@ -114,13 +222,14 @@ class FishingDataManager {
   }
 
   // Convert quality to numerical value for training
-  private qualityToNumber(quality: FishingReport['quality']): number {
+  private qualityToNumber(quality: FishingReport['quality'], customPercentage?: number): number {
     switch (quality) {
       case 'excellent': return 1.0;
       case 'good': return 0.8;
       case 'fair': return 0.6;
       case 'poor': return 0.3;
       case 'none': return 0.0;
+      case 'custom': return customPercentage ? customPercentage / 100 : 0.0;
       default: return 0.0;
     }
   }
@@ -205,12 +314,10 @@ class FishingDataManager {
       // Generate water points within the bounding box
       const waterPoints = generateSamplePointsFromWaterMask(filteredWaterMask, resolution);
       
-      console.log(`🌊 Generated ${waterPoints.length} water points (filtered from bbox)`);
       return waterPoints.map(p => ({ lat: p.lat, lng: p.lon }));
       
     } catch (error) {
       console.error('Failed to generate water-filtered points:', error);
-      console.log('🔄 Falling back to legacy grid generation');
       return this.generateGridPointsLegacy(bounds, resolution);
     }
   }
@@ -244,8 +351,6 @@ class FishingDataManager {
       // Generate WATER-ONLY grid points within the bounding box
       const gridPoints = await this.generateGridPoints(report.location.bounds);
       
-      console.log(`📊 Report ${report.id}: ${gridPoints.length} water points generated`);
-      
       for (const point of gridPoints) {
         // For each day in the date range
         const startDate = new Date(report.dateRange.start);
@@ -269,7 +374,7 @@ class FishingDataManager {
                 temperatureHist: 0, // TODO: calculate from historical data
                 salinityHist: 0,    // TODO: calculate from historical data
                 currentStrengthHist: 0, // TODO: calculate from historical data
-                fishingQuality: this.qualityToNumber(report.quality),
+                fishingQuality: this.qualityToNumber(report.quality, report.customPercentage),
                 lat: point.lat,
                 lng: point.lng,
                 datetime: datetime.toISOString(),
@@ -397,6 +502,18 @@ class FishingDataManager {
 
   // Validate report structure
   private validateReportStructure(report: any): boolean {
+    const isValidQuality = (
+      typeof report.quality === 'string' &&
+      ['excellent', 'good', 'fair', 'poor', 'none', 'custom'].includes(report.quality)
+    );
+    
+    // För custom quality, kolla att customPercentage finns och är giltig
+    const isValidCustom = report.quality !== 'custom' || (
+      typeof report.customPercentage === 'number' &&
+      report.customPercentage >= 0 &&
+      report.customPercentage <= 100
+    );
+    
     return (
       report &&
       typeof report.id === 'string' &&
@@ -410,8 +527,8 @@ class FishingDataManager {
       typeof report.location.centerLat === 'number' &&
       typeof report.location.centerLng === 'number' &&
       report.location.bounds &&
-      typeof report.quality === 'string' &&
-      ['excellent', 'good', 'fair', 'poor', 'none'].includes(report.quality)
+      isValidQuality &&
+      isValidCustom
     );
   }
 
@@ -587,6 +704,33 @@ class FishingDataManager {
     };
   }
 
+  /**
+   * Fylla i historiska sannolikheter för befintliga rapporter som saknar det
+   * Denna funktion kan köras för att uppdatera gamla rapporter
+   */
+  public async backfillHistoricalPredictions(): Promise<{ updated: number; failed: number }> {
+    const reports = this.getAllReports();
+    let updated = 0;
+    let failed = 0;
+    
+    for (const report of reports) {
+      // Hoppa över rapporter som redan har historisk sannolikhet
+      if (report.historicalModelPrediction !== undefined) {
+        continue;
+      }
+      
+      try {
+        await this.saveHistoricalModelPrediction(report);
+        updated++;
+      } catch (error) {
+        console.error(`❌ Kunde inte uppdatera historisk sannolikhet för ${report.id}:`, error);
+        failed++;
+      }
+    }
+    
+    return { updated, failed };
+  }
+
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
@@ -638,6 +782,17 @@ class FishingDataManager {
   getBBoxTemplate(id: string): BBoxTemplate | undefined {
     const templates = this.getAllBBoxTemplates();
     return templates.find(t => t.id === id);
+  }
+
+  /**
+   * Skapar marine data snapshot för en rapport
+   */
+  private async createMarineDataSnapshot(report: FishingReport): Promise<void> {
+    try {
+      const snapshot = await marineDataSnapshotService.createSnapshot(report);
+    } catch (error) {
+      console.error('❌ Kunde inte skapa marine data snapshot:', error);
+    }
   }
 }
 

@@ -74,7 +74,7 @@ export function ManualPointsProvider({ children }: { children: React.ReactNode }
       }
       
       const result = await response.json();
-      console.log('✅ Backend file updated:', result);
+
     } catch (error) {
       console.error('❌ Failed to update backend file:', error);
     }
@@ -112,7 +112,7 @@ export function ManualPointsProvider({ children }: { children: React.ReactNode }
       // Note: Backend file update is now handled manually via the UI button
       // This prevents automatic updates during development that could cause Fast Refresh issues
       
-      console.log('🎯 Manual point added successfully:', newPoint);
+
     } catch (error) {
       console.error('Error in addManualPoint:', error);
     }
@@ -127,7 +127,7 @@ export function ManualPointsProvider({ children }: { children: React.ReactNode }
       updateBackendFile(newPoints);
     }
     
-    console.log('🗑️ Manual point removed:', id);
+    
   }, [manualPoints, updateBackendFile]);
 
   const hasPointAt = useCallback((lat: number, lon: number, tolerance: number = TOLERANCE) => {

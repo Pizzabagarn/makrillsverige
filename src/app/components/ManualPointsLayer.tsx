@@ -3,6 +3,8 @@
 import React, { useMemo, useEffect } from 'react';
 import { Source, Layer, useMap } from 'react-map-gl/maplibre';
 import { useManualPoints } from '../context/ManualPointsContext';
+import { useTimeSlider } from '../context/TimeSliderContext';
+import { useDraggingDetection } from '../../lib/throttleHooks';
 import { ManualGridPoint } from '@/lib/points';
 
 interface ManualPointsLayerProps {
@@ -15,7 +17,11 @@ const ManualPointsLayer: React.FC<ManualPointsLayerProps> = ({
   onPointClick
 }) => {
   const { manualPoints } = useManualPoints();
+  const { selectedHour } = useTimeSlider();
   const { current: map } = useMap();
+  
+  // Detect dragging for performance optimization
+  const isDragging = useDraggingDetection(selectedHour);
 
   // Create GeoJSON for manual points
   const pointsGeoJSON = useMemo(() => {
@@ -68,9 +74,9 @@ const ManualPointsLayer: React.FC<ManualPointsLayerProps> = ({
     return () => {
       map.off('click', handlePointClick);
     };
-  }, [map, visible, onPointClick, manualPoints]);
+  }, [map, visible, onPointClick, manualPoints]); // Removed isDragging from dependencies
 
-  if (!visible || !pointsGeoJSON) {
+  if (!visible || !pointsGeoJSON || isDragging) {
     return null;
   }
 

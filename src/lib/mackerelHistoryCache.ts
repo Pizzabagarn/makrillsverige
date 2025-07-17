@@ -27,8 +27,6 @@ let memoryCache: MackerelHistoryCache | null = null;
  * Lägg till nya datapunkter till historisk cache
  */
 export function addToMackerelHistory(areaData: any): void {
-  console.log('📊 Uppdaterar makrill historisk cache...');
-  
   // Ladda befintlig cache
   const existingCache = loadMackerelHistory();
   
@@ -79,7 +77,6 @@ export function addToMackerelHistory(areaData: any): void {
     localStorage.setItem(CACHE_KEY, JSON.stringify(updatedCache));
     memoryCache = updatedCache;
     
-    console.log(`✅ Makrill historisk cache uppdaterad: ${filteredPoints.length} punkter (${RETENTION_DAYS} dagar)`);
   } catch (error) {
     console.warn('⚠️ Kunde inte spara makrill historisk cache:', error);
   }
@@ -217,7 +214,6 @@ export function clearOldMackerelHistory(): void {
   try {
     localStorage.removeItem(CACHE_KEY);
     memoryCache = null;
-    console.log('🗑️ Makrill historisk cache rensad');
   } catch (error) {
     console.warn('⚠️ Kunde inte rensa makrill historisk cache:', error);
   }

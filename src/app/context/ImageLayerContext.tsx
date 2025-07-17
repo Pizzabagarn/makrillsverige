@@ -17,7 +17,7 @@ interface ImageLayerProviderProps {
 }
 
 export function ImageLayerProvider({ children }: ImageLayerProviderProps) {
-  const [activeLayer, setActiveLayer] = useState<ImageLayerType>('current'); // Default to current
+  const [activeLayer, setActiveLayer] = useState<ImageLayerType>('temperature'); // Default to temperature
 
   const isLayerActive = (layer: ImageLayerType) => activeLayer === layer;
 

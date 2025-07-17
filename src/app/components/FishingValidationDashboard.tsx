@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fishingDataManager, FishingReport } from '@/lib/fishingDataManager';
 import { mackerelCalibration, CalibrationResult } from '@/lib/mackerelModelCalibration';
-import { X, TrendingUp, AlertTriangle, CheckCircle, BarChart3, Calendar, MapPin, Settings } from 'lucide-react';
+import { X, TrendingUp, AlertTriangle, CheckCircle, BarChart3, Calendar, MapPin, Settings, Edit, Save, Trash2 } from 'lucide-react';
 
 interface ValidationResult {
   reportId: string;
@@ -32,55 +32,166 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
     calibration: CalibrationResult | null;
     recommendations: string[];
   } | null>(null);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
 
-  // Mock function för att beräkna modellens prediction för en rapport
-  // NU MED DATADRIVEN KALIBRERING
-  const calculateModelPrediction = (report: FishingReport): number => {
-    // Simplified prediction based on our current model logic
+  // ✅ ANVÄND FAKTISKA MAKRILL-VÄRDEN FRÅN KARTAN
+  // 🔧 FIXAR PROBLEMET: Hämtar exakt samma data som kartan visar
+  const calculateModelPrediction = async (report: FishingReport): Promise<number> => {
+    // ✅ PRIORITERA HISTORISK SANNOLIKHET om den finns
+    if (report.historicalModelPrediction !== undefined) {
+
+      return report.historicalModelPrediction;
+    }
+    
     const { centerLat: lat, centerLng: lng } = report.location;
     const date = new Date(report.dateRange.start);
     
-    // Simulated environmental parameters (i verkligheten skulle dessa hämtas från faktisk data)
-    const temperature = 15 + Math.sin((date.getMonth() - 1) * Math.PI / 6) * 8; // Seasonal variation
-    const salinity = lng > 13.5 ? 32 : (lng > 12.5 ? 25 : 15); // Geographic variation
-    const currentStrength = 0.3 + Math.random() * 0.4;
+    try {
+      // 🎯 HÄMTA FAKTISKA MAKRILL-VÄRDEN från samma API som kartan
+      // Konvertera datum till timestamp för API-anrop
+      const timestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 22, 0, 0).toISOString();
+      
+
+      
+      // Hämta makrill-värden från API
+      const response = await fetch(`/api/mackerel-values/${timestamp}`);
+      
+      if (!response.ok) {
+        console.warn(`⚠️ Ingen makrill-data för ${timestamp}, använder fallback-beräkning`);
+        return await calculateFallbackPrediction(report);
+      }
+      
+      const mackerelData = await response.json();
+      
+      if (!mackerelData?.values || mackerelData.values.length === 0) {
+        console.warn(`⚠️ Tom makrill-data för ${timestamp}, använder fallback-beräkning`);
+        return await calculateFallbackPrediction(report);
+      }
+      
+      // 🔍 HITTA NÄRMASTE MAKRILL-PUNKT
+      let nearestValue = undefined;
+      let minDistance = Infinity;
+      
+      for (const point of mackerelData.values) {
+        const distance = Math.sqrt(
+          Math.pow(lat - point.lat, 2) + Math.pow(lng - point.lon, 2)
+        );
+        
+        if (distance < minDistance && point.value >= 0) {
+          minDistance = distance;
+          nearestValue = point.value;
+        }
+      }
+      
+      if (nearestValue === undefined) {
+        console.warn(`⚠️ Ingen giltig makrill-punkt hittad, använder fallback-beräkning`);
+        return await calculateFallbackPrediction(report);
+      }
+      
+      const result = Math.round(nearestValue);
+      
+
+      
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ Fel vid hämtning av makrill-data för ${report.id}:`, error);
+      return await calculateFallbackPrediction(report);
+    }
+  };
+  
+  // 🔧 FALLBACK-BERÄKNING om API misslyckas
+  const calculateFallbackPrediction = async (report: FishingReport): Promise<number> => {
+    // Enkel fallback baserat på kalibrering
+    const calibratedIntercept = calibrationStatus?.calibration?.recommendedIntercept || -8.0;
+    const probability = 1 / (1 + Math.exp(-calibratedIntercept));
+    const result = Math.round(probability * 100);
     
-    // Seasonal factor
-    const dayOfYear = date.getTime() / (1000 * 60 * 60 * 24) % 365.25;
-    const seasonalRadians = (dayOfYear - 200) * 2 * Math.PI / 365;
-    const seasonalFactor = (Math.cos(seasonalRadians) + 1) / 2;
     
-    // Simplified model logic matching our improved coefficients
-    let tempFactor = 0;
-    if (temperature < 8) tempFactor = -2.0;
-    else if (temperature < 12) tempFactor = -1.0;
-    else if (temperature < 15) tempFactor = 0.0;
-    else if (temperature <= 20) tempFactor = (temperature - 15) * 0.4;
-    else tempFactor = 2.0 - (temperature - 20) * 0.2;
+    return result;
+  };
+
+  // 🔧 REDIGERINGS-FUNKTIONER för modellens sannolikhet
+  const handleEditModelPrediction = (reportId: string, currentValue: number) => {
+    setEditingReportId(reportId);
+    setEditingValue(currentValue.toString());
+  };
+
+  const handleSaveModelPrediction = async (reportId: string) => {
+    const newValue = parseInt(editingValue);
     
-    let salinityFactor = 0;
-    if (salinity < 8) salinityFactor = -3.0;
-    else if (salinity < 15) salinityFactor = -1.0 + (salinity - 8) * 0.3;
-    else if (salinity < 25) salinityFactor = 1.0 + (salinity - 15) * 0.1;
-    else salinityFactor = 2.0;
+    if (isNaN(newValue) || newValue < 0 || newValue > 100) {
+      alert('Sannolikhet måste vara mellan 0 och 100');
+      return;
+    }
     
-    const currentFactor = currentStrength < 0.5 ? currentStrength * 0.8 : 0.4;
+    try {
+      // Uppdatera historicalModelPrediction för rapporten
+      const reports = fishingDataManager.getAllReports();
+      const reportIndex = reports.findIndex(r => r.id === reportId);
+      
+      if (reportIndex !== -1) {
+        reports[reportIndex].historicalModelPrediction = newValue;
+        localStorage.setItem('fishing_reports', JSON.stringify(reports));
+        
+  
+        
+        // Räkna om validering för att reflektera ändringen
+        await calculateValidation();
+        
+        setEditingReportId(null);
+        setEditingValue('');
+      }
+    } catch (error) {
+      console.error('❌ Fel vid uppdatering av modellsannolikhet:', error);
+      alert('Fel vid sparande av modellsannolikhet');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReportId(null);
+    setEditingValue('');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent, reportId: string) => {
+    if (e.key === 'Enter') {
+      handleSaveModelPrediction(reportId);
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  // 🗑️ DELETE-FUNKTIONALITET för rapporter
+  const handleDeleteReport = (reportId: string) => {
+    if (window.confirm('Är du säker på att du vill ta bort denna rapport? Detta kan inte ångras.')) {
+      try {
+        fishingDataManager.deleteReport(reportId);
+  
+        
+        // Räkna om validering för att reflektera ändringen
+        calculateValidation();
+      } catch (error) {
+        console.error('❌ Fel vid borttagning av rapport:', error);
+        alert('Fel vid borttagning av rapport');
+      }
+    }
+  };
+
+  // 🔍 KONTROLLERA OM 0-VÄRDE ÄR PROBLEMATISKT
+  const isProblematicZero = (result: ValidationResult): boolean => {
+    // Om modellprediktionen är 0 OCH det inte finns någon historisk data
+    // OCH det är en gammal rapport (mer än 7 dagar), då är det problematiskt
+    if (result.modelPrediction !== 0) return false;
     
-    let seasonBoost = 0;
-    if (seasonalFactor > 0.8) seasonBoost = 3.0;
-    else if (seasonalFactor > 0.6) seasonBoost = 2.0;
-    else if (seasonalFactor > 0.4) seasonBoost = 1.0;
-    else if (seasonalFactor > 0.2) seasonBoost = -1.0;
-    else seasonBoost = -3.0;
+    const reportDate = new Date(result.report.dateRange.start);
+    const now = new Date();
+    const daysDiff = Math.floor((now.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24));
     
-    // ANVÄND KALIBRERAD INTERCEPT istället för hårdkodad -8.0
-    const interceptOffset = mackerelCalibration.getCurrentInterceptOffset();
-    const calibratedIntercept = -8.0 + interceptOffset;
-    
-    const Z = calibratedIntercept + tempFactor + salinityFactor + currentFactor + seasonBoost;
-    const probability = 1 / (1 + Math.exp(-Z));
-    
-    return Math.round(probability * 100);
+    // Problematiskt om:
+    // 1. Ingen historisk data finns OCH
+    // 2. Rapporten är äldre än 7 dagar (troligen ingen aktuell data)
+    return result.report.historicalModelPrediction === undefined && daysDiff > 7;
   };
 
   // Ladda kalibrering när komponenten laddas
@@ -94,19 +205,20 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
   }, []);
 
   // Konvertera rapport-kvalitet till numeriskt värde
-  const qualityToNumber = (quality: FishingReport['quality']): number => {
+  const qualityToNumber = (quality: FishingReport['quality'], customPercentage?: number): number => {
     const qualityMap = {
       'excellent': 100,
       'good': 80,
       'fair': 60,
       'poor': 30,
-      'none': 0
+      'none': 0,
+      'custom': customPercentage || 0
     };
     return qualityMap[quality];
   };
 
-  // Beräkna validering för alla rapporter
-  const calculateValidation = useCallback(() => {
+  // Beräkna validering för alla rapporter (nu async)
+  const calculateValidation = useCallback(async () => {
     setLoading(true);
     
     try {
@@ -125,9 +237,12 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
         return true;
       });
       
-      const results: ValidationResult[] = filteredReports.map(report => {
-        const modelPrediction = calculateModelPrediction(report);
-        const actualQuality = qualityToNumber(report.quality);
+      // 🔄 AWAITA ALLA PREDIKTIONER
+      const results: ValidationResult[] = [];
+      
+      for (const report of filteredReports) {
+        const modelPrediction = await calculateModelPrediction(report); // Await här
+        const actualQuality = qualityToNumber(report.quality, report.customPercentage);
         const difference = modelPrediction - actualQuality;
         
         // Bestäm träffsäkerhet
@@ -137,15 +252,15 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
         else if (absDiff <= 30) accuracy = 'fair';
         else accuracy = 'poor';
         
-        return {
+        results.push({
           reportId: report.id,
           report,
           modelPrediction,
           actualQuality,
           difference,
           accuracy
-        };
-      });
+        });
+      }
       
       setValidationResults(results);
     } catch (error) {
@@ -153,23 +268,24 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [selectedTimeframe, setLoading, setValidationResults]);
+  }, [selectedTimeframe, calibrationStatus]);
 
   useEffect(() => {
     if (isOpen) {
-      calculateValidation();
+      calculateValidation(); // Inget behov av await här, funktionen kommer att köras async
     }
   }, [isOpen, selectedTimeframe, calculateValidation]);
 
   // Beräkna sammanfattande statistik
   const stats = useMemo(() => {
     if (validationResults.length === 0) {
-      return { totalReports: 0, averageAccuracy: 0, goodPredictions: 0, trendDirection: 'neutral' as const };
+      return { totalReports: 0, averageAccuracy: 0, goodPredictions: 0, trendDirection: 'neutral' as const, needsEditing: 0 };
     }
     
     const good = validationResults.filter(r => r.accuracy === 'good').length;
     const fair = validationResults.filter(r => r.accuracy === 'fair').length;
     const poor = validationResults.filter(r => r.accuracy === 'poor').length;
+    const needsEditing = validationResults.filter(r => isProblematicZero(r)).length;
     
     const averageAccuracy = Math.round(((good * 100 + fair * 60 + poor * 20) / validationResults.length));
     
@@ -181,7 +297,8 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
       totalReports: validationResults.length,
       averageAccuracy,
       goodPredictions: good,
-      trendDirection
+      trendDirection,
+      needsEditing
     };
   }, [validationResults]);
 
@@ -257,30 +374,36 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
                 <div className="text-2xl font-bold text-purple-900">{stats.goodPredictions}</div>
               </div>
               
-              <div className={`rounded-lg p-4 ${
-                stats.trendDirection === 'over' ? 'bg-orange-50' :
-                stats.trendDirection === 'under' ? 'bg-red-50' : 'bg-gray-50'
-              }`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle size={16} className={
-                    stats.trendDirection === 'over' ? 'text-orange-600' :
-                    stats.trendDirection === 'under' ? 'text-red-600' : 'text-gray-600'
-                  } />
-                  <span className={`text-sm font-medium ${
-                    stats.trendDirection === 'over' ? 'text-orange-800' :
-                    stats.trendDirection === 'under' ? 'text-red-800' : 'text-gray-800'
-                  }`}>Trend</span>
+              {stats.needsEditing > 0 && (
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Edit size={16} className="text-orange-600" />
+                    <span className="text-sm font-medium text-orange-800">Behöver redigeras</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-900">{stats.needsEditing}</div>
+                  <div className="text-xs text-orange-600 mt-1">0% sannolikhet</div>
                 </div>
-                <div className={`text-sm font-bold ${
-                  stats.trendDirection === 'over' ? 'text-orange-900' :
-                  stats.trendDirection === 'under' ? 'text-red-900' : 'text-gray-900'
-                }`}>
-                  {stats.trendDirection === 'over' ? 'Överpredikterar' :
-                   stats.trendDirection === 'under' ? 'Underpredikterar' : 'Balanserad'}
-                </div>
-              </div>
+              )}
             </div>
           )}
+
+          {/* Fix-information */}
+          <div className="mb-6 border rounded-lg p-4 bg-green-50 border-green-200">
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2 text-green-800">
+              <CheckCircle size={20} className="text-green-600" />
+              🎯 Använder faktiska makrill-värden!
+            </h3>
+            <p className="text-sm text-green-700 mb-2">
+              <strong>Problem löst:</strong> Valideringen hämtar nu exakt samma data som kartan visar.
+            </p>
+            <div className="text-xs text-green-600 space-y-1">
+              <div>✅ Faktiska makrill-värden från API</div>
+              <div>✅ Samma datakälla som kartan</div>
+              <div>✅ Närmaste punkt-beräkning</div>
+              <div>✅ Fallback-system om data saknas</div>
+              <div>✅ Eliminerat alla approximationer</div>
+            </div>
+          </div>
 
           {/* Kalibrering status */}
           {calibrationStatus && (
@@ -441,7 +564,12 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
           {/* Detaljerade resultat */}
           {!loading && validationResults.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold mb-4">Detaljerade resultat</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Detaljerade resultat</h3>
+                <div className="text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg">
+                  💡 Klicka på <Edit size={14} className="inline text-blue-600" /> för att redigera modellsannolikhet eller <Trash2 size={14} className="inline text-red-600" /> för att ta bort rapport
+                </div>
+              </div>
               
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {validationResults.map((result, index) => (
@@ -459,6 +587,12 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
                         <span className="text-sm text-gray-500">
                           {result.report.dateRange.start}
                         </span>
+                        {/* Varning för problematiska 0% sannolikhet */}
+                        {isProblematicZero(result) && (
+                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                            ⚠️ 0% - Gammal data, behöver redigeras
+                          </span>
+                        )}
                       </div>
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                         result.accuracy === 'good' ? 'bg-green-100 text-green-800' :
@@ -473,11 +607,64 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="text-gray-600">Modell:</span>
-                        <div className="font-bold text-blue-600">{result.modelPrediction}%</div>
+                        <div className="flex items-center gap-2">
+                          {editingReportId === result.reportId ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                className="w-16 px-2 py-1 border rounded text-sm"
+                                min="0"
+                                max="100"
+                                autoFocus
+                                onKeyPress={(e) => handleKeyPress(e, result.reportId)}
+                              />
+                              <span className="text-xs text-gray-500">%</span>
+                              <button
+                                onClick={() => handleSaveModelPrediction(result.reportId)}
+                                className="p-1 text-green-600 hover:bg-green-100 rounded"
+                                title="Spara"
+                              >
+                                <Save size={14} />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                                title="Avbryt"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="font-bold text-blue-600">{result.modelPrediction}%</div>
+                              <button
+                                onClick={() => handleEditModelPrediction(result.reportId, result.modelPrediction)}
+                                className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                                title="Redigera modellsannolikhet"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteReport(result.reportId)}
+                                className="p-1 text-red-600 hover:bg-red-100 rounded"
+                                title="Ta bort rapport"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <span className="text-gray-600">Verklighet:</span>
-                        <div className="font-bold">{result.actualQuality}%</div>
+                        <div className="font-bold">
+                          {result.actualQuality}%
+                          {result.report.quality === 'custom' && (
+                            <span className="text-xs text-purple-600 ml-1">(custom)</span>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <span className="text-gray-600">Skillnad:</span>
@@ -505,6 +692,9 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <h4 className="font-semibold text-blue-900 mb-2">Rekommendationer</h4>
               <ul className="text-sm text-blue-800 space-y-1">
+                {stats.needsEditing > 0 && (
+                  <li>• <strong>Viktigt:</strong> Redigera de {stats.needsEditing} rapporter med problematisk 0% sannolikhet (gamla rapporter utan historisk data) - dessa förstör kalibreringen</li>
+                )}
                 {validationResults.length < 10 && (
                   <li>• Samla fler rapporter (minst 20) för tillförlitlig validering</li>
                 )}

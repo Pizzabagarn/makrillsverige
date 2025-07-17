@@ -7,6 +7,7 @@ import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useManualPoints } from '../context/ManualPointsContext';
 import { getColorForValue } from '../../lib/colormap-utils';
+import PopupPreloadManager from '../../lib/popupPreloadManager';
 
 // Cache för makrill-värden - FÖRBÄTTRAD CACHING
 const mackerelValuesCache = new Map<string, any>();
@@ -19,20 +20,36 @@ const mackerelPreloadingStatus = new Map<string, boolean>();
 // Cache för vattenmask
 let waterMaskCache: any = null;
 
-// Hjälpfunktion för att ladda vattenmask
+// Cache för punkt-i-vatten kontroller - optimering för snabbare prestanda
+const pointInWaterCache = new Map<string, boolean>();
+const POINT_CACHE_PRECISION = 4; // Antal decimaler för cache-nyckel
+
+// Hjälpfunktion för att ladda vattenmask - använder förladdad data för snabbare prestanda
 async function loadWaterMask(): Promise<any> {
   if (waterMaskCache) {
     return waterMaskCache;
   }
   
+  // Kontrollera om vattenmasken är förladdad från popup preload manager
+  const popupPreloadManager = PopupPreloadManager.getInstance();
+  const preloadedWaterMask = popupPreloadManager.getWaterMask();
+  
+  if (preloadedWaterMask) {
+    waterMaskCache = preloadedWaterMask;
+    return waterMaskCache;
+  }
+  
   try {
+    const startTime = performance.now();
+    
     const response = await fetch('/data/scandinavian-waters.geojson');
     if (!response.ok) {
-      console.warn('⚠️ Kunde inte ladda vattenmask');
+      console.warn(`⚠️ Kunde inte ladda vattenmask: HTTP ${response.status}`);
       return null;
     }
     
     waterMaskCache = await response.json();
+    const loadTime = performance.now() - startTime;
     return waterMaskCache;
   } catch (error) {
     console.warn('⚠️ Fel vid laddning av vattenmask:', error);
@@ -40,33 +57,58 @@ async function loadWaterMask(): Promise<any> {
   }
 }
 
-// Hjälpfunktion för att kontrollera om punkt är i vatten
+// Hjälpfunktion för att kontrollera om punkt är i vatten - optimerad med cache
 function isPointInWater(lat: number, lon: number, waterMask: any): boolean {
-  if (!waterMask || !waterMask.features) return true; // Fallback: visa data om ingen vattenmask
+  if (!waterMask || !waterMask.features) {
+    console.warn('⚠️ Vattenmask saknas - blockerar all data som säkerhet');
+    return false; // SÄKER FALLBACK: blockera data om ingen vattenmask
+  }
+  
+  // Skapa cache-nyckel baserat på koordinater med begränsad precision
+  const cacheKey = `${lat.toFixed(POINT_CACHE_PRECISION)},${lon.toFixed(POINT_CACHE_PRECISION)}`;
+  
+  // Kontrollera cache först
+  if (pointInWaterCache.has(cacheKey)) {
+    const cached = pointInWaterCache.get(cacheKey);
+    return cached!;
+  }
   
   const point = [lon, lat]; // GeoJSON använder [lon, lat]
+  
+  let result = false;
   
   for (const feature of waterMask.features) {
     if (feature.geometry.type === 'Polygon') {
       // Polygon har en yttre ring [0] och potentiellt inre ringar (hål)
       if (pointInPolygon(point as [number, number], feature.geometry.coordinates[0])) {
-        return true;
+        result = true;
+        break;
       }
     } else if (feature.geometry.type === 'MultiPolygon') {
       for (const polygonCoords of feature.geometry.coordinates) {
         // Varje polygon i MultiPolygon har samma struktur som Polygon
         if (pointInPolygon(point as [number, number], polygonCoords[0])) {
-          return true;
+          result = true;
+          break;
         }
       }
+      if (result) break;
     }
   }
   
-  return false;
+  // Lägg till i cache
+  pointInWaterCache.set(cacheKey, result);
+  
+  return result;
 }
 
-// Enkel punkt-i-polygon algoritm
+// Förbättrad punkt-i-polygon algoritm med bättre hantering av edge cases
 function pointInPolygon(point: [number, number], polygon: any[]): boolean {
+  if (!polygon || polygon.length < 3) {
+    console.warn('⚠️ Ogiltig polygon data');
+    return false;
+  }
+  
   const [x, y] = point;
   let inside = false;
   
@@ -74,13 +116,25 @@ function pointInPolygon(point: [number, number], polygon: any[]): boolean {
     const coords = polygon[i];
     const nextCoords = polygon[j];
     
-    if (coords.length >= 2 && nextCoords.length >= 2) {
-      const [xi, yi] = coords;
-      const [xj, yj] = nextCoords;
-      
-      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-        inside = !inside;
-      }
+    // Säkerhetskontroll för koordinater
+    if (!coords || !nextCoords || coords.length < 2 || nextCoords.length < 2) {
+      console.warn('⚠️ Ogiltiga koordinater i polygon');
+      continue;
+    }
+    
+    const [xi, yi] = coords;
+    const [xj, yj] = nextCoords;
+    
+    // Kontrollera att koordinaterna är giltiga nummer
+    if (typeof xi !== 'number' || typeof yi !== 'number' || 
+        typeof xj !== 'number' || typeof yj !== 'number') {
+      console.warn('⚠️ Icke-numeriska koordinater');
+      continue;
+    }
+    
+    // Ray casting algoritm
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
     }
   }
   
@@ -96,7 +150,6 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
   if (mackerelValuesCache.has(cacheKey)) {
     const cacheTime = mackerelCacheTimestamps.get(cacheKey) || 0;
     if (now - cacheTime < MACKEREL_CACHE_DURATION) {
-      console.log(`⚡ Använder cachad makrill-data för ${timestamp}`);
       return mackerelValuesCache.get(cacheKey);
     } else {
       // Cache expired, rensa
@@ -105,8 +158,18 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
     }
   }
   
+  // Kontrollera om makrill-data är förladdad från popup preload manager
+  const popupPreloadManager = PopupPreloadManager.getInstance();
+  const preloadedMackerelData = popupPreloadManager.getMackerelData(timestamp);
+  
+  if (preloadedMackerelData) {
+    // Lägg till i lokal cache också
+    mackerelValuesCache.set(cacheKey, preloadedMackerelData);
+    mackerelCacheTimestamps.set(cacheKey, now);
+    return preloadedMackerelData;
+  }
+  
   try {
-    console.log(`🗜️ Laddar makrill-värden för ${timestamp}...`);
     const startTime = performance.now();
     
     // Använd API-route som hanterar dekomprimering på servern
@@ -124,7 +187,6 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
     mackerelValuesCache.set(cacheKey, data);
     mackerelCacheTimestamps.set(cacheKey, now);
     
-    console.log(`✅ Makrill-värden laddad på ${loadTime.toFixed(0)}ms för ${timestamp}`);
     return data;
   } catch (error) {
     console.warn(`⚠️ Fel vid laddning av makrill-värden för ${timestamp}:`, error);
@@ -135,16 +197,13 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
 // Preloading-funktion för makrill-data
 async function preloadMackerelData(timestamp: string): Promise<void> {
   if (mackerelPreloadingStatus.get(timestamp)) {
-    console.log(`⚡ Makrill-data för ${timestamp} laddas redan`);
     return;
   }
   
   mackerelPreloadingStatus.set(timestamp, true);
   
   try {
-    console.log(`🚀 Preloading makrill-data för ${timestamp}...`);
     await loadMackerelValues(timestamp);
-    console.log(`✅ Makrill-data preloaded för ${timestamp}`);
   } catch (error) {
     console.warn(`⚠️ Kunde inte preloada makrill-data för ${timestamp}:`, error);
   } finally {
@@ -171,6 +230,56 @@ function findNearestMackerelValue(lat: number, lon: number, mackerelData: any): 
   }
   
   return nearestValue;
+}
+
+// Ny hjälpfunktion för att interpolera makrill-värden (samma logik som andra parametrar)
+function interpolateMackerelValue(lat: number, lon: number, mackerelData: any, nearbyAreaPoints: any[]): number | undefined {
+  if (!mackerelData?.values) return undefined;
+  
+  // Hitta makrill-punkter inom radie (~10km)
+  const radius = 0.1;
+  const nearbyMackerelPoints: Array<{
+    lat: number;
+    lon: number;
+    distance: number;
+    value: number;
+  }> = [];
+
+  for (const point of mackerelData.values) {
+    const distance = Math.sqrt(
+      Math.pow(lat - point.lat, 2) + Math.pow(lon - point.lon, 2)
+    );
+    
+    if (distance <= radius && point.value >= 0) {
+      nearbyMackerelPoints.push({
+        lat: point.lat,
+        lon: point.lon,
+        distance,
+        value: point.value
+      });
+    }
+  }
+
+  if (nearbyMackerelPoints.length === 0) {
+    // Fallback till närmaste punkt
+    return findNearestMackerelValue(lat, lon, mackerelData);
+  }
+
+  if (nearbyMackerelPoints.length === 1) {
+    return nearbyMackerelPoints[0].value;
+  }
+
+  // Viktad interpolation (samma logik som för andra parametrar)
+  const weights = nearbyMackerelPoints.map(p => 1 / (p.distance + 0.001));
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  
+  let weightedSum = 0;
+  for (let i = 0; i < nearbyMackerelPoints.length; i++) {
+    const weight = weights[i] / weightSum;
+    weightedSum += nearbyMackerelPoints[i].value * weight;
+  }
+  
+  return weightedSum;
 }
 
 // Hjälpfunktion för att konvertera makrill-procent till beskrivande text
@@ -364,55 +473,103 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     };
   }, [areaData, targetTimestamp]);
 
-  // Lokal interpolation för mjukare övergångar
+  // Robust interpolation med progressiv radie - matchar bildgenereringen
   const findInterpolatedDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
 
-    // Hitta punkter inom en radie (ca 10km)
-    const radius = 0.1; // ~11km radie
-    const nearbyPoints: Array<{
+    // Progressive radius: öka tills vi hittar tillräckligt med punkter - FÖRBÄTTRADE RADIER
+    const radii = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]; // ~11km, 22km, 55km, 110km, 220km, 550km, 1100km
+    const minPointsForInterpolation = 2; // Minst 2 punkter för interpolation
+    
+    let nearbyPoints: Array<{
       lat: number;
       lon: number;
       distance: number;
       data: any;
     }> = [];
 
-    for (const point of areaData.points) {
-      const distance = calculateDistance(lat, lon, point.lat, point.lon);
-      if (distance <= radius) {
-        const timeData = point.data.find(d => d.time === targetTimestamp);
-        if (timeData) {
-          nearbyPoints.push({
-            lat: point.lat,
-            lon: point.lon,
-            distance,
-            data: timeData
-          });
+    // Försök successivt större radier tills vi hittar tillräckligt med punkter
+    for (const radius of radii) {
+      nearbyPoints = [];
+      
+      for (const point of areaData.points) {
+        const distance = calculateDistance(lat, lon, point.lat, point.lon);
+        if (distance <= radius) {
+          const timeData = point.data.find(d => d.time === targetTimestamp);
+          if (timeData) {
+            nearbyPoints.push({
+              lat: point.lat,
+              lon: point.lon,
+              distance,
+              data: timeData
+            });
+          }
         }
+      }
+
+      // Om vi hittat tillräckligt med punkter, använd denna radie
+      if (nearbyPoints.length >= minPointsForInterpolation) {
+        break;
       }
     }
 
-    if (nearbyPoints.length === 0) {
-      // Fallback till närmaste punkt
-      return await findNearestDataPoint(lat, lon);
+    // FÖRBÄTTRAD FALLBACK: Garantera att vi alltid får data
+    if (nearbyPoints.length < minPointsForInterpolation) {
+      const allPointsWithData = areaData.points
+        .map(point => {
+          const distance = calculateDistance(lat, lon, point.lat, point.lon);
+          const timeData = point.data.find(d => d.time === targetTimestamp);
+          return timeData ? { lat: point.lat, lon: point.lon, distance, data: timeData } : null;
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, Math.max(5, minPointsForInterpolation)); // Ta minst 5 punkter eller minst vad som krävs för interpolation
+
+      nearbyPoints = allPointsWithData;
+      
+      // EXTRA SÄKERHET: Om vi fortfarande inte har tillräckligt med punkter
+      if (nearbyPoints.length === 0) {
+        // Försök hitta data för någon annan timestamp som fallback
+        const fallbackPoints = areaData.points
+          .map(point => {
+            const distance = calculateDistance(lat, lon, point.lat, point.lon);
+            const anyTimeData = point.data.length > 0 ? point.data[0] : null;
+            return anyTimeData ? { lat: point.lat, lon: point.lon, distance, data: anyTimeData } : null;
+          })
+          .filter((p): p is NonNullable<typeof p> => p !== null)
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, 3);
+        
+        if (fallbackPoints.length > 0) {
+          nearbyPoints = fallbackPoints;
+        }
+      }
     }
 
     // Ladda vattenmask och kontrollera om punkt är i vatten
     const waterMask = await loadWaterMask();
     const isInWater = isPointInWater(lat, lon, waterMask);
 
-    // Ladda makrill-data endast om punkt är i vatten
+    // Om punkt ligger över land, visa ingen data alls
+    if (!isInWater) {
+      return null;
+    }
+
+    // Ladda makrill-data och interpolera som andra parametrar
     let mackerelValue: number | undefined = undefined;
-    if (isInWater) {
-      const mackerelData = await loadMackerelValues(targetTimestamp);
-      const rawMackerelValue = mackerelData ? 
-        findNearestMackerelValue(lat, lon, mackerelData) : 
-        undefined;
-      
-      // Filtrera bort negativa värden
-      if (rawMackerelValue !== undefined && rawMackerelValue >= 0) {
-        mackerelValue = rawMackerelValue;
-      }
+    const mackerelData = await loadMackerelValues(targetTimestamp);
+    const rawMackerelValue = mackerelData ? 
+      interpolateMackerelValue(lat, lon, mackerelData, nearbyPoints) : 
+      undefined;
+    
+    // Filtrera bort negativa värden
+    if (rawMackerelValue !== undefined && rawMackerelValue >= 0) {
+      mackerelValue = rawMackerelValue;
+    }
+
+    // SISTA SÄKERHETSKONTROLL: Om vi fortfarande inte har några punkter
+    if (nearbyPoints.length === 0) {
+      return null;
     }
 
     if (nearbyPoints.length === 1) {
@@ -480,7 +637,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       current: interpolateParameter('current'),
       mackerel: mackerelValue // Använd redan beräknat mackerelValue
     };
-  }, [areaData, targetTimestamp, findNearestDataPoint]);
+  }, [areaData, targetTimestamp]);
 
   // Smart popup positionering som alltid håller popupen synlig
   const calculatePopupPosition = useCallback((longitude: number, latitude: number) => {
@@ -1013,7 +1170,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
                         {pinData.mackerel.toFixed(0)}%
                       </div>
                       <div className="text-xs xs:text-xs sm:text-xs text-white/70 font-medium">
-                        {getMackerelDescription(pinData.mackerel)}
+                        {getMackerelDescription(Math.round(pinData.mackerel))}
                       </div>
                     </div>
                   </div>

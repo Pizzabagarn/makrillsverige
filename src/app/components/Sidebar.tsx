@@ -14,12 +14,17 @@ interface SidebarProps {
   // Layer control props
   showCurrentVectors?: boolean;
   onToggleCurrentVectors?: (show: boolean) => void;
+  // Simulation props
+  simulationLayer?: ImageLayerType | null;
+  onSimulationLayerChange?: (layer: ImageLayerType | null) => void;
 }
 
 export default function Sidebar({ 
   isHamburgerMenu = false,
   showCurrentVectors = true,
-  onToggleCurrentVectors
+  onToggleCurrentVectors,
+  simulationLayer,
+  onSimulationLayerChange
 }: SidebarProps) {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
   const [showImageLayerInfo, setShowImageLayerInfo] = useState<ImageLayerType>(null);
@@ -27,8 +32,40 @@ export default function Sidebar({
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSimulationDropdownOpen, setIsSimulationDropdownOpen] = useState(false);
+  const [previousActiveLayer, setPreviousActiveLayer] = useState<ImageLayerType>(null);
   
   const { activeLayer, setActiveLayer } = useImageLayer();
+
+  // Initialisera previousActiveLayer vid första renderingen
+  useEffect(() => {
+    setPreviousActiveLayer(activeLayer);
+  }, []);
+
+  // Automatiskt hantera strömpilar vid lager-växling
+  useEffect(() => {
+    if (onToggleCurrentVectors && previousActiveLayer !== null && previousActiveLayer !== activeLayer) {
+      // Om vi växlar TILL current-lager, visa strömpilar automatiskt
+      if (activeLayer === 'current' && previousActiveLayer !== 'current') {
+        onToggleCurrentVectors(true);
+      }
+      // Om vi växlar FRÅN current-lager, dölj strömpilar automatiskt
+      else if (previousActiveLayer === 'current' && activeLayer !== 'current') {
+        onToggleCurrentVectors(false);
+      }
+      // Om vi växlar mellan icke-current lager, dölj pilar (de kan aktiveras manuellt)
+      else if (activeLayer !== 'current' && previousActiveLayer !== 'current') {
+        onToggleCurrentVectors(false);
+      }
+    }
+  }, [activeLayer, previousActiveLayer, onToggleCurrentVectors]);
+
+  // Uppdatera previousActiveLayer när activeLayer ändras
+  useEffect(() => {
+    if (previousActiveLayer !== null) {
+      setPreviousActiveLayer(activeLayer);
+    }
+  }, [activeLayer, previousActiveLayer]);
 
   useEffect(() => {
     const checkLayout = () => {
@@ -209,34 +246,34 @@ export default function Sidebar({
                 <div className="relative">
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-full backdrop-blur-md bg-white/10 border border-white/20 rounded-lg shadow-lg p-3 flex items-center justify-between hover:bg-white/15 transition-all duration-200"
+                    className="w-full bg-gray-800/90 backdrop-blur-xl border border-gray-600/50 rounded-lg shadow-lg p-3 flex items-center justify-between hover:bg-gray-700/80 transition-all duration-200"
                   >
                     <div className="flex items-center">
                       {activeLayerConfig ? (
                         <>
                           {activeLayerConfig.icon}
-                          <span className="text-sm font-medium">{activeLayerConfig.name}</span>
+                          <span className="text-sm font-medium text-white">{activeLayerConfig.name}</span>
                         </>
                       ) : (
                         <>
                           <div className="w-3 h-3 mr-2 bg-gray-400 rounded-full"></div>
-                          <span className="text-sm font-medium">Välj lager</span>
+                          <span className="text-sm font-medium text-gray-200">Välj lager</span>
                         </>
                       )}
                     </div>
-                    {isDropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {isDropdownOpen ? <ChevronUp size={16} className="text-gray-300" /> : <ChevronDown size={16} className="text-gray-300" />}
                   </button>
                   
                   {isDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 backdrop-blur-md bg-white/10 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-lg shadow-2xl z-50 max-h-64 overflow-y-auto">
                       {/* Inget lager aktivt */}
                       <button
                         onClick={() => {
                           setActiveLayer(null);
                           setIsDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-white/15 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                          activeLayer === null ? 'bg-white/20' : ''
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-700/50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                          activeLayer === null ? 'bg-gray-700/70 text-white' : 'text-gray-200'
                         }`}
                       >
                         <div className="flex items-center">
@@ -267,8 +304,8 @@ export default function Sidebar({
                               }
                               setIsDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-white/15 transition-colors last:rounded-b-lg ${
-                              isActive ? 'bg-white/20' : ''
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-700/50 transition-colors last:rounded-b-lg ${
+                              isActive ? 'bg-gray-700/70 text-white' : 'text-gray-200'
                             }`}
                             title={config.description}
                           >
@@ -352,6 +389,126 @@ export default function Sidebar({
               )}
             </div>
           )}
+
+          {/* SIMULERING */}
+          <div className="space-y-3 mt-6">
+            <h2 className={`font-semibold text-white/95 ${isHamburgerMenu ? 'text-sm' : 'text-base'}`}>
+              Simulering
+            </h2>
+            
+            {/* Desktop: Dropdown-meny för simulering */}
+            {isDesktop && !isHamburgerMenu && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsSimulationDropdownOpen(!isSimulationDropdownOpen)}
+                  className="w-full bg-gray-800/90 backdrop-blur-xl border border-gray-600/50 rounded-lg shadow-lg p-3 flex items-center justify-between hover:bg-gray-700/80 transition-all duration-200"
+                >
+                  <div className="flex items-center">
+                    {simulationLayer ? (
+                      <>
+                        {imageLayerConfigs[simulationLayer].icon}
+                        <span className="text-sm font-medium text-white">{imageLayerConfigs[simulationLayer].name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-200">Välj simulering</span>
+                      </>
+                    )}
+                  </div>
+                  {isSimulationDropdownOpen ? <ChevronUp size={16} className="text-gray-300" /> : <ChevronDown size={16} className="text-gray-300" />}
+                </button>
+                
+                {isSimulationDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-lg shadow-2xl z-50 max-h-64 overflow-y-auto">
+                    {/* Ingen simulering */}
+                    <button
+                      onClick={() => {
+                        onSimulationLayerChange?.(null);
+                        setIsSimulationDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-700/50 transition-colors first:rounded-t-lg ${
+                        simulationLayer === null ? 'bg-gray-700/70 text-white' : 'text-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <svg className="w-3 h-3 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v4a1 1 0 11-2 0V7zM12 7a1 1 0 012 0v4a1 1 0 11-2 0V7z" clipRule="evenodd" />
+                        </svg>
+                        <span>Ingen simulering</span>
+                      </div>
+                    </button>
+                    
+                    {/* Simulering lager */}
+                    {(['current', 'temperature', 'salinity', 'mackerel'] as const).map((layer) => {
+                      const config = imageLayerConfigs[layer];
+                      const isActive = simulationLayer === layer;
+                      
+                      return (
+                        <button
+                          key={layer}
+                          onClick={() => {
+                            onSimulationLayerChange?.(layer);
+                            setIsSimulationDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-700/50 transition-colors last:rounded-b-lg ${
+                            isActive ? 'bg-gray-700/70 text-white' : 'text-gray-200'
+                          }`}
+                          title={`Simulera ${config.name}`}
+                        >
+                          <div className="flex items-center">
+                            {config.icon}
+                            <span>Simulera {config.name}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Mobil/Tablet: Samma stil som kartlager */}
+            {(isMobileOrTablet || isHamburgerMenu) && (
+              <div className="space-y-2">
+                {(['current', 'temperature', 'salinity', 'mackerel'] as const).map((layer) => {
+                  const config = imageLayerConfigs[layer];
+                  const isActive = simulationLayer === layer;
+                  
+                  return (
+                    <div key={layer} className={`backdrop-blur-md bg-white/5 border border-white/10 rounded-lg shadow-lg ${
+                      (layoutType === 'desktop' || layoutType === 'tabletLandscape') ? 'p-1.5' : 'p-2'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-white/90 flex items-center ${isHamburgerMenu ? 'text-xs' : 'text-sm'}`}>
+                          {config.icon}
+                          Simulera {config.name}
+                        </span>
+                        
+                        {/* Radio button style */}
+                                                 <button
+                           onClick={() => {
+                             onSimulationLayerChange?.(isActive ? null : layer);
+                           }}
+                          className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg border-2 ${
+                            isActive 
+                              ? 'border-white bg-white/20 shadow-white/30' 
+                              : 'border-gray-500 bg-transparent shadow-gray-600/20'
+                          } hover:scale-105 active:scale-95`}
+                        >
+                          {isActive && (
+                            <div className={`w-2 h-2 rounded-full bg-white`}></div>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
         
         {/* KLOCKA - längst ner på mobil/tablet */}

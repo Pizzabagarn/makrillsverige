@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FishingReport, BBoxTemplate, fishingDataManager } from '@/lib/fishingDataManager';
-import { X, Fish, Calendar, Clock, MapPin, Save, Trash2, Bookmark, Plus } from 'lucide-react';
+import { X, Fish, Calendar, Clock, MapPin, Save, Trash2, Bookmark, Plus, Edit } from 'lucide-react';
 
 interface FishingDataFormProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
       centerLng: initialLocation?.lng || 12.0
     },
     quality: 'good' as FishingReport['quality'],
+    customPercentage: 50,
     notes: '',
     timestamp: new Date().toISOString()
   });
@@ -50,11 +51,34 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
   const [showBboxTemplateForm, setShowBboxTemplateForm] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
       setExistingReports(fishingDataManager.getAllReports());
       setBboxTemplates(fishingDataManager.getAllBBoxTemplates());
+      
+      // 🔄 AUTOMATISK KONTROLL: Kör backfill om det behövs
+      const checkAndBackfillHistoricalData = async () => {
+        const reports = fishingDataManager.getAllReports();
+        const reportsWithoutHistorical = reports.filter(r => r.historicalModelPrediction === undefined);
+        
+        if (reportsWithoutHistorical.length > 0) {
+    
+          
+          try {
+            const result = await fishingDataManager.backfillHistoricalPredictions();
+    
+            
+            // Uppdatera listan efter backfill
+            setExistingReports(fishingDataManager.getAllReports());
+          } catch (error) {
+            console.error('❌ Automatisk backfill misslyckades:', error);
+          }
+        }
+      };
+      
+      checkAndBackfillHistoricalData();
     }
   }, [isOpen]);
 
@@ -62,16 +86,33 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
     e.preventDefault();
     
     try {
-      const report = fishingDataManager.saveFishingReport(formData);
-      onSave?.(report);
-      onClose();
+      let report;
       
-      // Reset form
-      setFormData({
-        ...formData,
-        notes: '',
-        timestamp: new Date().toISOString()
-      });
+      if (editingReportId) {
+        // Uppdatera befintlig rapport
+        report = fishingDataManager.updateFishingReport(editingReportId, formData);
+        setEditingReportId(null);
+      } else {
+        // Skapa ny rapport
+        report = fishingDataManager.saveFishingReport(formData);
+      }
+      
+      onSave?.(report);
+      setExistingReports(fishingDataManager.getAllReports());
+      
+      // Reset form om det inte är en redigering
+      if (!editingReportId) {
+        setFormData({
+          ...formData,
+          quality: 'good',
+          customPercentage: 50,
+          notes: '',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Stäng formuläret
+      onClose();
     } catch (error) {
       console.error('Error saving fishing report:', error);
       alert('Fel vid sparande av fiskrapport');
@@ -80,8 +121,73 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
 
   const handleDeleteReport = (id: string) => {
     if (confirm('Är du säker på att du vill ta bort denna rapport?')) {
-      fishingDataManager.deleteReport(id);
+      if (fishingDataManager.deleteReport(id)) {
+        setExistingReports(fishingDataManager.getAllReports());
+        // Om vi redigerar denna rapport, avbryt redigeringen
+        if (editingReportId === id) {
+          setEditingReportId(null);
+        }
+      }
+    }
+  };
+
+  const handleEditReport = (report: FishingReport) => {
+    // Fyll formuläret med befintliga data
+    setFormData({
+      dateRange: report.dateRange,
+      timeRange: report.timeRange,
+      location: report.location,
+      quality: report.quality,
+      customPercentage: report.customPercentage || 50,
+      notes: report.notes || '',
+      timestamp: report.timestamp
+    });
+    
+    setEditingReportId(report.id);
+    setShowExistingReports(true); // Håll listan öppen så användaren ser vad som redigeras
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReportId(null);
+    // Återställ formulär till standardvärden
+    setFormData({
+      dateRange: {
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      timeRange: {
+        start: '06:00',
+        end: '18:00'
+      },
+      location: {
+        bounds: {
+          north: (initialLocation?.lat || 57.0) + 0.01,
+          south: (initialLocation?.lat || 57.0) - 0.01,
+          east: (initialLocation?.lng || 12.0) + 0.01,
+          west: (initialLocation?.lng || 12.0) - 0.01
+        },
+        centerLat: initialLocation?.lat || 57.0,
+        centerLng: initialLocation?.lng || 12.0
+      },
+      quality: 'good' as FishingReport['quality'],
+      customPercentage: 50,
+      notes: '',
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  const handleBackfillHistoricalPredictions = async () => {
+    if (!confirm('Vill du fylla i historiska sannolikheter för befintliga rapporter? Detta kan ta några sekunder.')) {
+      return;
+    }
+    
+    try {
+      const result = await fishingDataManager.backfillHistoricalPredictions();
+      alert(`Historisk data uppdaterad! ${result.updated} rapporter uppdaterade, ${result.failed} misslyckade.`);
       setExistingReports(fishingDataManager.getAllReports());
+    } catch (error) {
+      console.error('Backfill error:', error);
+      alert('Fel vid uppdatering av historisk data');
     }
   };
 
@@ -155,7 +261,8 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
     { value: 'good', label: '🐟🐟 Good', color: 'text-blue-600' },
     { value: 'fair', label: '🐟 Fair', color: 'text-yellow-600' },
     { value: 'poor', label: '⚪ Poor', color: 'text-orange-600' },
-    { value: 'none', label: '❌ None', color: 'text-red-600' }
+    { value: 'none', label: '❌ None', color: 'text-red-600' },
+    { value: 'custom', label: '🔢 Custom (%)', color: 'text-purple-600' }
   ];
 
   const stats = fishingDataManager.getStatistics();
@@ -168,7 +275,7 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Fish className="text-blue-600" />
-            Registrera Fiskdata
+            {editingReportId ? 'Redigera Fiskrapport' : 'Registrera Fiskdata'}
           </h2>
           <button
             onClick={onClose}
@@ -179,6 +286,19 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
         </div>
 
         <div className="p-6">
+          {/* Redigeringsindikator */}
+          {editingReportId && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-800">
+                <Edit size={16} />
+                <span className="font-medium">Redigerar rapport</span>
+              </div>
+              <p className="text-sm text-blue-600 mt-1">
+                Gör dina ändringar och klicka på "Uppdatera Rapport" för att spara.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Date Range */}
             <div className="space-y-2">
@@ -455,6 +575,33 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
                   </label>
                 ))}
               </div>
+              
+              {/* Custom Percentage Input */}
+              {formData.quality === 'custom' && (
+                <div className="ml-6 mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <label className="block text-sm font-medium text-purple-800 mb-2">
+                    Ange procenttal (0-100%)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.customPercentage}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        customPercentage: Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
+                      })}
+                      className="w-20 p-2 border border-purple-300 rounded-md text-center focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                      placeholder="50"
+                    />
+                    <span className="text-sm text-purple-600">%</span>
+                  </div>
+                  <div className="text-xs text-purple-600 mt-1">
+                    T.ex: 25% = låg chans, 50% = medel, 75% = hög chans
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -476,8 +623,17 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center gap-2"
               >
                 <Save size={16} />
-                Spara Rapport
+                {editingReportId ? 'Uppdatera Rapport' : 'Spara Rapport'}
               </button>
+              {editingReportId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 border rounded-md hover:bg-gray-50 text-sm"
+                >
+                  Avbryt
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setShowExistingReports(!showExistingReports)}
@@ -485,6 +641,15 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
               >
                 Visa Befintliga ({stats.totalReports})
               </button>
+              {showExistingReports && (
+                <button
+                  type="button"
+                  onClick={handleBackfillHistoricalPredictions}
+                  className="px-4 py-2 border rounded-md hover:bg-gray-50 text-sm"
+                >
+                  Fyll i historisk data
+                </button>
+              )}
             </div>
           </form>
 
@@ -515,17 +680,43 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
               </div>
 
               {/* Reports List */}
-              <div className="space-y-3 max-h-60 overflow-y-auto">
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {existingReports.map((report) => (
-                  <div key={report.id} className="border rounded-lg p-3 bg-white">
+                  <div 
+                    key={report.id} 
+                    className={`border rounded-lg p-3 ${
+                      editingReportId === report.id 
+                        ? 'bg-blue-50 border-blue-300' 
+                        : 'bg-white'
+                    }`}
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
+                          {editingReportId === report.id && (
+                            <Edit size={14} className="text-blue-600" />
+                          )}
                           <span className={
                             qualityOptions.find(q => q.value === report.quality)?.color || 'text-gray-600'
                           }>
                             {qualityOptions.find(q => q.value === report.quality)?.label || report.quality}
+                            {report.quality === 'custom' && report.customPercentage && (
+                              <span className="ml-2 text-purple-700 font-medium">
+                                {report.customPercentage}%
+                              </span>
+                            )}
                           </span>
+                          {editingReportId === report.id && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              Redigeras
+                            </span>
+                          )}
+                          {/* Visuell indikator för historisk sannolikhet */}
+                          {report.historicalModelPrediction !== undefined && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                              ✓ Historisk {report.historicalModelPrediction}%
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-600">
                           <div>{report.dateRange.start} - {report.dateRange.end}</div>
@@ -536,12 +727,22 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
                           <div className="text-sm text-gray-500 mt-1">{report.notes}</div>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleDeleteReport(report.id)}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleEditReport(report)}
+                          className="p-1 text-blue-500 hover:bg-blue-50 rounded"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReport(report.id)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
