@@ -7,6 +7,7 @@ import React from 'react';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
 import type { GeoJSON } from 'geojson';
+import CanvasSource from './CanvasSource';
 
 interface MackerelProbabilityMetadata {
   parameter: string;
@@ -30,16 +31,16 @@ interface MackerelProbabilityMetadata {
   }>;
 }
 
+interface HotspotData {
+  longitude: number;
+  latitude: number;
+  value: number;
+  timestamp: string;
+}
+
 interface MackerelProbabilityLayerProps {
   visible?: boolean;
   opacity?: number;
-}
-
-interface HotspotData {
-  lat: number;
-  lon: number;
-  value: number;
-  timestamp: string;
 }
 
 const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({ 
@@ -52,362 +53,101 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
   // Detect if user is actively dragging
   const isDragging = useDraggingDetection(selectedHour);
   
-  // Much faster throttling for smooth simulation effect
+  // Much faster throttling for smooth simulation effect - same as other layers
   const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
   const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [metadata, setMetadata] = useState<MackerelProbabilityMetadata | null>(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const [hotspotData, setHotspotData] = useState<HotspotData[]>([]);
   const [hotspotGeoJSON, setHotspotGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
 
-  // Dynamisk upptäckt av tillgängliga bilder från metadata
-  const availableImages = useMemo(() => {
-    // Hantera både nytt format (images array) och gammalt format (timestamps)
-    if (metadata?.images) {
-      // Nytt format - använd filename direkt utan extra transformation
-      return metadata.images.map(image => {
-        // Extrahera filnamnet utan .png extension
-        return image.filename.replace('.png', '').replace('mackerel_probability_', '');
-      });
-    } else if (metadata?.timestamps) {
-      // Gammalt format - konvertera timestamps till safe filenames
-      return metadata.timestamps.map(timestamp => 
-        timestamp.replaceAll(':', '-').replaceAll('+', 'plus')
-      );
-    }
-    return [];
-  }, [metadata?.images, metadata?.timestamps]);
-
-  // 1) Ladda metadata FÖRST, sedan preload bilder i bakgrunden - EAGER LOADING
+  // Load metadata
   useEffect(() => {
     const loadMetadata = async () => {
       try {
         const response = await fetch('/data/mackerel-probability-images-mercator/metadata.json');
         
         if (!response.ok) {
-          console.warn('⚠️ Makrill metadata inte tillgänglig än - kör generate_mackerel_probability.py först');
           return;
         }
         
         const data = await response.json();
         setMetadata(data);
-  
         
       } catch (error) {
-        console.warn('⚠️ Kunde inte ladda makrill metadata:', error);
+        // Silent error handling
       }
     };
     
-    // Ladda metadata direkt vid komponentstart - ingen visible check
     loadMetadata();
   }, []);
 
-  // 1.5) Preload bilder i bakgrunden EFTER metadata laddats - IMMEDIATE PRELOADING
+  // Load hotspot data
   useEffect(() => {
-    if (availableImages.length === 0) return;
-    
-    const preloadImages = async () => {
-
-      const imageMap = new Map<string, HTMLImageElement>();
-      let loadedCount = 0;
-      
-      // Preload bilder gradvis för att inte blockera UI
-      for (const safeTimestamp of availableImages) {
-        const img = new Image();
-        const imageUrl = `/data/mackerel-probability-images-mercator/mackerel_probability_${safeTimestamp}.png`;
-        
-        img.onload = () => {
-          imageMap.set(safeTimestamp, img);
-          loadedCount++;
-          if (loadedCount % 10 === 0) {
-            // Progress tracking
-          }
-          // Update preloaded images incrementally
-          setPreloadedImages(prev => new Map([...prev, [safeTimestamp, img]]));
-        };
-        
-        img.onerror = () => {
-          // Silent error handling
-        };
-        
-        img.src = imageUrl;
-        
-        // Small delay to prevent blocking the UI
-        await new Promise(resolve => setTimeout(resolve, 8));
-      }
-      
-      // All images preloaded
-    };
-    
-    // Start preloading immediately with small delay after current images
-    setTimeout(preloadImages, 300);
-  }, [availableImages]);
-
-  // 2) Memoized timestamp prefix - DEFAULT till current time om baseTime saknas
-  const timestampPrefix = useMemo(() => {
-    // Om baseTime saknas, använd current time som fallback
-    const currentTime = baseTime || Date.now();
-    return new Date(currentTime + effectiveSelectedHour * 3600_000)
-      .toISOString().slice(0, 13);
-  }, [effectiveSelectedHour, baseTime]);
-
-  // 2.5) Ladda initial bild direkt när metadata finns (inte vänta på interaction)
-  useEffect(() => {
-    if (!metadata || currentImageUrl) return;
-    
-    // Hitta närmaste tidsstämpel till nuvarande tid
-    const now = new Date().toISOString().slice(0, 13);
-    let initialImage = null;
-    
-    if (metadata.images) {
-      // Nytt format
-      initialImage = metadata.images.find(img => img.timestamp.startsWith(now)) || metadata.images[0];
-    } else if (metadata.timestamps) {
-      // Gammalt format
-      const initialTimestamp = metadata.timestamps.find(ts => ts.startsWith(now)) || metadata.timestamps[0];
-      initialImage = { timestamp: initialTimestamp, filename: `mackerel_probability_${initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.png` };
-    }
-    
-    if (initialImage) {
-      const safeTimestamp = initialImage.filename.replace('.png', '').replace('mackerel_probability_', '');
-      const imageUrl = `/data/mackerel-probability-images-mercator/mackerel_probability_${safeTimestamp}.png`;
-      
-
-      setCurrentImageUrl(imageUrl);
-      
-      // Ladda bilden direkt även om den inte är preloaded
-      const preloadedImg = preloadedImages.get(safeTimestamp);
-      if (preloadedImg) {
-        setImageLoaded(true);
-      } else {
-        // Ladda bilden manuellt om den inte är preloaded
-        const img = new Image();
-        img.onload = () => {
-          setImageLoaded(true);
-  
-        };
-        img.onerror = () => {
-  
-        };
-        img.src = imageUrl;
-      }
-    }
-  }, [metadata, preloadedImages]);
-
-  // 3) Hitta rätt bild för nuvarande tidsstämpel
-  const findImageForTimestamp = useMemo(() => {
-    return (prefix: string) => {
-      if (!metadata) return null;
-      
-      let matchingImage = null;
-      
-      if (metadata.images) {
-        // Nytt format - sök i images array
-        matchingImage = metadata.images.find(img => 
-          img.timestamp.startsWith(prefix)
-        );
-      } else if (metadata.timestamps) {
-        // Gammalt format - sök i timestamps array
-        const matchingTimestamp = metadata.timestamps.find(ts => 
-          ts.startsWith(prefix)
-        );
-        if (matchingTimestamp) {
-          matchingImage = { 
-            timestamp: matchingTimestamp, 
-            filename: `mackerel_probability_${matchingTimestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.png` 
-          };
-        }
-      }
-      
-      if (!matchingImage) {
-        return null;
-      }
-      
-      const safeTimestamp = matchingImage.filename.replace('.png', '').replace('mackerel_probability_', '');
-      const imageUrl = `/data/mackerel-probability-images-mercator/mackerel_probability_${safeTimestamp}.png`;
-      
-      return imageUrl;
-    };
-  }, [metadata, availableImages]);
-
-  // 4) Smart bildväxling - använd preloaded om tillgänglig, annars ladda direkt
-  useEffect(() => {
-    if (!timestampPrefix || !metadata) return;
-    
-    const imageUrl = findImageForTimestamp(timestampPrefix);
-    
-    if (imageUrl !== currentImageUrl) {
-      setCurrentImageUrl(imageUrl);
-      
-      if (imageUrl) {
-        // Extrahera filename från URL för att matcha preloadad bild
-        const filename = imageUrl.split('/').pop();
-        const safeTimestamp = filename?.replace('mackerel_probability_', '').replace('.png', '');
-        
-        const preloadedImg = preloadedImages.get(safeTimestamp || '');
-        
-        if (preloadedImg) {
-          setImageLoaded(true); // INSTANT - bilden är redan laddad!
-        } else {
-          // Bilden är inte preloaded, ladda den direkt
-          setImageLoaded(false);
-          const img = new Image();
-          img.onload = () => {
-            // Dubbelkolla att detta fortfarande är rätt bild
-            if (img.src === imageUrl) {
-              setImageLoaded(true);
-            }
-          };
-          img.onerror = () => {
-    
-          };
-          img.src = imageUrl;
-        }
-      } else {
-        setImageLoaded(false);
-      }
-    }
-  }, [timestampPrefix, metadata, findImageForTimestamp, preloadedImages, currentImageUrl]);
-
-  // 5) Skapa MapLibre GL Source/Layer för raster
-  const rasterSource = useMemo(() => {
-    if (!currentImageUrl || !imageLoaded || !metadata) {
-      return null;
-    }
-    
-    // Använd wgs84_bbox för nya formatet, bbox för gamla formatet
-    const bbox = metadata.wgs84_bbox || metadata.bbox;
-    if (!bbox) {
-      console.warn('⚠️ Ingen bbox hittad i makrill metadata');
-      return null;
-    }
-    
-    const [lon_min, lon_max, lat_min, lat_max] = bbox;
-    
-    // VIKTIGT: MapLibre förväntar sig WGS84-koordinater direkt!
-    // Använd WGS84 bbox direkt utan offset-beräkningar (samma som andra mercator-lager)
-    const wgs84Coordinates = [
-      [lon_min, lat_max], // top-left
-      [lon_max, lat_max], // top-right
-      [lon_max, lat_min], // bottom-right
-      [lon_min, lat_min]  // bottom-left
-    ] as [[number, number], [number, number], [number, number], [number, number]];
-    
-
-    
-    return {
-      type: 'image' as const,
-      url: currentImageUrl,
-      coordinates: wgs84Coordinates
-    };
-  }, [currentImageUrl, imageLoaded, metadata]);
-
-  // 6) Layer configuration
-  const rasterLayer = useMemo(() => {
-    if (!visible) return null;
-    
-    return {
-      id: 'mackerel-probability-raster',
-      type: 'raster' as const,
-      paint: {
-        'raster-opacity': opacity,
-        'raster-fade-duration': 300, // Mjuk övergång mellan bilder
-      }
-    };
-  }, [visible, opacity]);
-
-  // Load hotspot data for current timestamp
-  useEffect(() => {
-    if (!visible || !effectiveSelectedHour) {
-      setHotspotData([]);
-      return;
-    }
-
-    const timestampISO = new Date(baseTime + effectiveSelectedHour * 3600_000).toISOString();
-    const safeTimestamp = timestampISO.replace(/:/g, '-').replace(/\+/g, 'plus');
-    
-    // Load compressed mackerel values
     const loadHotspotData = async () => {
       try {
-        const response = await fetch(`/data/mackerel-probability-images-mercator/mackerel-values/mackerel_values_${safeTimestamp}.json.gz`);
+        const response = await fetch('/data/mackerel-probability-images-mercator/hotspot-data.json');
         
         if (!response.ok) {
-  
-          setHotspotData([]);
           return;
         }
-
-        // Try to decompress gzip data if DecompressionStream is available
-        let jsonText: string;
-        try {
-          if (typeof DecompressionStream !== 'undefined' && response.body) {
-            const decompressed = await new Response(
-              response.body.pipeThrough(new DecompressionStream('gzip'))
-            ).text();
-            jsonText = decompressed;
-          } else {
-            // Fallback: try to read as text directly (might not work for compressed data)
-  
-            jsonText = await response.text();
-          }
-        } catch (decompressionError) {
-          
-          jsonText = await response.text();
-        }
         
-        const data = JSON.parse(jsonText);
-        
-        // Filter for hotspots (≥90% probability)
-        const hotspots = data.values.filter((point: any) => point.value >= 90.0);
-        
-        setHotspotData(hotspots);
-        
+        const data = await response.json();
+        setHotspotData(data.hotspots || []);
         
       } catch (error) {
-        
-        setHotspotData([]);
+        // Silent error handling
       }
     };
-
+    
     loadHotspotData();
-  }, [visible, effectiveSelectedHour, baseTime]);
+  }, []);
 
-  // Generate hotspot text GeoJSON
+  // Timestamp prefix for current time - USE SAME LOGIC AS OTHER LAYERS
+  const timestampPrefix = useMemo(() => {
+    if (!baseTime) return '';
+    return new Date(baseTime + displayHour * 3600_000).toISOString().slice(0, 13);
+  }, [displayHour, baseTime]);
+
+  // Update hotspot GeoJSON when time changes
   useEffect(() => {
-    if (!visible || !hotspotData.length) {
+    if (!hotspotData || hotspotData.length === 0 || !timestampPrefix) {
       setHotspotGeoJSON(null);
       return;
     }
-
-    // Sample hotspots to avoid overcrowding (every 3rd point)
-    const sampledHotspots = hotspotData.filter((_, index) => index % 3 === 0);
     
-    const features: GeoJSON.Feature[] = sampledHotspots.map((hotspot, index) => ({
-      type: 'Feature',
-      properties: {
-        id: `hotspot-${index}`,
-        value: hotspot.value,
-        text: 'HOT',
-        textColor: '#FFD700',
-        textHaloColor: '#000000',
-        textHaloWidth: 2,
-        textSize: 11
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [hotspot.lon, hotspot.lat]
-      }
-    }));
-
-    setHotspotGeoJSON({
+    // Filter hotspots for current time
+    const currentHotspots = hotspotData.filter(hotspot => 
+      hotspot.timestamp.startsWith(timestampPrefix)
+    );
+    
+    if (currentHotspots.length === 0) {
+      setHotspotGeoJSON(null);
+      return;
+    }
+    
+    // Create GeoJSON for hotspots
+    const geoJSON: GeoJSON.FeatureCollection = {
       type: 'FeatureCollection',
-      features
-    });
-  }, [visible, hotspotData]);
+      features: currentHotspots.map(hotspot => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [hotspot.longitude, hotspot.latitude]
+        },
+        properties: {
+          text: `${(hotspot.value * 100).toFixed(0)}%`,
+          textSize: 14,
+          textColor: '#FFFFFF',
+          textHaloColor: '#000000',
+          textHaloWidth: 2
+        }
+      }))
+    };
+    
+    setHotspotGeoJSON(geoJSON);
+  }, [hotspotData, timestampPrefix]);
 
   // Force hotspot text to render above arrows
   useEffect(() => {
@@ -450,25 +190,24 @@ const MackerelProbabilityLayer = React.memo<MackerelProbabilityLayerProps>(({
 
   // Debug info
   useEffect(() => {
-    if (metadata && currentImageUrl) {
+    if (metadata && timestampPrefix) {
 
     }
-  }, [metadata, currentImageUrl]);
-
-  // Visa inget om inte synligt eller ingen data
-  if (!visible || !rasterSource || !rasterLayer) {
-    return null;
-  }
+  }, [metadata, timestampPrefix]);
 
   // Render both raster and hotspot text layers
   return (
     <>
-      {/* Raster layer */}
-      {visible && rasterSource && rasterLayer && (
-        <Source id="mackerel-probability-source" {...rasterSource}>
-          <Layer {...rasterLayer} />
-        </Source>
-      )}
+      {/* Raster layer using CanvasSource */}
+      <CanvasSource
+        id="mackerel-probability"
+        layerId="mackerel-probability-layer"
+        visible={visible}
+        opacity={opacity}
+        metadataUrl="/data/mackerel-probability-images-mercator/metadata.json"
+        imageUrlPattern="/data/mackerel-probability-images-mercator/{filename}"
+        canvasSize={{ width: 1848, height: 2552 }}
+      />
       
       {/* Hotspot text layer */}
       {visible && hotspotGeoJSON && (
