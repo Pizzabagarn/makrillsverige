@@ -32,47 +32,27 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // INTELLIGENT CACHE HEADERS - matchande Service Worker strategi
-      // Bilder - lång cache (uppdateras dagligen kl 02:00)
+      // Cache för bilder
       {
         source: '/data/:path*.(png|jpg|jpeg|gif|webp)',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=72000, s-maxage=72000', // 20 timmar
+            value: 'public, max-age=86400, stale-while-revalidate=3600', // 24h cache
           },
         ],
       },
-      // Metadata - medellång cache (säkerhetsmarginal)
+      // Cache för metadata
       {
         source: '/data/:path*metadata.json',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=43200, s-maxage=43200', // 12 timmar
+            value: 'public, max-age=3600, stale-while-revalidate=900', // 1h cache
           },
         ],
       },
-      // API-endpoints - kort cache (popup-responsivitet)
-      {
-        source: '/api/area-parameters',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=600, s-maxage=600', // 10 minuter
-          },
-        ],
-      },
-      {
-        source: '/api/mackerel-values/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=600, s-maxage=600', // 10 minuter
-          },
-        ],
-      },
-      // Behåll lång cache för statiska assets
+      // Cache för statiska assets
       {
         source: '/images/:path*.(png|jpg|jpeg|gif|webp|svg|ico)',
         headers: [
@@ -80,19 +60,15 @@ const nextConfig: NextConfig = {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable', // 1 år för statiska assets
           },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
         ],
       },
-      // Uppdaterat: Preload viktiga resurser
+      // Preload viktiga resurser
       {
         source: '/',
         headers: [
           {
             key: 'Link',
-            value: '</data/current-images-mercator/metadata.json>; rel=preload; as=fetch; crossorigin', // FIXAT: Rätt mapp
+            value: '</data/current-images-mercator/metadata.json>; rel=preload; as=fetch; crossorigin',
           },
         ],
       },

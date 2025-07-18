@@ -10,7 +10,13 @@ export interface PreloadStatus {
 }
 
 export interface LayerMetadata {
-  timestamps: string[];
+  timestamps?: string[]; // Old format
+  images?: Array<{       // New format
+    timestamp: string;
+    filename: string;
+    data_points?: number;
+    value_range?: [number, number];
+  }>;
   total_images: number;
   parameter?: string;
   wgs84_bbox?: [number, number, number, number];
@@ -234,10 +240,16 @@ class LayerPreloadingManager {
           const metadata = await response.json();
           this.metadataCache.set(layer, metadata);
           
-          // Uppdatera total images count
+          // Uppdatera total images count - hantera båda format
           const status = this.preloadStatuses.get(layer);
           if (status) {
-            status.totalImages = metadata.timestamps?.length || 0;
+            if (metadata.images && metadata.images.length > 0) {
+              status.totalImages = metadata.images.length;
+            } else if (metadata.timestamps && metadata.timestamps.length > 0) {
+              status.totalImages = metadata.timestamps.length;
+            } else {
+              status.totalImages = metadata.total_images || 0;
+            }
           }
         }
       } catch (error) {
@@ -356,7 +368,13 @@ class LayerPreloadingManager {
 
   // Hämta timestamps från metadata
   private getTimestampsFromMetadata(metadata: LayerMetadata): string[] {
-    return metadata.timestamps || [];
+    if (metadata.timestamps && metadata.timestamps.length > 0) {
+      return metadata.timestamps;
+    }
+    if (metadata.images && metadata.images.length > 0) {
+      return metadata.images.map(img => img.timestamp);
+    }
+    return [];
   }
 
   // Hämta preloaded bild

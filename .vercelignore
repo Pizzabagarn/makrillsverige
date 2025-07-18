@@ -5,7 +5,7 @@
 # public/data/mackerel-probability-images-mercator/
 # public/data/temperature-images-mercator/
 # public/data/salinity-images-mercator/
-public/data/scandinavian-waters.geojson
+# public/data/scandinavian-waters.geojson
 
 # Keep the metadata files but exclude the large image files
 # NOTE: These are no longer needed since we're including the directories above
