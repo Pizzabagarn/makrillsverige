@@ -10,7 +10,7 @@ import { LayerProvider } from "./context/LayerContext";
 import { AreaParametersProvider } from "./context/AreaParametersContext";
 import { ImageLayerProvider, type ImageLayerType } from "./context/ImageLayerContext";
 import { ManualPointsProvider } from "./context/ManualPointsContext";
-import { useState, createContext, useContext } from "react";
+import { useState, createContext, useContext, useEffect } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +33,24 @@ const SimulationContext = createContext<{
 
 export const useSimulationLayer = () => useContext(SimulationContext);
 
+// Service Worker registrering
+const registerServiceWorker = async () => {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      console.log('✅ Service Worker registrerat:', registration);
+      
+      // Uppdatera service worker vid behov
+      registration.addEventListener('updatefound', () => {
+        console.log('🔄 Service Worker uppdatering hittad');
+      });
+      
+    } catch (error) {
+      console.error('❌ Service Worker registrering misslyckades:', error);
+    }
+  }
+};
+
 // Metadata moved to separate file since this is now a client component
 
 export default function RootLayout({
@@ -41,6 +59,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [simulationLayer, setSimulationLayer] = useState<ImageLayerType | null>(null);
+
+  // Registrera Service Worker vid start
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   return (
     <html lang="sv">
