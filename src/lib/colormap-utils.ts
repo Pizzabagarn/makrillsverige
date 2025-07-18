@@ -166,9 +166,9 @@ export function getColorForValue(parameter: 'current' | 'temperature' | 'salinit
 export async function loadColormapFromMetadata(parameter: 'current' | 'temperature' | 'salinity' | 'mackerel'): Promise<ColorMapEntry[] | null> {
   try {
     const dirMap = {
-      current: 'current-magnitude-images',
-      temperature: 'temperature-images',
-      salinity: 'salinity-images',
+      current: 'current-images-mercator',
+      temperature: 'temperature-images-mercator',
+      salinity: 'salinity-images-mercator',
       mackerel: 'mackerel-probability-images-mercator'
     };
     

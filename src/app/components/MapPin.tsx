@@ -143,12 +143,12 @@ function pointInPolygon(point: [number, number], polygon: any[]): boolean {
 }
 
 // Hjälpfunktion för att ladda makrill-värden via API (hanterar .gz filer) - FÖRBÄTTRAD CACHING
-async function loadMackerelValues(timestamp: string): Promise<any> {
+async function loadMackerelValues(timestamp: string, forceRefresh: boolean = false): Promise<any> {
   const cacheKey = timestamp;
   const now = Date.now();
   
-  // Kolla cache först med TTL
-  if (mackerelValuesCache.has(cacheKey)) {
+  // Kolla cache först med TTL - skippa om forceRefresh
+  if (!forceRefresh && mackerelValuesCache.has(cacheKey)) {
     const cacheTime = mackerelCacheTimestamps.get(cacheKey) || 0;
     if (now - cacheTime < MACKEREL_CACHE_DURATION) {
       return mackerelValuesCache.get(cacheKey);
@@ -159,22 +159,38 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
     }
   }
   
-  // Kontrollera om makrill-data är förladdad från popup preload manager
-  const popupPreloadManager = PopupPreloadManager.getInstance();
-  const preloadedMackerelData = popupPreloadManager.getMackerelData(timestamp);
+  // Om forceRefresh, rensa cache först
+  if (forceRefresh) {
+    mackerelValuesCache.delete(cacheKey);
+    mackerelCacheTimestamps.delete(cacheKey);
+  }
   
-  if (preloadedMackerelData) {
-    // Lägg till i lokal cache också
-    mackerelValuesCache.set(cacheKey, preloadedMackerelData);
-    mackerelCacheTimestamps.set(cacheKey, now);
-    return preloadedMackerelData;
+  // Kontrollera om makrill-data är förladdad från popup preload manager (skippa om forceRefresh)
+  if (!forceRefresh) {
+    const popupPreloadManager = PopupPreloadManager.getInstance();
+    const preloadedMackerelData = popupPreloadManager.getMackerelData(timestamp);
+    
+    if (preloadedMackerelData) {
+      // Lägg till i lokal cache också
+      mackerelValuesCache.set(cacheKey, preloadedMackerelData);
+      mackerelCacheTimestamps.set(cacheKey, now);
+      return preloadedMackerelData;
+    }
   }
   
   try {
     const startTime = performance.now();
     
     // Använd API-route som hanterar dekomprimering på servern
-    const response = await fetch(`/api/mackerel-values/${encodeURIComponent(timestamp)}`);
+    // Lägg till cache-buster för forceRefresh
+    const url = forceRefresh ? 
+      `/api/mackerel-values/${encodeURIComponent(timestamp)}?t=${now}` :
+      `/api/mackerel-values/${encodeURIComponent(timestamp)}`;
+    
+    const response = await fetch(url, {
+      // Tvinga ny request för popup-uppdateringar
+      cache: forceRefresh ? 'no-cache' : 'default'
+    });
     
     if (!response.ok) {
       console.warn(`⚠️ Kunde inte ladda makrill-värden för ${timestamp}`);
@@ -443,7 +459,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   }, [targetTimestamp, areaData?.metadata?.timestamps, shouldPreload, isLowEndDevice]);
 
   // Hitta närmaste datapunkt och extrahera parametrar
-  const findNearestDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
+  const findNearestDataPoint = useCallback(async (lat: number, lon: number, forceRefresh: boolean = false): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
 
     let nearestPoint = null;
@@ -470,7 +486,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     // Ladda makrill-data endast om punkt är i vatten
     let mackerelValue: number | undefined = undefined;
     if (isInWater) {
-      const mackerelData = await loadMackerelValues(targetTimestamp);
+      const mackerelData = await loadMackerelValues(targetTimestamp, forceRefresh);
       const rawMackerelValue = mackerelData ? 
         findNearestMackerelValue(lat, lon, mackerelData) : 
         undefined;
@@ -493,7 +509,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   }, [areaData, targetTimestamp]);
 
   // Robust interpolation med progressiv radie - matchar bildgenereringen
-  const findInterpolatedDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
+  const findInterpolatedDataPoint = useCallback(async (lat: number, lon: number, forceRefresh: boolean = false): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
 
     // Progressive radius med förbättrade trösklar för att bevara extremvärden
@@ -576,7 +592,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
 
     // Ladda makrill-data och interpolera som andra parametrar
     let mackerelValue: number | undefined = undefined;
-    const mackerelData = await loadMackerelValues(targetTimestamp);
+    const mackerelData = await loadMackerelValues(targetTimestamp, forceRefresh);
     const rawMackerelValue = mackerelData ? 
       interpolateMackerelValue(lat, lon, mackerelData, nearbyPoints) : 
       undefined;
@@ -855,8 +871,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       const { lngLat } = e;
       const clickedLocation = { lat: lngLat.lat, lon: lngLat.lng };
       
-      // Hitta interpolerade datapunkt (med fallback till närmaste)
-      const nearestData = await findInterpolatedDataPoint(clickedLocation.lat, clickedLocation.lon);
+      // Hitta interpolerade datapunkt (med fallback till närmaste) - ingen forceRefresh vid första klick
+      const nearestData = await findInterpolatedDataPoint(clickedLocation.lat, clickedLocation.lon, false);
       
       if (nearestData) {
         setPinLocation(clickedLocation);
@@ -864,7 +880,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
         setShowPopup(true);
       } else {
         // Visa popup även om det inte finns data - försök med närmaste punkt som fallback
-        const fallbackData = await findNearestDataPoint(clickedLocation.lat, clickedLocation.lon);
+        const fallbackData = await findNearestDataPoint(clickedLocation.lat, clickedLocation.lon, false);
         
         setPinLocation(clickedLocation);
         setPinData(fallbackData || {
@@ -961,27 +977,26 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     };
   }, [showPopup]);
 
-  // FÖRBÄTTRAD: Uppdatera pin data när tiden ändras med selektiv cache-rensning
+  // FÖRBÄTTRAD: Uppdatera pin data när tiden ändras - tvinga alltid ny data
   useEffect(() => {
-    if (pinLocation && areaData) {
+    if (pinLocation && areaData && showPopup) {
       const updatePinData = async () => {
-        // Rensa bara API-cache om det har gått mer än 5 minuter sedan senaste rensning
-        const lastClearTime = parseInt(localStorage.getItem('lastApiCacheClear') || '0');
-        const now = Date.now();
-        
-        if (now - lastClearTime > 5 * 60 * 1000) { // 5 minuter
-          await clearApiCache();
-          localStorage.setItem('lastApiCacheClear', now.toString());
+        // Rensa localStorage cache för att säkerställa ny data
+        const timestampKey = targetTimestamp;
+        if (mackerelValuesCache.has(timestampKey)) {
+          mackerelValuesCache.delete(timestampKey);
+          mackerelCacheTimestamps.delete(timestampKey);
         }
         
-        const updatedData = await findInterpolatedDataPoint(pinLocation.lat, pinLocation.lon);
+        // VERCEL-FIX: Tvinga ny data genom forceRefresh
+        const updatedData = await findInterpolatedDataPoint(pinLocation.lat, pinLocation.lon, true);
         if (updatedData) {
           setPinData(updatedData);
         }
       };
       updatePinData();
     }
-  }, [pinLocation, targetTimestamp, findInterpolatedDataPoint, areaData, clearApiCache]);
+  }, [pinLocation, targetTimestamp, findInterpolatedDataPoint, areaData, showPopup]);
 
   // Skapa GeoJSON för pin
   const pinGeoJSON = useMemo(() => {

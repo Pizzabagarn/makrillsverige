@@ -158,9 +158,22 @@ class LayerPreloadingManager {
     return Array.from(this.preloadStatuses.values());
   }
 
+  // NYTT: Alias för getAllStatuses - för kompatibilitet med PreloadingStatusDashboard
+  getAllPreloadingStatuses(): PreloadStatus[] {
+    return this.getAllStatuses();
+  }
+
   // Hämta status för specifikt lager
   getStatus(layer: string): PreloadStatus | null {
     return this.preloadStatuses.get(layer) || null;
+  }
+
+  // NYTT: Kontrollera om all preloading är slutförd
+  isPreloadingComplete(): boolean {
+    const allStatuses = this.getAllStatuses();
+    return allStatuses.every(status => 
+      status.status === 'loaded' || status.status === 'error'
+    );
   }
 
   // Starta preloading för alla lager
