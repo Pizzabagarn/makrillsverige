@@ -269,9 +269,16 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
     });
   }, [preloadedImages, id]);
 
-  // 6) Update canvas when time changes
+  // 6) Reset currentImageKey when layer becomes invisible
   useEffect(() => {
-    if (!visible || !metadata || !canvasSource || preloadedImages.size === 0) return;
+    if (!visible) {
+      setCurrentImageKey(null);
+    }
+  }, [visible]);
+
+  // 7) Render initial image when layer becomes visible or images are loaded
+  useEffect(() => {
+    if (!visible || !metadata || !canvasSource) return;
     
     const nearestImage = findNearestImage(currentTime);
     if (!nearestImage) {
@@ -280,13 +287,35 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
     
     const imageKey = nearestImage.filename || nearestImage.timestamp;
     
+    // Check if the specific image we need is loaded
+    const imageIsLoaded = preloadedImages.has(imageKey);
+    
+    // Always render when layer becomes visible and the needed image is loaded
+    if (!currentImageKey && imageIsLoaded) {
+      setCurrentImageKey(imageKey);
+      renderImageToCanvas(imageKey);
+    }
+  }, [visible, metadata, canvasSource, preloadedImages, currentTime, findNearestImage, currentImageKey, renderImageToCanvas]);
+
+  // 8) Update canvas when time changes
+  useEffect(() => {
+    if (!visible || !metadata || !canvasSource || preloadedImages.size === 0 || !currentImageKey) return;
+    
+    const nearestImage = findNearestImage(currentTime);
+    if (!nearestImage) {
+      return;
+    }
+    
+    const imageKey = nearestImage.filename || nearestImage.timestamp;
+    
+    // Only update if the image key actually changed
     if (imageKey !== currentImageKey) {
       setCurrentImageKey(imageKey);
       renderImageToCanvas(imageKey);
     }
-  }, [visible, metadata, canvasSource, preloadedImages.size, currentTime, findNearestImage, currentImageKey, renderImageToCanvas]);
+  }, [currentTime, visible, metadata, canvasSource, preloadedImages.size, findNearestImage, currentImageKey, renderImageToCanvas]);
 
-  // 7) Create layer configuration
+  // 9) Create layer configuration
   const rasterLayer = useMemo(() => {
     if (!visible || !canvasSource) return null;
     
