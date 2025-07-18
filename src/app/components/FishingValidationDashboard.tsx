@@ -268,7 +268,7 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [selectedTimeframe, calibrationStatus, calculateModelPrediction]);
+  }, [selectedTimeframe, calculateModelPrediction]);
 
   useEffect(() => {
     if (isOpen) {

@@ -1,1 +1,31 @@
-{}
+{
+  "functions": {
+    "src/app/api/export-calibration/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/area-parameters/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/dmi/*/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/mackerel-values/[timestamp]/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/manual-points/update/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/update-grid/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/export-marine-snapshots/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "outputDirectory": ".next",
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_VERCEL_URL": "@vercel-url"
+    }
+  }
+}

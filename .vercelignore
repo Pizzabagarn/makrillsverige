@@ -1,0 +1,13 @@
+# Exclude large image directories from Vercel deployment
+# These files are too large for serverless functions
+public/data/current-images-mercator/
+public/data/mackerel-probability-images-mercator/
+public/data/temperature-images-mercator/
+public/data/salinity-images-mercator/
+public/data/scandinavian-waters.geojson
+
+# Keep the metadata files but exclude the large image files
+!public/data/current-images-mercator/metadata.json
+!public/data/mackerel-probability-images-mercator/metadata.json
+!public/data/temperature-images-mercator/metadata.json
+!public/data/salinity-images-mercator/metadata.json 

@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,20 +12,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sätt sökväg till public/data/mackerel_calibration.json
-    const outputPath = path.join(process.cwd(), 'public', 'data', 'mackerel_calibration.json');
-    
-    // Säkerställ att katalogen finns
-    const outputDir = path.dirname(outputPath);
-    await fs.mkdir(outputDir, { recursive: true });
-    
-    // Skriv kalibrering till fil
-    await fs.writeFile(outputPath, JSON.stringify(calibrationData, null, 2), 'utf-8');
-    
     const { calibration } = calibrationData;
     
-    console.log('🎯 Automatisk kalibrering exporterad via API:', {
-      path: outputPath,
+    console.log('🎯 Kalibrering exporterad via API:', {
       totalReports: calibration.totalReports,
       intercept: calibration.recommendedIntercept?.toFixed(3),
       useSlopeCalibration: calibration.useSlopeCalibration,
@@ -35,12 +22,15 @@ export async function POST(request: NextRequest) {
       timestamp: calibration.lastUpdated
     });
 
+    // Returnera kalibrering-data istället för att skriva till fil
+    // Detta undviker att Vercel bundlar hela public-mappen
     return NextResponse.json({
       success: true,
-      path: outputPath,
+      calibrationData: calibrationData,
       totalReports: calibration.totalReports,
       useSlopeCalibration: calibration.useSlopeCalibration,
-      confidence: calibration.confidence
+      confidence: calibration.confidence,
+      message: 'Calibration data exported successfully'
     });
 
   } catch (error) {
