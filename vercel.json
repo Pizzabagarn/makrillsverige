@@ -22,10 +22,6 @@
       "maxDuration": 30
     }
   },
-  "outputDirectory": ".next",
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_VERCEL_URL": "@vercel-url"
-    }
-  }
+  "outputDirectory": ".next"
+  
 }
