@@ -232,54 +232,66 @@ function findNearestMackerelValue(lat: number, lon: number, mackerelData: any): 
   return nearestValue;
 }
 
-// Ny hjälpfunktion för att interpolera makrill-värden (samma logik som andra parametrar)
+// Ny hjälpfunktion för att interpolera makrill-värden med förbättrad extremvärdeshantering
 function interpolateMackerelValue(lat: number, lon: number, mackerelData: any, nearbyAreaPoints: any[]): number | undefined {
   if (!mackerelData?.values) return undefined;
   
-  // Hitta makrill-punkter inom radie (~10km)
-  const radius = 0.1;
-  const nearbyMackerelPoints: Array<{
-    lat: number;
-    lon: number;
-    distance: number;
-    value: number;
-  }> = [];
+  // Använd mindre radie för första sökning för att bevara extremvärden
+  const radii = [0.02, 0.05, 0.1]; // ~2km, 5km, 11km
+  
+  for (const radius of radii) {
+    const nearbyMackerelPoints: Array<{
+      lat: number;
+      lon: number;
+      distance: number;
+      value: number;
+    }> = [];
 
-  for (const point of mackerelData.values) {
-    const distance = Math.sqrt(
-      Math.pow(lat - point.lat, 2) + Math.pow(lon - point.lon, 2)
-    );
-    
-    if (distance <= radius && point.value >= 0) {
-      nearbyMackerelPoints.push({
-        lat: point.lat,
-        lon: point.lon,
-        distance,
-        value: point.value
-      });
+    for (const point of mackerelData.values) {
+      const distance = Math.sqrt(
+        Math.pow(lat - point.lat, 2) + Math.pow(lon - point.lon, 2)
+      );
+      
+      if (distance <= radius && point.value >= 0) {
+        nearbyMackerelPoints.push({
+          lat: point.lat,
+          lon: point.lon,
+          distance,
+          value: point.value
+        });
+      }
+    }
+
+    // Om vi hittat tillräckligt med punkter eller är mycket nära en punkt
+    if (nearbyMackerelPoints.length > 0) {
+      // Sortera efter avstånd
+      nearbyMackerelPoints.sort((a, b) => a.distance - b.distance);
+      
+      // Om närmaste punkt är mycket nära (< 1km), använd den direkt för att bevara extremvärden
+      if (nearbyMackerelPoints[0].distance < 0.01) {
+        return nearbyMackerelPoints[0].value;
+      }
+
+      if (nearbyMackerelPoints.length === 1) {
+        return nearbyMackerelPoints[0].value;
+      }
+
+      // Använd exponentiell viktning för att bevara extremvärden bättre
+      const weights = nearbyMackerelPoints.map(p => 1 / Math.pow(p.distance + 0.001, 3)); // Kubisk viktning
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+      
+      let weightedSum = 0;
+      for (let i = 0; i < nearbyMackerelPoints.length; i++) {
+        const weight = weights[i] / weightSum;
+        weightedSum += nearbyMackerelPoints[i].value * weight;
+      }
+      
+      return weightedSum;
     }
   }
 
-  if (nearbyMackerelPoints.length === 0) {
-    // Fallback till närmaste punkt
-    return findNearestMackerelValue(lat, lon, mackerelData);
-  }
-
-  if (nearbyMackerelPoints.length === 1) {
-    return nearbyMackerelPoints[0].value;
-  }
-
-  // Viktad interpolation (samma logik som för andra parametrar)
-  const weights = nearbyMackerelPoints.map(p => 1 / (p.distance + 0.001));
-  const weightSum = weights.reduce((a, b) => a + b, 0);
-  
-  let weightedSum = 0;
-  for (let i = 0; i < nearbyMackerelPoints.length; i++) {
-    const weight = weights[i] / weightSum;
-    weightedSum += nearbyMackerelPoints[i].value * weight;
-  }
-  
-  return weightedSum;
+  // Fallback till närmaste punkt om inget hittas inom radierna
+  return findNearestMackerelValue(lat, lon, mackerelData);
 }
 
 // Hjälpfunktion för att konvertera makrill-procent till beskrivande text
@@ -477,8 +489,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   const findInterpolatedDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
 
-    // Progressive radius: öka tills vi hittar tillräckligt med punkter - FÖRBÄTTRADE RADIER
-    const radii = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]; // ~11km, 22km, 55km, 110km, 220km, 550km, 1100km
+    // Progressive radius med förbättrade trösklar för att bevara extremvärden
+    const radii = [0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]; // ~2km, 5km, 11km, 22km, 55km, 110km, 220km
     const minPointsForInterpolation = 2; // Minst 2 punkter för interpolation
     
     let nearbyPoints: Array<{
@@ -572,6 +584,23 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       return null;
     }
 
+    // Sortera punkter efter avstånd för bättre extremvärdeshantering
+    nearbyPoints.sort((a, b) => a.distance - b.distance);
+    
+    // Om närmaste punkt är mycket nära (< 1km), använd den direkt för att bevara extremvärden
+    if (nearbyPoints.length > 0 && nearbyPoints[0].distance < 0.01) {
+      const point = nearbyPoints[0];
+      return {
+        lat: point.lat,
+        lon: point.lon,
+        timestamp: targetTimestamp,
+        temperature: point.data.temperature,
+        salinity: point.data.salinity,
+        current: point.data.current,
+        mackerel: mackerelValue
+      };
+    }
+
     if (nearbyPoints.length === 1) {
       // Bara en punkt - använd den
       const point = nearbyPoints[0];
@@ -587,7 +616,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       };
     }
 
-    // Interpolera med viktad medelvärde baserat på avstånd
+    // Interpolera med förbättrad viktad medelvärde som bevarar extremvärden
     const interpolateParameter = (paramName: string) => {
       const validPoints = nearbyPoints.filter(p => 
         p.data[paramName] !== undefined && p.data[paramName] !== null
@@ -596,8 +625,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       if (validPoints.length === 0) return undefined;
       if (validPoints.length === 1) return validPoints[0].data[paramName];
 
-      // Beräkna vikter (närmare = högre vikt)
-      const weights = validPoints.map(p => 1 / (p.distance + 0.001)); // +0.001 för att undvika division med 0
+      // Använd exponentiell viktning för att bevara extremvärden bättre
+      const weights = validPoints.map(p => 1 / Math.pow(p.distance + 0.001, 2)); // Kvadratisk viktning (balans mellan bevaring och utjämning)
       const weightSum = weights.reduce((a, b) => a + b, 0);
 
       // Viktad interpolation

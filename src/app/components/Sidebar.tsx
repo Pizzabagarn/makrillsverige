@@ -298,9 +298,16 @@ export default function Sidebar({
                                   onToggleCurrentVectors(!showCurrentVectors);
                                 }
                               } else {
-                                // Handle regular image layers
+                                // Handle regular image layers - stäng av simulering när vanligt kartlager väljs
                                 const imageLayer = layer as ImageLayerType;
-                                setActiveLayer(isActive ? null : imageLayer);
+                                if (!isActive) {
+                                  // Stäng av simulering och sätt vanligt kartlager
+                                  onSimulationLayerChange?.(null);
+                                  setActiveLayer(imageLayer);
+                                } else {
+                                  // Stäng av kartlager
+                                  setActiveLayer(null);
+                                }
                               }
                               setIsDropdownOpen(false);
                             }}
@@ -366,9 +373,16 @@ export default function Sidebar({
                                   onToggleCurrentVectors(!showCurrentVectors);
                                 }
                               } else {
-                                // Handle regular image layers
+                                // Handle regular image layers - stäng av simulering när vanligt kartlager väljs
                                 const imageLayer = layer as ImageLayerType;
-                                setActiveLayer(isActive ? null : imageLayer);
+                                if (!isActive) {
+                                  // Stäng av simulering och sätt vanligt kartlager
+                                  onSimulationLayerChange?.(null);
+                                  setActiveLayer(imageLayer);
+                                } else {
+                                  // Stäng av kartlager
+                                  setActiveLayer(null);
+                                }
                               }
                             }}
                             className={`relative inline-flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ease-in-out shadow-md hover:shadow-lg border-2 ${

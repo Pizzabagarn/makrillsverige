@@ -35,14 +35,14 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [totalFrames, setTotalFrames] = useState(0);
   
   const { selectedHour, setSelectedHour, minHour, maxHour, baseTime, availableHours } = useTimeSlider();
-  const { setActiveLayer } = useImageLayer();
+  const { setActiveLayerFromSimulation } = useImageLayer();
   
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const frameCountRef = useRef<number>(0);
 
   // Calculate total frames from available hours
   useEffect(() => {
-    const frames = availableHours.length > 0 ? availableHours.length : Math.max(0, maxHour - minHour + 1);
+    const frames = availableHours.length > 0 ? availableHours.length : Math.max(0, (maxHour ?? 0) - (minHour ?? 0) + 1);
     setTotalFrames(frames);
   }, [availableHours, minHour, maxHour]);
 
@@ -52,7 +52,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       const frameIndex = availableHours.indexOf(selectedHour);
       setCurrentFrame(frameIndex >= 0 ? frameIndex : 0);
     } else {
-      setCurrentFrame(Math.max(0, selectedHour - minHour));
+      setCurrentFrame(Math.max(0, selectedHour - (minHour ?? 0)));
     }
   }, [selectedHour, minHour, availableHours]);
 
@@ -117,10 +117,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   // Control functions
   const play = useCallback(() => {
     if (simulationLayer) {
-      setActiveLayer(simulationLayer);
+      setActiveLayerFromSimulation(simulationLayer);
       setIsPlaying(true);
     }
-  }, [simulationLayer, setActiveLayer]);
+  }, [simulationLayer, setActiveLayerFromSimulation]);
 
   const pause = useCallback(() => {
     setIsPlaying(false);
@@ -136,11 +136,22 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const handleSetSimulationLayer = useCallback((layer: ImageLayerType | null) => {
     setSimulationLayer(layer);
     if (layer) {
-      setActiveLayer(layer);
+      setActiveLayerFromSimulation(layer);
+    } else {
+      // Reset all simulation states when layer becomes null
+      setIsPlaying(false);
+      setSpeed(1);
+      setCurrentFrame(0);
+      // Cancel any running animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = undefined;
+      }
+      frameCountRef.current = 0;
     }
     // Stop any running simulation when changing layers
     setIsPlaying(false);
-  }, [setActiveLayer]);
+  }, [setActiveLayerFromSimulation]);
 
   const handleSetSpeed = useCallback((newSpeed: SimulationSpeed) => {
     setSpeed(newSpeed);

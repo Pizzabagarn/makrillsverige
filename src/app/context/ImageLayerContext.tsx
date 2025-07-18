@@ -1,12 +1,13 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
 
 export type ImageLayerType = 'current' | 'temperature' | 'salinity' | 'mackerel' | 'vectors' | null;
 
 interface ImageLayerContextType {
   activeLayer: ImageLayerType;
   setActiveLayer: (layer: ImageLayerType) => void;
+  setActiveLayerFromSimulation: (layer: ImageLayerType) => void;
   isLayerActive: (layer: ImageLayerType) => boolean;
 }
 
@@ -17,7 +18,21 @@ interface ImageLayerProviderProps {
 }
 
 export function ImageLayerProvider({ children }: ImageLayerProviderProps) {
-  const [activeLayer, setActiveLayer] = useState<ImageLayerType>('temperature'); // Default to temperature
+  const [activeLayer, setActiveLayerState] = useState<ImageLayerType>('temperature'); // Default to temperature
+  const lastSimulationLayer = useRef<ImageLayerType>(null);
+
+  // Manuell lagerbyte (från sidebar) - hantera simulering automatiskt
+  const setActiveLayer = useCallback((layer: ImageLayerType) => {
+    // Rensa simuleringslager-spårning eftersom detta är manuell switch
+    lastSimulationLayer.current = null;
+    setActiveLayerState(layer);
+  }, []);
+
+  // Lagerbyte från simulering - registrera simuleringslager
+  const setActiveLayerFromSimulation = useCallback((layer: ImageLayerType) => {
+    lastSimulationLayer.current = layer;
+    setActiveLayerState(layer);
+  }, []);
 
   const isLayerActive = (layer: ImageLayerType) => activeLayer === layer;
 
@@ -26,6 +41,7 @@ export function ImageLayerProvider({ children }: ImageLayerProviderProps) {
       value={{
         activeLayer,
         setActiveLayer,
+        setActiveLayerFromSimulation,
         isLayerActive,
       }}
     >

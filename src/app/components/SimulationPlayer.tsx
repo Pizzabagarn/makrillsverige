@@ -23,7 +23,7 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, startX: 0, startY: 0 });
   
   const { selectedHour, setSelectedHour, minHour, maxHour, baseTime, availableHours } = useTimeSlider();
-  const { setActiveLayer } = useImageLayer();
+  const { setActiveLayerFromSimulation } = useImageLayer();
   
   const animationRef = useRef<number | undefined>(undefined);
   const frameCountRef = useRef<number>(0);
@@ -56,9 +56,26 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
   // Update active layer when simulation layer changes (but don't affect playback)
   useEffect(() => {
     if (simulationLayer) {
-      setActiveLayer(simulationLayer);
+      setActiveLayerFromSimulation(simulationLayer);
     }
-  }, [simulationLayer, setActiveLayer]);
+  }, [simulationLayer, setActiveLayerFromSimulation]);
+
+  // Reset simulation when simulationLayer becomes null
+  useEffect(() => {
+    if (simulationLayer === null) {
+      setIsPlaying(false);
+      setSpeed(1);
+      setIsSpeedDropdownOpen(false);
+      // Cancel any running animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = undefined;
+      }
+      frameCountRef.current = 0;
+    }
+  }, [simulationLayer]);
+
+
 
   // Current time calculation
   const currentTime = React.useMemo(() => {
