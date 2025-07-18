@@ -37,41 +37,160 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
       
-      // console.log('🌊 Fetching area-parameters (centralized)...');
+      console.log('🌊 Hämtar area-parameters data...');
       const startTime = Date.now();
       
-      const response = await fetch('/api/area-parameters', { signal });
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      // Försök först med API
+      let areaData = null;
+      try {
+        areaData = await fetchFromAPI(signal);
+      } catch (apiError) {
+        console.warn('⚠️ API-anrop misslyckades, försöker med direkt filaccess:', apiError);
+        
+        // Fallback: försök ladda direkt från statisk fil
+        areaData = await fetchFromStaticFile(signal);
       }
       
-      const areaData = await response.json();
-      
       const loadTime = Date.now() - startTime;
-      // console.log(`✅ Area-parameters loaded in ${loadTime}ms (${areaData.points?.length || 0} points)`);
+      console.log(`✅ Area-parameters loaded in ${loadTime}ms (${areaData.points?.length || 0} points)`);
       
+      // Validera data
+      if (!areaData || !areaData.points || !Array.isArray(areaData.points)) {
+        throw new Error('Invalid area-parameters data structure');
+      }
+      
+      if (!areaData.metadata || !areaData.metadata.timestamps) {
+        throw new Error('Missing metadata in area-parameters data');
+      }
+      
+      console.log('📊 Data validation passed');
       setData(areaData);
+      
     } catch (err: any) {
-      // Don't log abort errors as they're expected
-      if (err.name !== 'AbortError') {
+      // Detaljerad felhantering
+      console.error('❌ Detailed error information:');
+      console.error('Error name:', err.name);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+      
+      if (err.name === 'AbortError') {
+        console.log('🚫 Fetch aborted (normal behavior)');
+        return;
+      }
+      
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        console.error('🌐 Network error - kontrollera nätverksanslutning');
+        setError('Nätverksfel - kontrollera anslutningen');
+      } else {
         console.error('❌ Failed to load area-parameters:', err);
-        setError(err.message);
+        setError(err.message || 'Okänt fel vid laddning av data');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Försök med API först
+  const fetchFromAPI = async (signal?: AbortSignal): Promise<AreaParametersData> => {
+    const url = '/api/area-parameters';
+    console.log('📡 Gör fetch till API:', url);
+    
+    const response = await fetch(url, { 
+      signal,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-cache'
+    });
+    
+    console.log('📊 API response status:', response.status);
+    console.log('📊 API response ok:', response.ok);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API error response:', errorText);
+      throw new Error(`API error: ${response.status} - ${errorText}`);
+    }
+    
+    return await response.json();
+  };
+
+  // Fallback: ladda direkt från statisk fil
+  const fetchFromStaticFile = async (signal?: AbortSignal): Promise<AreaParametersData> => {
+    console.log('📁 Försöker ladda direkt från statisk fil...');
+    
+    // Först, testa om komprimerad fil finns
+    let fileUrl = '/data/area-parameters-extended.json.gz';
+    console.log('📡 Testar komprimerad fil:', fileUrl);
+    
+    try {
+      const response = await fetch(fileUrl, { 
+        signal,
+        headers: {
+          'Accept': 'application/json, application/gzip',
+        },
+        cache: 'no-cache'
+      });
+      
+      if (response.ok) {
+        console.log('✅ Komprimerad fil hittades');
+        
+        // Kontrollera om vi får compressed data
+        const contentEncoding = response.headers.get('Content-Encoding');
+        console.log('📊 Content-Encoding:', contentEncoding);
+        
+        if (contentEncoding === 'gzip') {
+          // Browsern dekomprimerar automatiskt
+          return await response.json();
+        } else {
+          // Manuell dekomprimering kan behövas
+          const arrayBuffer = await response.arrayBuffer();
+          console.log('📊 Received arrayBuffer size:', arrayBuffer.byteLength);
+          
+          // Försök med pako för dekomprimering
+          const pako = await import('pako');
+          const decompressed = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
+          return JSON.parse(decompressed);
+        }
+      }
+    } catch (gzError) {
+      console.warn('⚠️ Komprimerad fil misslyckades:', gzError);
+    }
+    
+    // Fallback: försök med okomprimerad fil
+    fileUrl = '/data/area-parameters-extended.json';
+    console.log('📡 Försöker okomprimerad fil:', fileUrl);
+    
+    const response = await fetch(fileUrl, { 
+      signal,
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-cache'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Kunde inte ladda statisk fil: ${response.status}`);
+    }
+    
+    console.log('✅ Okomprimerad fil hittades');
+    return await response.json();
+  };
+
   useEffect(() => {
+    console.log('🔄 AreaParametersProvider mounted, starting fetch...');
     const abortController = new AbortController();
     fetchData(abortController.signal);
     
     return () => {
+      console.log('🛑 AreaParametersProvider unmounting, aborting fetch...');
       abortController.abort();
     };
   }, []);
 
   const refetch = async () => {
+    console.log('🔄 Manual refetch requested');
     const abortController = new AbortController();
     await fetchData(abortController.signal);
   };

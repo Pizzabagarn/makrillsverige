@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 // Throttle function för att hantera dragging-prestanda
 export function useHeavyThrottle<T>(value: T, delay: number): T {
@@ -50,4 +50,122 @@ export function useDraggingDetection(selectedHour: number): boolean {
   }, [selectedHour]);
 
   return isDragging;
+} 
+
+// NYTT: Hook för cache-hantering och mobil-optimering
+export function useCacheOptimization() {
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isLowEndDevice, setIsLowEndDevice] = useState(false);
+  
+  useEffect(() => {
+    // Identifiera svag enhet
+    const checkDevice = () => {
+      const cores = navigator.hardwareConcurrency || 4;
+      const memory = (navigator as any).deviceMemory || 4;
+      const isLowEnd = cores <= 4 && memory <= 4;
+      
+      setIsLowEndDevice(isLowEnd);
+      
+      if (isLowEnd) {
+        console.log('📱 Svag enhet identifierad, aktiverar optimeringar');
+      }
+    };
+    
+    checkDevice();
+  }, []);
+  
+  // Rensa API-cache för snabbare popup-uppdateringar
+  const clearApiCache = useCallback(async () => {
+    if (isOptimizing) return;
+    
+    setIsOptimizing(true);
+    
+    try {
+      const { CacheManager } = await import('./cacheManager');
+      const cacheManager = CacheManager.getInstance();
+      await cacheManager.clearApiCache();
+    } catch (error) {
+      console.error('❌ Kunde inte rensa API-cache:', error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [isOptimizing]);
+  
+  // Optimera för svag enhet
+  const optimizeForDevice = useCallback(async () => {
+    if (isOptimizing || !isLowEndDevice) return;
+    
+    setIsOptimizing(true);
+    
+    try {
+      const { CacheManager } = await import('./cacheManager');
+      const cacheManager = CacheManager.getInstance();
+      await cacheManager.optimizeForDevice();
+    } catch (error) {
+      console.error('❌ Kunde inte optimera för enhet:', error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [isOptimizing, isLowEndDevice]);
+  
+  // Automatisk optimering vid behov
+  useEffect(() => {
+    if (isLowEndDevice) {
+      // Optimera efter att komponenten har laddat
+      const timer = setTimeout(optimizeForDevice, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLowEndDevice, optimizeForDevice]);
+  
+  return {
+    isOptimizing,
+    isLowEndDevice,
+    clearApiCache,
+    optimizeForDevice
+  };
+}
+
+// NYTT: Hook för intelligent bildhantering baserat på enhet
+export function useImageOptimization() {
+  const [maxConcurrentImages, setMaxConcurrentImages] = useState(6);
+  const [imageQuality, setImageQuality] = useState<'high' | 'medium' | 'low'>('high');
+  
+  useEffect(() => {
+    const checkDevice = () => {
+      const cores = navigator.hardwareConcurrency || 4;
+      const memory = (navigator as any).deviceMemory || 4;
+      const connection = (navigator as any).connection;
+      
+      // Justera baserat på enhet
+      if (cores <= 2 && memory <= 2) {
+        setMaxConcurrentImages(2);
+        setImageQuality('low');
+      } else if (cores <= 4 && memory <= 4) {
+        setMaxConcurrentImages(4);
+        setImageQuality('medium');
+      } else {
+        setMaxConcurrentImages(6);
+        setImageQuality('high');
+      }
+      
+      // Justera baserat på nätverksanslutning
+      if (connection) {
+        if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+          setMaxConcurrentImages(1);
+          setImageQuality('low');
+        } else if (connection.effectiveType === '3g') {
+          setMaxConcurrentImages(2);
+          setImageQuality('medium');
+        }
+      }
+    };
+    
+    checkDevice();
+  }, []);
+  
+  return {
+    maxConcurrentImages,
+    imageQuality,
+    shouldPreload: imageQuality !== 'low'
+  };
 } 

@@ -538,6 +538,7 @@ const ClockKnob = React.memo(() => {
                 alt="Sol"
                 width={48}
                 height={48}
+                priority={true}
                 className="w-full h-full object-contain drop-shadow-lg"
               />
             </div>

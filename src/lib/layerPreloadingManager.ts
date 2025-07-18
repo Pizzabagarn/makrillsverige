@@ -1,7 +1,7 @@
 // src/lib/layerPreloadingManager.ts
 export interface PreloadStatus {
   layer: string;
-  status: 'pending' | 'loading' | 'loaded' | 'error';
+  status: 'pending' | 'loading' | 'loaded' | 'error' | 'paused';
   progress: number;
   totalImages: number;
   loadedImages: number;
@@ -41,8 +41,8 @@ class LayerPreloadingManager {
     priority: 'critical' | 'high' | 'normal' | 'low'; // NYTT: Prioritering
   }> = {
     'current-magnitude': {
-      metadataUrl: '/data/current-magnitude-images/metadata.json',
-      imageUrlPattern: '/data/current-magnitude-images/current_magnitude_{timestamp}.png',
+      metadataUrl: '/data/current-images-mercator/metadata.json', // FIXAT: Rätt mapp
+      imageUrlPattern: '/data/current-images-mercator/current_magnitude_{timestamp}.png', // FIXAT: Rätt mapp
       delay: 50, // Snabbare start
       batchDelay: 3, // Mindre delay mellan bilder
       maxParallelLoads: 6, // Fler parallella laddningar
@@ -57,20 +57,63 @@ class LayerPreloadingManager {
       priority: 'high'
     },
     'temperature': {
-      metadataUrl: '/data/temperature-images/metadata.json',
-      imageUrlPattern: '/data/temperature-images/temperature_{timestamp}.png',
+      metadataUrl: '/data/temperature-images-mercator/metadata.json', // FIXAT: Rätt mapp
+      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.png', // FIXAT: Rätt mapp
       delay: 200,
       batchDelay: 5,
       maxParallelLoads: 3,
       priority: 'normal'
     },
     'salinity': {
-      metadataUrl: '/data/salinity-images/metadata.json',
-      imageUrlPattern: '/data/salinity-images/salinity_{timestamp}.png',
+      metadataUrl: '/data/salinity-images-mercator/metadata.json', // FIXAT: Rätt mapp
+      imageUrlPattern: '/data/salinity-images-mercator/salinity_{timestamp}.png', // FIXAT: Rätt mapp
       delay: 300,
       batchDelay: 6,
       maxParallelLoads: 2,
       priority: 'normal'
+    }
+  };
+
+  // NYTT: Mobil-optimerade inställningar
+  private readonly MOBILE_LAYER_CONFIGS: Record<string, {
+    metadataUrl: string;
+    imageUrlPattern: string;
+    delay: number;
+    batchDelay: number;
+    maxParallelLoads: number;
+    priority: 'critical' | 'high' | 'normal' | 'low';
+  }> = {
+    'current-magnitude': {
+      metadataUrl: '/data/current-images-mercator/metadata.json', // FIXAT: Rätt mapp
+      imageUrlPattern: '/data/current-images-mercator/current_magnitude_{timestamp}.png', // FIXAT: Rätt mapp
+      delay: 500, // Längre delay för mobil
+      batchDelay: 10, // Mycket längre delay mellan bilder
+      maxParallelLoads: 1, // Bara en åt gången
+      priority: 'critical'
+    },
+    'mackerel-probability': {
+      metadataUrl: '/data/mackerel-probability-images-mercator/metadata.json',
+      imageUrlPattern: '/data/mackerel-probability-images-mercator/mackerel_probability_{timestamp}.png',
+      delay: 1000,
+      batchDelay: 15,
+      maxParallelLoads: 1,
+      priority: 'high'
+    },
+    'temperature': {
+      metadataUrl: '/data/temperature-images-mercator/metadata.json', // FIXAT: Rätt mapp
+      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.png', // FIXAT: Rätt mapp
+      delay: 2000,
+      batchDelay: 20,
+      maxParallelLoads: 1,
+      priority: 'low' // Sänk prioritet för mobil
+    },
+    'salinity': {
+      metadataUrl: '/data/salinity-images-mercator/metadata.json', // FIXAT: Rätt mapp
+      imageUrlPattern: '/data/salinity-images-mercator/salinity_{timestamp}.png', // FIXAT: Rätt mapp
+      delay: 3000,
+      batchDelay: 25,
+      maxParallelLoads: 1,
+      priority: 'low' // Sänk prioritet för mobil
     }
   };
 
@@ -85,6 +128,22 @@ class LayerPreloadingManager {
         loadedImages: 0
       });
     });
+  }
+
+  // NYTT: Identifiera mobil-enhet
+  private isMobileDevice(): boolean {
+    const cores = navigator.hardwareConcurrency || 4;
+    const memory = (navigator as any).deviceMemory || 4;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    return isMobile || (cores <= 4 && memory <= 4);
+  }
+
+  // UPPDATERAT: Använd rätt konfiguration baserat på enhet
+  private getLayerConfig(layer: string) {
+    const isMobile = this.isMobileDevice();
+    const configs = isMobile ? this.MOBILE_LAYER_CONFIGS : this.LAYER_CONFIGS;
+    return configs[layer];
   }
 
   static getInstance(): LayerPreloadingManager {
@@ -112,7 +171,8 @@ class LayerPreloadingManager {
     }
 
     this.isPreloading = true;
-    console.log('🚀 Startar prioriterad layer preloading...');
+    const isMobile = this.isMobileDevice();
+    console.log(`🚀 Startar ${isMobile ? 'mobil-optimerad' : 'standard'} layer preloading...`);
 
     try {
       // Ladda metadata för alla lager först (parallellt)
@@ -120,11 +180,26 @@ class LayerPreloadingManager {
 
       // Ladda lager i prioriteringsordning
       for (const layer of this.LAYER_PRIORITY) {
-        const config = this.LAYER_CONFIGS[layer];
+        const config = this.getLayerConfig(layer);
+        if (!config) continue;
+        
         if (config.priority === 'critical') {
           await this.preloadLayer(layer); // Vänta på kritiska lager
-        } else {
-          this.preloadLayer(layer); // Kör höga/normala lager parallellt
+        } else if (config.priority === 'high') {
+          if (isMobile) {
+            // På mobil, ladda höga prioritets-lager sekventiellt
+            await this.preloadLayer(layer);
+          } else {
+            // På desktop, ladda parallellt
+            this.preloadLayer(layer);
+          }
+        } else if (config.priority === 'normal' || config.priority === 'low') {
+          if (isMobile && config.priority === 'low') {
+            // Skippa låga prioritets-lager helt på mobil
+            console.log(`📱 Skippar ${layer} på mobil (låg prioritet)`);
+            continue;
+          }
+          this.preloadLayer(layer);
         }
       }
 
@@ -139,7 +214,7 @@ class LayerPreloadingManager {
   // Ladda metadata för alla lager (parallellt)
   private async loadAllMetadata(): Promise<void> {
     const metadataPromises = this.LAYER_PRIORITY.map(async (layer) => {
-      const config = this.LAYER_CONFIGS[layer];
+      const config = this.getLayerConfig(layer);
       try {
         const response = await fetch(config.metadataUrl);
         if (response.ok) {
@@ -164,7 +239,7 @@ class LayerPreloadingManager {
   // Preload ett specifikt lager med optimerad parallellisering
   private async preloadLayer(layer: string): Promise<void> {
     const status = this.preloadStatuses.get(layer);
-    const config = this.LAYER_CONFIGS[layer];
+    const config = this.getLayerConfig(layer);
     const metadata = this.metadataCache.get(layer);
     
     if (!status || !config || !metadata) {
@@ -182,14 +257,21 @@ class LayerPreloadingManager {
     // Hämta timestamps
     const timestamps = this.getTimestampsFromMetadata(metadata);
     
+    // NYTT: Begränsa antal bilder på mobil
+    const isMobile = this.isMobileDevice();
+    const maxImages = isMobile ? Math.min(timestamps.length, 20) : timestamps.length;
+    const limitedTimestamps = timestamps.slice(0, maxImages);
+    
+    console.log(`📱 ${layer}: Laddar ${limitedTimestamps.length}/${timestamps.length} bilder (${isMobile ? 'mobil' : 'desktop'})`);
+    
     // Vänta på initial delay
     await new Promise(resolve => setTimeout(resolve, config.delay));
     
     // Dela upp timestamps i batches för parallell laddning
     const batchSize = config.maxParallelLoads;
     const batches = [];
-    for (let i = 0; i < timestamps.length; i += batchSize) {
-      batches.push(timestamps.slice(i, i + batchSize));
+    for (let i = 0; i < limitedTimestamps.length; i += batchSize) {
+      batches.push(limitedTimestamps.slice(i, i + batchSize));
     }
 
     let totalLoaded = 0;
@@ -207,7 +289,7 @@ class LayerPreloadingManager {
           
           // Uppdatera progress
           status.loadedImages = totalLoaded;
-          status.progress = (totalLoaded / timestamps.length) * 100;
+          status.progress = (totalLoaded / limitedTimestamps.length) * 100;
           
           return { success: true, timestamp: safeTimestamp };
         } catch (error) {
@@ -229,7 +311,7 @@ class LayerPreloadingManager {
     status.endTime = Date.now();
     const loadTime = status.endTime - (status.startTime || 0);
     
-    console.log(`✅ ${layer} preloading slutfört: ${totalLoaded}/${timestamps.length} bilder på ${loadTime}ms`);
+    console.log(`✅ ${layer} preloading slutfört: ${totalLoaded}/${limitedTimestamps.length} bilder på ${loadTime}ms`);
   }
 
   // Optimerad bildladdning med timeout och retry
@@ -273,9 +355,37 @@ class LayerPreloadingManager {
     return layerCache.get(safeTimestamp) || null;
   }
 
+  // NYTT: Pausera preloading för svaga enheter
+  pausePreloading(): void {
+    this.isPreloading = false;
+    console.log('⏸️ Pausar preloading för bättre prestanda');
+    
+    // Rensa pågående preloading-requests
+    this.preloadStatuses.forEach(status => {
+      if (status.status === 'loading') {
+        status.status = 'paused';
+      }
+    });
+  }
+  
+  // NYTT: Återuppta preloading
+  resumePreloading(): void {
+    console.log('▶️ Återupptar preloading');
+    this.startPreloading();
+  }
+
+  // Få preloading-status för ett specifikt lager
+  getPreloadingStatus(layer: string): PreloadStatus | null {
+    return this.preloadStatuses.get(layer) || null;
+  }
+
   // Rensa cache för specifikt lager
   clearLayerCache(layer: string): void {
-    this.imageCache.delete(layer);
+    const imageCache = this.imageCache.get(layer);
+    if (imageCache) {
+      imageCache.clear();
+    }
+    
     const status = this.preloadStatuses.get(layer);
     if (status) {
       status.status = 'pending';

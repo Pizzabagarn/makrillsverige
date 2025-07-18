@@ -32,53 +32,47 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Optimerad cache för bilder (uppdateras dagligen)
+      // INTELLIGENT CACHE HEADERS - matchande Service Worker strategi
+      // Bilder - lång cache (uppdateras dagligen kl 02:00)
       {
         source: '/data/:path*.(png|jpg|jpeg|gif|webp)',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=72000, stale-while-revalidate=7200', // 20h cache, 2h stale
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Vary',
-            value: 'Accept-Encoding', // Optimera för komprimering
+            value: 'public, max-age=72000, s-maxage=72000', // 20 timmar
           },
         ],
       },
-      // Samma cache som bilder (uppdateras tillsammans)
+      // Metadata - medellång cache (säkerhetsmarginal)
       {
         source: '/data/:path*metadata.json',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=72000, stale-while-revalidate=7200', // 20h cache, 2h stale
-          },
-          {
-            key: 'Vary',
-            value: 'Accept-Encoding',
+            value: 'public, max-age=43200, s-maxage=43200', // 12 timmar
           },
         ],
       },
-      // Kortare cache för GeoJSON filer
+      // API-endpoints - kort cache (popup-responsivitet)
       {
-        source: '/data/:path*.(geojson|json)',
+        source: '/api/area-parameters',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=43200, stale-while-revalidate=3600', // 12h cache, 1h stale
-          },
-          {
-            key: 'Vary',
-            value: 'Accept-Encoding',
+            value: 'public, max-age=600, s-maxage=600', // 10 minuter
           },
         ],
       },
-      // NYTT: Optimera för andra statiska assets
+      {
+        source: '/api/mackerel-values/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=600, s-maxage=600', // 10 minuter
+          },
+        ],
+      },
+      // Behåll lång cache för statiska assets
       {
         source: '/images/:path*.(png|jpg|jpeg|gif|webp|svg|ico)',
         headers: [
@@ -92,28 +86,28 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // NYTT: Preload kritiska resurser
+      // Uppdaterat: Preload viktiga resurser
       {
         source: '/',
         headers: [
           {
             key: 'Link',
-            value: '</data/current-images-mercator/metadata.json>; rel=preload; as=fetch; crossorigin',
+            value: '</data/current-images-mercator/metadata.json>; rel=preload; as=fetch; crossorigin', // FIXAT: Rätt mapp
           },
         ],
       },
     ];
   },
   
-  // NYTT: Optimera bildkomprimering
+  // Optimera bildkomprimering
   images: {
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 72000, // 20 timmar samma som övriga bilder
+    minimumCacheTTL: 7200, // 2 timmar - matchar nya cache-strategin
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  // NYTT: Optimera för produktionsprestanda
+  // Optimera för produktionsprestanda
   experimental: {
     optimizePackageImports: ['react-map-gl', 'maplibre-gl'],
     gzipSize: true,

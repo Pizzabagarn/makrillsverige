@@ -8,6 +8,7 @@ import { useTimeSlider } from '../context/TimeSliderContext';
 import { useManualPoints } from '../context/ManualPointsContext';
 import { getColorForValue } from '../../lib/colormap-utils';
 import PopupPreloadManager from '../../lib/popupPreloadManager';
+import { useCacheOptimization, useImageOptimization } from '../../lib/throttleHooks';
 
 // Cache för makrill-värden - FÖRBÄTTRAD CACHING
 const mackerelValuesCache = new Map<string, any>();
@@ -370,6 +371,10 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   const { selectedHour, baseTime } = useTimeSlider();
   const { isManualPointMode } = useManualPoints();
   
+  // NYTT: Cache-optimering för bättre popup-uppdateringar
+  const { clearApiCache, isLowEndDevice, optimizeForDevice } = useCacheOptimization();
+  const { shouldPreload } = useImageOptimization();
+  
   const [pinLocation, setPinLocation] = useState<{lat: number, lon: number} | null>(null);
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
@@ -396,9 +401,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     return closestTimestamp;
   }, [selectedHour, baseTime, areaData?.metadata?.timestamps]);
 
-  // Preload makrill-data för nuvarande tid + några timmar framåt/bakåt
+  // OPTIMERAD: Preload makrill-data med enhetsskillnader
   useEffect(() => {
-    if (!targetTimestamp || !areaData?.metadata?.timestamps) return;
+    if (!targetTimestamp || !areaData?.metadata?.timestamps || !shouldPreload) return;
     
     const currentIndex = areaData.metadata.timestamps.indexOf(targetTimestamp);
     if (currentIndex === -1) return;
@@ -408,8 +413,11 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     // Lägg till aktuell tid (högst prioritet)
     preloadTimestamps.push(targetTimestamp);
     
-    // Lägg till 2 timmar framåt och bakåt
-    for (let i = 1; i <= 2; i++) {
+    // Anpassa preloading baserat på enhet
+    const preloadRange = isLowEndDevice ? 1 : 2; // Mindre preloading på svaga enheter
+    
+    // Lägg till timmar framåt och bakåt
+    for (let i = 1; i <= preloadRange; i++) {
       if (currentIndex + i < areaData.metadata.timestamps.length) {
         preloadTimestamps.push(areaData.metadata.timestamps[currentIndex + i]);
       }
@@ -423,17 +431,16 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       // Ladda aktuell tid omedelbart (ingen delay)
       await preloadMackerelData(targetTimestamp);
       
-      // Ladda resten med pauser
+      // Ladda resten med pauser - längre på svaga enheter
+      const delay = isLowEndDevice ? 500 : 100;
       for (let i = 1; i < preloadTimestamps.length; i++) {
         await preloadMackerelData(preloadTimestamps[i]);
-        // Kort paus mellan preloads för att inte blockera UI
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     };
     
-    // Starta preloading omedelbart
     startPreloading();
-  }, [targetTimestamp, areaData?.metadata?.timestamps]);
+  }, [targetTimestamp, areaData?.metadata?.timestamps, shouldPreload, isLowEndDevice]);
 
   // Hitta närmaste datapunkt och extrahera parametrar
   const findNearestDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
@@ -954,10 +961,19 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     };
   }, [showPopup]);
 
-  // Uppdatera pin data när tiden ändras
+  // FÖRBÄTTRAD: Uppdatera pin data när tiden ändras med selektiv cache-rensning
   useEffect(() => {
     if (pinLocation && areaData) {
       const updatePinData = async () => {
+        // Rensa bara API-cache om det har gått mer än 5 minuter sedan senaste rensning
+        const lastClearTime = parseInt(localStorage.getItem('lastApiCacheClear') || '0');
+        const now = Date.now();
+        
+        if (now - lastClearTime > 5 * 60 * 1000) { // 5 minuter
+          await clearApiCache();
+          localStorage.setItem('lastApiCacheClear', now.toString());
+        }
+        
         const updatedData = await findInterpolatedDataPoint(pinLocation.lat, pinLocation.lon);
         if (updatedData) {
           setPinData(updatedData);
@@ -965,7 +981,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       };
       updatePinData();
     }
-  }, [pinLocation, targetTimestamp, findInterpolatedDataPoint, areaData]);
+  }, [pinLocation, targetTimestamp, findInterpolatedDataPoint, areaData, clearApiCache]);
 
   // Skapa GeoJSON för pin
   const pinGeoJSON = useMemo(() => {

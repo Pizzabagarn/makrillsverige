@@ -10,6 +10,7 @@ import { useImageLayer, type ImageLayerType } from './context/ImageLayerContext'
 import { useSimulationLayer } from './layout';
 import LayerPreloadingManager from '@/lib/layerPreloadingManager';
 import PopupPreloadManager from '@/lib/popupPreloadManager';
+import { useCacheOptimization } from '@/lib/throttleHooks';
 
 const MapView = dynamic(() => import('./components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
@@ -21,6 +22,9 @@ export default function Home() {
   
   // Layer state från LayerContext - kontrolleras nu från sidebaren
   const { showCurrentVectors } = useLayer();
+  
+  // NYTT: Global cache-optimering
+  const { isLowEndDevice, optimizeForDevice, clearApiCache } = useCacheOptimization();
 
   useEffect(() => {
     const checkLayout = () => {
@@ -31,23 +35,53 @@ export default function Home() {
     window.addEventListener('resize', checkLayout);
     window.addEventListener('orientationchange', checkLayout);
     
-    // Starta global layer preloading
-    const preloadingManager = LayerPreloadingManager.getInstance();
-    preloadingManager.startPreloading().catch(error => {
+    // FÖRBÄTTRAD: Anpassa global preloading baserat på enhet
+    const startPreloading = async () => {
+      const preloadingManager = LayerPreloadingManager.getInstance();
+      
+      if (isLowEndDevice) {
+        console.log('📱 Svag enhet - begränsar preloading');
+        // Vänta lite innan preloading startar
+        setTimeout(() => {
+          preloadingManager.startPreloading();
+        }, 3000);
+      } else {
+        preloadingManager.startPreloading();
+      }
+    };
+    
+    startPreloading().catch(error => {
       console.error('❌ Fel vid global layer preloading:', error);
     });
     
-    // Starta popup preloading för snabbare första klick
-    const popupPreloadManager = PopupPreloadManager.getInstance();
-    popupPreloadManager.startPreloading().catch(error => {
-      console.error('❌ Fel vid popup preloading:', error);
-    });
+    // FÖRBÄTTRAD: Popup preloading endast för starka enheter
+    if (!isLowEndDevice) {
+      const popupPreloadManager = PopupPreloadManager.getInstance();
+      popupPreloadManager.startPreloading().catch(error => {
+        console.error('❌ Fel vid popup preloading:', error);
+      });
+    }
+    
+    // NYTT: Rensa API-cache periodiskt för att säkerställa färsk data
+    const cacheCleanupInterval = setInterval(() => {
+      clearApiCache();
+    }, 10 * 60 * 1000); // Var 10:e minut
     
     return () => {
       window.removeEventListener('resize', checkLayout);
       window.removeEventListener('orientationchange', checkLayout);
+      clearInterval(cacheCleanupInterval);
     };
-  }, []);
+  }, [isLowEndDevice, clearApiCache]);
+
+  // NYTT: Optimera för enheten efter initial laddning
+  useEffect(() => {
+    if (isLowEndDevice) {
+      // Optimera efter att appen har laddat
+      const timer = setTimeout(optimizeForDevice, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLowEndDevice, optimizeForDevice]);
 
   return (
     <div className="max-h-dvh h-full w-full flex flex-col lg:flex-row overflow-hidden">
@@ -70,6 +104,13 @@ export default function Home() {
           simulationLayer={simulationLayer}
           onLayerChange={setSimulationLayer}
         />
+        
+        {/* NYTT: Visa optimering-status för debugging */}
+        {isLowEndDevice && (
+          <div className="absolute bottom-4 left-4 bg-yellow-500/20 text-yellow-100 px-2 py-1 rounded text-xs">
+            📱 Mobil-optimering aktiv
+          </div>
+        )}
       </div>
 
       {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): ClockKnob under/över kartan */}
