@@ -40,7 +40,7 @@ export default function Sidebar({
   // Initialisera previousActiveLayer vid första renderingen
   useEffect(() => {
     setPreviousActiveLayer(activeLayer);
-  }, []);
+  }, [activeLayer]);
 
   // Automatiskt hantera strömpilar vid lager-växling
   useEffect(() => {

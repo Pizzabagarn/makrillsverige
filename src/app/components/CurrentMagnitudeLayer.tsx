@@ -161,7 +161,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         img.src = imageUrl;
       }
     }
-  }, [metadata?.timestamps, preloadedImages]);
+  }, [metadata?.timestamps, preloadedImages, currentImageUrl]);
 
   // 3) Hitta rätt bild för nuvarande tidsstämpel
   const findImageForTimestamp = useCallback((prefix: string) => {

@@ -157,7 +157,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         img.src = imageUrl;
       }
     }
-  }, [metadata?.timestamps, preloadedImages]);
+  }, [metadata?.timestamps, preloadedImages, currentImageUrl]);
 
   // Hitta rätt bild för nuvarande tidsstämpel - samma som CurrentMagnitudeLayer
   const findImageForTimestamp = useCallback((prefix: string) => {

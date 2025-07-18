@@ -294,7 +294,7 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
                 <span className="font-medium">Redigerar rapport</span>
               </div>
               <p className="text-sm text-blue-600 mt-1">
-                Gör dina ändringar och klicka på "Uppdatera Rapport" för att spara.
+                Gör dina ändringar och klicka på &quot;Uppdatera Rapport&quot; för att spara.
               </p>
             </div>
           )}

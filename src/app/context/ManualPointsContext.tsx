@@ -116,7 +116,7 @@ export function ManualPointsProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Error in addManualPoint:', error);
     }
-  }, [manualPoints, updateBackendFile]);
+  }, [manualPoints]);
 
   const removeManualPoint = useCallback((id: string) => {
     const newPoints = manualPoints.filter(point => point.id !== id);

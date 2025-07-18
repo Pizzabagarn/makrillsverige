@@ -267,7 +267,7 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
     animationFrameRef.current = requestAnimationFrame(() => {
       // Canvas is automatically redrawn by MapLibre with animate: true
     });
-  }, [preloadedImages, id]);
+  }, [preloadedImages]);
 
   // 6) Reset currentImageKey when layer becomes invisible
   useEffect(() => {
