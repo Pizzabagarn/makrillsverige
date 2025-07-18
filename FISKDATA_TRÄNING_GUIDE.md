@@ -213,7 +213,7 @@ Error: Features shape mismatch
 
 ## 9. Framtida Förbättringar
 
-### Verklig Marin Data
+
 - Integrera med DMI API för exakta värden
 - Ersätt estimerade värden med verkliga mätningar
 - Förbättra prediktionsnoggranhet
