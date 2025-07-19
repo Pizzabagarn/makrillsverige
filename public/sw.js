@@ -31,7 +31,7 @@ self.addEventListener('install', event => {
         console.warn('⚠️ Kunde inte prefetch alla kritiska resurser:', error);
       }
       
-      self.skipWaiting();
+  self.skipWaiting();
     })()
   );
 });

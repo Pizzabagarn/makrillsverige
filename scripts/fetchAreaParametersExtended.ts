@@ -124,23 +124,49 @@ async function fetchParameterBatch(parameters: string[]): Promise<any> {
   return await res.json() as any;
 }
 
-// ⭐ NYTT: Hämta punktspecifik data för kritiska passager
+// ⭐ NYTT: Hämta punktspecifik data för kritiska passager MED TIMEOUT
 async function fetchPointSpecificData(lat: number, lon: number, name: string, parameters: string[]): Promise<any> {
   const url = buildPositionUrl(config.pointCollection, lat, lon, parameters, config.format, config.crs);
   console.log(`📍 Hämtar punktdata för ${name} (${lat.toFixed(3)}, ${lon.toFixed(3)})`);
 
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Makrill Sverige Point Data Fetcher'
-    }
-  });
+  // TIMEOUT CONTROLLER - Max 30 sekunder per punkt
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, 30000); // 30 sekunder timeout
 
-  if (!res.ok) {
-    console.warn(`⚠️  Misslyckades för punkt ${name}: ${res.status} - ${res.statusText}`);
+  try {
+    const startTime = Date.now();
+    
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Makrill Sverige Point Data Fetcher'
+      },
+      signal: controller.signal // Lägg till abort signal
+    });
+
+    clearTimeout(timeoutId); // Rensa timeout om lyckad
+    
+    const elapsed = (Date.now() - startTime) / 1000;
+    
+    if (!res.ok) {
+      console.warn(`⚠️  Misslyckades för punkt ${name}: ${res.status} - ${res.statusText} (${elapsed.toFixed(1)}s)`);
+      return null;
+    }
+
+    console.log(`✅ Punkt ${name} hämtad på ${elapsed.toFixed(1)}s`);
+    return await res.json() as any;
+    
+  } catch (error: any) {
+    clearTimeout(timeoutId); // Rensa timeout
+    
+    if (error.name === 'AbortError') {
+      console.warn(`⏰ TIMEOUT för punkt ${name} efter 30s - hoppar över`);
+    } else {
+      console.warn(`❌ Nätverksfel för punkt ${name}:`, error.message);
+    }
     return null;
   }
-
-  return await res.json() as any;
 }
 
 // ⭐ NYTT: Bearbeta punktspecifik CoverageJSON data
@@ -429,10 +455,15 @@ async function main() {
     let successfulPoints = 0;
     let manualPointsSuccessful = 0;
 
-    // Hämta data för alla punkter
+    // Hämta data för alla punkter MED RETRY för manuella punkter
     for (let i = 0; i < DMI_GRID_POINTS.length; i++) {
       const point = DMI_GRID_POINTS[i];
+      const isManualPoint = point.id && point.id.startsWith('manual-');
+      
       console.log(`\n📍 Punkt ${i + 1}/${DMI_GRID_POINTS.length}: ${point.name} (${point.lat.toFixed(3)}, ${point.lon.toFixed(3)})`);
+      if (isManualPoint) {
+        console.log(`   🔧 Manuell punkt - kommer försöka med timeout och retry`);
+      }
       
       // Vänta mellan requests
       if (i > 0) {
@@ -440,25 +471,47 @@ async function main() {
         await new Promise(resolve => setTimeout(resolve, config.delayBetweenRequests));
       }
       
-      try {
-        const pointData = await fetchPointSpecificData(point.lat, point.lon, point.name || 'Unnamed', config.parameters);
+      // RETRY-LOGIK - Speciellt för manuella punkter
+      const maxRetries = isManualPoint ? 2 : 1; // Manuella punkter får 2 försök
+      let success = false;
+      
+      for (let retry = 0; retry < maxRetries && !success; retry++) {
+        if (retry > 0) {
+          console.log(`   🔄 Försök ${retry + 1}/${maxRetries} för ${point.name}...`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2s paus mellan försök
+        }
         
-        if (pointData) {
-          const processedPoint = await processPointCoverageJSON(pointData, point.lat, point.lon, point.name || 'Unnamed', config.parameters);
+        try {
+          const pointData = await fetchPointSpecificData(point.lat, point.lon, point.name || 'Unnamed', config.parameters);
           
-          if (processedPoint) {
-            pointSpecificResults.push(processedPoint);
-            successfulPoints++;
+          if (pointData) {
+            const processedPoint = await processPointCoverageJSON(pointData, point.lat, point.lon, point.name || 'Unnamed', config.parameters);
             
-            // Räkna manuella punkter
-            if (point.id && point.id.startsWith('manual-')) {
-              manualPointsSuccessful++;
+            if (processedPoint) {
+              pointSpecificResults.push(processedPoint);
+              successfulPoints++;
+              success = true;
+              
+              // Räkna manuella punkter
+              if (isManualPoint) {
+                manualPointsSuccessful++;
+                console.log(`   ✅ Manuell punkt ${point.name} lyckades!`);
+              }
             }
           }
+        } catch (error) {
+          console.error(`❌ Försök ${retry + 1} misslyckades för punkt ${point.name}:`, error);
+          
+          // Om det är sista försöket för en manuell punkt
+          if (retry === maxRetries - 1 && isManualPoint) {
+            console.warn(`💔 Ger upp manuell punkt ${point.name} efter ${maxRetries} försök`);
+          }
         }
-      } catch (error) {
-        console.error(`❌ Fel vid hämtning av punkt ${point.name}:`, error);
       }
+      
+      // Progress report
+      const progress = ((i + 1) / DMI_GRID_POINTS.length * 100).toFixed(1);
+      console.log(`   📊 Progress: ${progress}% (${successfulPoints}/${i + 1} lyckades)`);
     }
 
     console.log(`\n📊 Punktspecifik data klar: ${successfulPoints}/${DMI_GRID_POINTS.length} lyckades`);

@@ -149,7 +149,7 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
         imageList = metadata.images;
 
       } else if (metadata.timestamps && metadata.timestamps.length > 0) {
-        // Legacy format - build filenames from timestamps  
+        // Legacy format - build filenames from timestamps
         imageList = metadata.timestamps.map(timestamp => ({
           timestamp,
           filename: `${id.replace('-', '_')}_${timestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.webp`

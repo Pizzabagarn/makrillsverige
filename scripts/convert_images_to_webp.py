@@ -65,12 +65,7 @@ def update_metadata_for_webp(metadata_path: Path) -> bool:
         metadata['optimized'] = True
         metadata['compression'] = 'lossy'
         
-        # Skapa backup av original
-        backup_path = metadata_path.with_suffix('.json.bak')
-        shutil.copy2(metadata_path, backup_path)
-        print(f"📋 Backup av metadata: {backup_path}")
-        
-        # Skriv uppdaterad metadata
+        # Skriv uppdaterad metadata direkt (ingen backup behövs)
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
         

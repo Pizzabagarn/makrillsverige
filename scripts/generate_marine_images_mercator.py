@@ -30,6 +30,7 @@ import pyproj
 from pyproj import Transformer
 import math
 import colorcet as cc
+import time
 
 # Tysta alla warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -598,23 +599,32 @@ def extract_parameter_data_for_timestamp(area_data, timestamp_prefix, water_poin
                     if 'salinity' in data_entry:
                         value = data_entry['salinity']
                 elif parameter == 'mackerel':
-                    # Beräkna makrillsannolikhet baserat på alla parametrar
-                    temperature = data_entry.get('temperature')
-                    salinity = data_entry.get('salinity')
-                    current_data = data_entry.get('current', {})
-                    current_u = current_data.get('u') if current_data else None
-                    current_v = current_data.get('v') if current_data else None
-                    timestamp = data_entry['time']
-                    
-                    # Beräkna makrillsannolikhet
-                    raw_value = calculate_mackerel_probability(
-                        temperature, salinity, current_u, current_v, timestamp, lat, lon
-                    )
-                    
-                    # Filtrera bort negativa värden - makrill-sannolikhet kan inte vara negativ
-                    if raw_value is not None and raw_value >= 0:
-                        value = raw_value
-                    else:
+                    # Beräkna makrillsannolikhet baserat på alla parametrar med timeout
+                    try:
+                        temperature = data_entry.get('temperature')
+                        salinity = data_entry.get('salinity')
+                        current_data = data_entry.get('current', {})
+                        current_u = current_data.get('u') if current_data else None
+                        current_v = current_data.get('v') if current_data else None
+                        timestamp = data_entry['time']
+                        
+                        # Snabb check om vi har tillräckligt med data
+                        if temperature is None or salinity is None:
+                            value = None
+                        else:
+                            # Beräkna makrillsannolikhet med timeout protection
+                            raw_value = calculate_mackerel_probability(
+                                temperature, salinity, current_u, current_v, timestamp, lat, lon
+                            )
+                            
+                            # Filtrera bort negativa värden - makrill-sannolikhet kan inte vara negativ
+                            if raw_value is not None and raw_value >= 0:
+                                value = raw_value
+                            else:
+                                value = None
+                    except Exception as e:
+                        # Om något går fel i makrillberäkningen, logga men fortsätt
+                        print(f"⚠️ Makrillberäkning misslyckades för punkt {lat:.3f},{lon:.3f}: {e}")
                         value = None
                 
                 if value is not None:
@@ -772,7 +782,7 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
 
 def create_interpolated_image_mercator(
     lons, lats, values, water_mask_grid, water_polygons, output_path, timestamp, 
-    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False
+    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False, quality=85
 ):
     """
     Skapa interpolerad PNG-bild i Mercator-projektion
@@ -1003,17 +1013,25 @@ def create_interpolated_image_mercator(
         elif parameter == 'mackerel' and skip_values:
             print("   ⚡ Hoppade över makrill-värden (--skip-values)")
         
-        # Spara direkt som WebP för optimal prestanda (25-35% mindre)
+        # Spara som PNG först och konvertera till WebP med quality-kontroll
+        png_temp_path = output_path.with_suffix('.png')
         plt.savefig(
-            output_path,
-            format='webp',
-            quality=85,  # Hög kvalitet men mindre filstorlek
+            png_temp_path,
+            format='png',
             dpi=dpi,  # Använd den högre DPI
             bbox_inches='tight',
             pad_inches=0,
             transparent=True,
             facecolor='none'
         )
+        
+        # Konvertera PNG till WebP med quality-kontroll
+        from PIL import Image
+        with Image.open(png_temp_path) as img:
+            img.save(output_path, 'WebP', quality=quality, lossless=False)
+        
+        # Ta bort temporär PNG
+        png_temp_path.unlink()
         plt.close()
         
         # Spara exakta koordinater till metadata
@@ -1077,7 +1095,7 @@ def create_interpolated_image_mercator(
 def generate_parameter_images_mercator(
     parameter, area_data, water_point_cache, water_mask_grid, water_polygons,
     wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84,
-    output_base_dir, resolution, max_images, force, skip_values=False
+    output_base_dir, resolution, max_images, force, skip_values=False, quick=None, quality=85
 ):
     """
     Generera Mercator-bilder för en specifik parameter
@@ -1095,13 +1113,22 @@ def generate_parameter_images_mercator(
         clear_directory(output_dir)
     
     timestamps = area_data['metadata']['timestamps']
-    if max_images:
+    
+    # Hantera quick mode (senaste N bilder)
+    if quick:
+        # Sortera timestamps för att få senaste först
+        sorted_timestamps = sorted(timestamps, key=lambda x: x, reverse=True)
+        timestamps = sorted_timestamps[:quick]
+        print(f"⚡ Quick-läge: {quick} senaste bilder")
+    elif max_images:
         timestamps = timestamps[:max_images]
         print(f"🔬 Testläge: {max_images} bilder")
     
     successful_count = 0
+    start_time = time.time()
     
     for i, timestamp in enumerate(timestamps):
+        image_start_time = time.time()
         print(f"\n📸 Mercator {param_name.title()} {i+1}/{len(timestamps)}: {timestamp}")
         
         timestamp_prefix = timestamp[:13]
@@ -1114,21 +1141,38 @@ def generate_parameter_images_mercator(
             successful_count += 1
             continue
         
-        # Extrahera data
-        lons, lats, values = extract_parameter_data_for_timestamp(
-            area_data, timestamp_prefix, water_point_cache, parameter
-        )
-        
-        if len(lons) > 0:
-            success = create_interpolated_image_mercator(
-                lons, lats, values, water_mask_grid, water_polygons,
-                output_path, timestamp, wgs84_bbox, mercator_bbox,
-                wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values
+        try:
+            # Extrahera data med progress reporting
+            print(f"   🔍 Extraherar data för {timestamp_prefix}...")
+            lons, lats, values = extract_parameter_data_for_timestamp(
+                area_data, timestamp_prefix, water_point_cache, parameter
             )
-            if success:
-                successful_count += 1
-        else:
-            print(f"⚠️ Ingen {param_name}-data för {timestamp}")
+            print(f"   📊 Hittade {len(lons)} datapunkter")
+            
+            if len(lons) > 0:
+                success = create_interpolated_image_mercator(
+                    lons, lats, values, water_mask_grid, water_polygons,
+                    output_path, timestamp, wgs84_bbox, mercator_bbox,
+                    wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values, quality
+                )
+                if success:
+                    successful_count += 1
+                    image_time = time.time() - image_start_time
+                    total_time = time.time() - start_time
+                    avg_time = total_time / (i + 1)
+                    remaining_images = len(timestamps) - (i + 1)
+                    estimated_remaining = remaining_images * avg_time
+                    
+                    print(f"   ✅ Bild klar på {image_time:.1f}s (total: {total_time/60:.1f}min, "
+                          f"uppskattad återstående tid: {estimated_remaining/60:.1f}min)")
+                else:
+                    print(f"   ❌ Bildgenerering misslyckades för {timestamp}")
+            else:
+                print(f"   ⚠️ Ingen {param_name}-data för {timestamp}")
+                
+        except Exception as e:
+            print(f"   ❌ Fel vid bearbetning av {timestamp}: {e}")
+            # Fortsätt med nästa bild istället för att krascha
     
     print(f"\n🎉 Mercator {param_name.title()}: {successful_count}/{len(timestamps)} bilder klara")
     return successful_count, len(timestamps)
@@ -1421,8 +1465,12 @@ def main():
                        help='Bas-directory för output')
     parser.add_argument('--resolution', type=int, default=1400,
                        help='Grid-upplösning (default: 1400 för Mercator)')
+    parser.add_argument('--quality', type=int, default=85, choices=range(1, 101),
+                       help='WebP-kvalitet 1-100 (default: 85 - balans mellan kvalitet/storlek)')
     parser.add_argument('--max-images', type=int, default=None,
                        help='Max antal bilder per parameter (för testning)')
+    parser.add_argument('--quick', type=int, default=None,
+                       help='Snabbt läge: generera bara de senaste N bilderna (ex: --quick 24)')
     parser.add_argument('--force', action='store_true',
                        help='Skriv över befintliga bilder')
     parser.add_argument('--skip-values', action='store_true',
@@ -1485,7 +1533,7 @@ def main():
         successful, total = generate_parameter_images_mercator(
             parameter, area_data, water_point_cache, water_mask_grid, water_polygons,
             wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84,
-            args.output_dir, args.resolution, args.max_images, args.force, args.skip_values
+            args.output_dir, args.resolution, args.max_images, args.force, args.skip_values, args.quick, args.quality
         )
         total_successful += successful
         total_images += total
