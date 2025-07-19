@@ -32,13 +32,27 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Cache för bilder
+      // Cache för bilder - WebP prioriterat
       {
-        source: '/data/:path*.(png|jpg|jpeg|gif|webp)',
+        source: '/data/:path*.(webp|avif)',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=3600', // 24h cache
+            value: 'public, max-age=604800, stale-while-revalidate=86400', // 7 dagar cache för optimerade format
+          },
+          {
+            key: 'Vary',
+            value: 'Accept',
+          },
+        ],
+      },
+      // Fallback för PNG/JPEG - kortare cache
+      {
+        source: '/data/:path*.(png|jpg|jpeg|gif)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=3600', // 24h cache för legacy format
           },
         ],
       },

@@ -9,7 +9,16 @@
     "start": "next start",
     "lint": "next lint",
     "generate:grid": "ts-node scripts/generateGrid.ts",
-    "fetch:area-parameters": "tsx scripts/fetchAreaParametersExtended.ts"
+    "fetch:area-parameters": "tsx scripts/fetchAreaParametersExtended.ts",
+    "optimize:images": "python scripts/convert_images_to_webp.py --remove-png",
+    "optimize:images:keep-png": "python scripts/convert_images_to_webp.py",
+    "optimize:images:quality": "python scripts/convert_images_to_webp.py --quality 80 --remove-png",
+    "optimize:images:aggressive": "python scripts/convert_images_to_webp.py --quality 75 --remove-png",
+    "mobile:optimize": "npm run optimize:images && echo '📱 Mobil-optimering slutförd! Ladda om sidan för att se förbättringarna.'",
+    "cache:clear": "echo 'Rensa cache genom att ladda om med Ctrl+Shift+R (Windows/Linux) eller Cmd+Shift+R (Mac)'",
+    "build:everything": "python scripts/build_everything.py",
+    "build:quick": "python scripts/build_everything.py --quick", 
+    "build:force": "python scripts/build_everything.py --force"
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "^7.2.0",

@@ -87,7 +87,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
       // Preload ALLA bilder gradvis för att inte blockera UI
       for (const safeTimestamp of availableImages) {
         const img = new Image();
-        const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
+        const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.webp`;
         
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
@@ -100,7 +100,21 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         };
         
         img.onerror = () => {
-          // Tyst fail för bättre prestanda
+          // WebP fallback: try PNG if WebP fails
+          if (imageUrl.includes('.webp')) {
+            const pngUrl = imageUrl.replace('.webp', '.png');
+            const pngImg = new Image();
+            pngImg.onload = () => {
+              imageMap.set(safeTimestamp, pngImg);
+              loadedCount++;
+              setPreloadedImages(prev => new Map([...prev, [safeTimestamp, pngImg]]));
+              console.log(`🔄 WebP fallback till PNG: ${safeTimestamp}`);
+            };
+            pngImg.onerror = () => {
+              console.warn(`❌ Både WebP och PNG misslyckades: ${safeTimestamp}`);
+            };
+            pngImg.src = pngUrl;
+          }
         };
         
         img.src = imageUrl;
@@ -180,8 +194,8 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
       return null; // Tyst fail för bilder som inte finns
     }
     
-    // Skapa URL för bilden baserat på tidsstämpel
-    const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
+    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
+    const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.webp`;
     
     return imageUrl;
   }, [metadata, availableImages]);

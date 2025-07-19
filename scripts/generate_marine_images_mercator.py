@@ -1003,10 +1003,11 @@ def create_interpolated_image_mercator(
         elif parameter == 'mackerel' and skip_values:
             print("   ⚡ Hoppade över makrill-värden (--skip-values)")
         
-        # Spara med högre DPI för bättre kvalitet
+        # Spara direkt som WebP för optimal prestanda (25-35% mindre)
         plt.savefig(
             output_path,
-            format='png',
+            format='webp',
+            quality=85,  # Hög kvalitet men mindre filstorlek
             dpi=dpi,  # Använd den högre DPI
             bbox_inches='tight',
             pad_inches=0,
@@ -1105,7 +1106,8 @@ def generate_parameter_images_mercator(
         
         timestamp_prefix = timestamp[:13]
         safe_timestamp = timestamp.replace(':', '-').replace('+', 'plus')
-        output_path = output_dir / f"{config['name_en']}_{safe_timestamp}.png"
+        # Generera WebP direkt för bättre prestanda
+        output_path = output_dir / f"{config['name_en']}_{safe_timestamp}.webp"
         
         if output_path.exists() and not force:
             print(f"⏭️ Hoppar över befintlig Mercator-fil")
@@ -1132,8 +1134,11 @@ def generate_parameter_images_mercator(
     return successful_count, len(timestamps)
 
 def clear_directory(directory):
-    """Ta bort alla PNG-filer i en directory"""
+    """Ta bort alla WebP-filer i en directory"""
     import shutil
+    for file in Path(directory).glob('*.webp'):
+        file.unlink()
+    # Ta även bort gamla PNG-filer om de finns
     for file in Path(directory).glob('*.png'):
         file.unlink()
     print(f"🗑️ Rensade {directory}")

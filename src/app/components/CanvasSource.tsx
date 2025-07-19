@@ -149,10 +149,10 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
         imageList = metadata.images;
 
       } else if (metadata.timestamps && metadata.timestamps.length > 0) {
-        // Legacy format - build filenames from timestamps
+        // Legacy format - build filenames from timestamps  
         imageList = metadata.timestamps.map(timestamp => ({
           timestamp,
-          filename: `${id.replace('-', '_')}_${timestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.png`
+          filename: `${id.replace('-', '_')}_${timestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.webp`
         }));
 
       }
@@ -182,7 +182,26 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
         };
         
         img.onerror = () => {
-          // Silent fail
+          // WebP fallback: try PNG if WebP fails
+          if (imageUrl.includes('.webp')) {
+            const pngUrl = imageUrl.replace('.webp', '.png');
+            const pngImg = new Image();
+            pngImg.crossOrigin = 'anonymous';
+            
+            pngImg.onload = () => {
+              const key = imageInfo.filename || imageInfo.timestamp;
+              imageMap.set(key, pngImg);
+              loadedCount++;
+              setPreloadedImages(prev => new Map([...prev, [key, pngImg]]));
+              console.log(`🔄 WebP fallback till PNG: ${imageInfo.filename}`);
+            };
+            
+            pngImg.onerror = () => {
+              console.warn(`❌ Både WebP och PNG misslyckades: ${imageInfo.filename}`);
+            };
+            
+            pngImg.src = pngUrl;
+          }
         };
         
         img.src = imageUrl;
@@ -208,10 +227,10 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
       // New format - use images array directly
       imageList = metadata.images;
     } else if (metadata.timestamps && metadata.timestamps.length > 0) {
-      // Legacy format - build filenames from timestamps
+      // Legacy format - build filenames from timestamps (prioritize WebP)
       imageList = metadata.timestamps.map(timestamp => ({
         timestamp,
-        filename: `${id.replace('-', '_')}_${timestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.png`
+        filename: `${id.replace('-', '_')}_${timestamp.replaceAll(':', '-').replaceAll('+', 'plus')}.webp`
       }));
     }
     

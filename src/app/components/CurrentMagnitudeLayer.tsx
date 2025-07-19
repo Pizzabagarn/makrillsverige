@@ -91,7 +91,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       // Preload bilder gradvis för att inte blockera UI
       for (const safeTimestamp of availableImages) {
         const img = new Image();
-        const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.png`;
+        const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.webp`;
         
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
@@ -104,7 +104,21 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         };
         
         img.onerror = () => {
-          // console.log(`⚠️ Kunde inte preload: ${safeTimestamp}`);
+          // WebP fallback: try PNG if WebP fails
+          if (imageUrl.includes('.webp')) {
+            const pngUrl = imageUrl.replace('.webp', '.png');
+            const pngImg = new Image();
+            pngImg.onload = () => {
+              imageMap.set(safeTimestamp, pngImg);
+              loadedCount++;
+              setPreloadedImages(prev => new Map([...prev, [safeTimestamp, pngImg]]));
+              console.log(`🔄 WebP fallback till PNG: ${safeTimestamp}`);
+            };
+            pngImg.onerror = () => {
+              console.warn(`❌ Både WebP och PNG misslyckades: ${safeTimestamp}`);
+            };
+            pngImg.src = pngUrl;
+          }
         };
         
         img.src = imageUrl;
@@ -184,8 +198,8 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       return null; // Tyst fail för bilder som inte finns
     }
     
-    // Skapa URL för bilden baserat på tidsstämpel
-    const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.png`;
+    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
+    const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.webp`;
     
     return imageUrl;
   }, [metadata, availableImages]);
