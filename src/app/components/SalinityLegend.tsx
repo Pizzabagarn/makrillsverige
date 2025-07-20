@@ -49,31 +49,33 @@ export default function SalinityLegend({
   if (!visible) return null;
 
   return (
-    <div className={`bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border p-2.5 w-40 md:w-48 ${className}`}>
+        <div className={`backdrop-blur-md bg-black/80 border border-white/20 rounded-lg shadow-xl text-white max-[380px]:p-2 p-3 sm:p-4 max-[380px]:w-32 w-44 lg:w-56 ${className}`}>
       {/* Revolutionär titel */}
-      <div className="flex items-center mb-2">
-        <div className="w-2.5 h-2.5 mr-1.5 rounded-sm bg-gradient-to-r from-red-800 via-white to-blue-800"></div>
-        <h3 className="text-xs md:text-sm font-semibold text-gray-800">Salthalt</h3>
+      <div className="flex items-center mb-2 sm:mb-3 w-full relative">
+        <div className="max-[380px]:w-3 max-[380px]:h-3 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-red-800 via-white to-blue-800 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-bold">🧂</span>
+        </div>
+        <h3 className="max-[380px]:text-[10px] text-xs sm:text-sm font-semibold absolute inset-0 flex items-center justify-center">Salthalt</h3>
       </div>
       
       {/* Revolutionär RdBu färgbar med 18 färgsteg */}
       <div className="space-y-1">
         {/* Gradient bar - naturliga övergångar */}
         <div 
-          className="w-full h-3 rounded border border-gray-300"
+          className="w-full max-[380px]:h-3 h-5 sm:h-6 rounded border border-gray-600 shadow-inner"
           style={gradientStyle}
         />
         
         {/* FÖRENKLAD tick marks och labels - bara 4 viktiga värden */}
-        <div className="relative mt-0.5">
-          <div className="flex justify-between items-start text-xs">
+        <div className="relative mt-1 sm:mt-2">
+          <div className="flex justify-between items-start max-[380px]:text-[10px] text-xs">
             {/* Endast 4 viktiga salthalt-värden för tydlighet */}
             {['0', '10', '20', '30'].map((label, index) => (
               <div key={label} className="flex flex-col items-center">
                 {/* Tick mark */}
-                <div className="w-px h-1.5 bg-gray-400 mb-0.5" />
+                <div className="w-px max-[380px]:h-1 h-1.5 bg-gray-400 mb-0.5" />
                 {/* Label */}
-                <span className="text-xs text-gray-600 leading-none">
+                <span className="max-[380px]:text-[10px] text-xs text-gray-300 leading-none">
                   {label}
                 </span>
               </div>
@@ -83,7 +85,7 @@ export default function SalinityLegend({
         
         {/* Enhet */}
         <div className="text-center mt-1">
-          <span className="text-xs text-gray-500">g/kg</span>
+          <span className="max-[380px]:text-[9px] text-xs text-gray-300">g/kg</span>
         </div>
       </div>
     </div>

@@ -52,33 +52,38 @@ const MackerelLegend = ({ visible = true, className = "" }: MackerelLegendProps)
   }
 
   return (
-    <div className={`bg-gray-900/90 backdrop-blur-sm rounded-lg p-4 text-white border border-gray-700 shadow-xl ${className}`}>
-      <div className="flex items-center justify-center mb-3">
-        <div className="w-5 h-5 bg-gradient-to-r from-black via-amber-800 via-yellow-600 to-yellow-400 rounded-full flex items-center justify-center mr-2">
-          <span className="text-xs font-bold">🐟</span>
+        <div className={`backdrop-blur-md bg-black/80 border border-white/20 rounded-lg shadow-xl text-white max-[380px]:p-2 p-3 sm:p-4 max-[380px]:w-32 w-44 lg:w-56 ${className}`}>
+        <div className="flex items-center mb-2 sm:mb-3 w-full relative">
+          <div className="max-[380px]:w-3 max-[380px]:h-3 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-black via-amber-800 via-yellow-600 to-yellow-400 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-bold">🐟</span>
+          </div>
+          <h3 className="max-[380px]:text-[8px] text-xs sm:text-sm font-semibold absolute inset-0 flex items-center justify-center">Makrillsannolikhet</h3>
         </div>
-        <h3 className="text-sm font-semibold">Makrillsannolikhet</h3>
-      </div>
       
-      <div className="space-y-2">
-        {/* Gradient bar with original golden colors but brown instead of blue */}
-        <div className="relative h-6 rounded-md overflow-hidden border border-gray-600 shadow-inner">
-          <div 
-            className="h-full w-full"
-            style={{
-              background: `linear-gradient(to right, ${legendColors.map(c => c.color).join(', ')})`
-            }}
-          />
-        </div>
+                      <div className="space-y-1 sm:space-y-2">
+          {/* Gradient bar with original golden colors but brown instead of blue */}
+          <div className="relative max-[380px]:h-3 h-5 sm:h-6 rounded border border-gray-600 shadow-inner">
+            <div 
+              className="h-full w-full"
+              style={{
+                background: `linear-gradient(to right, ${legendColors.map(c => c.color).join(', ')})`
+              }}
+            />
+          </div>
 
-        {/* Probability level labels */}
-        <div className="flex justify-between text-xs text-gray-300">
-          <span>Låg</span>
-          <span>Medel</span>
-          <span>Hög</span>
-          <span>Topp</span>
+          {/* Probability level labels */}
+          <div className="flex justify-between max-[380px]:text-[9px] text-xs text-gray-300 mt-1 sm:mt-2">
+            <span>Låg</span>
+            <span>Medel</span>
+            <span>Hög</span>
+            <span>Topp</span>
+          </div>
+          
+          {/* Enhet */}
+          <div className="text-center mt-1">
+            <span className="max-[380px]:text-[8px] text-xs text-gray-300">% Sannolikhet</span>
+          </div>
         </div>
-      </div>
     </div>
   );
 };

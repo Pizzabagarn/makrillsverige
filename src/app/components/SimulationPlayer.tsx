@@ -35,12 +35,15 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
       const setInitialPosition = () => {
         const isMobile = window.innerWidth < 640; // sm breakpoint
         if (isMobile) {
-          // Mobile: top-left with margin to avoid legend
-          setPosition({ x: 16, y: 16 });
+          // Mobile: centered horizontally BELOW legend
+          const centerX = window.innerWidth / 2 - 100; // Simple center calculation
+          const safeX = Math.max(16, Math.min(centerX, window.innerWidth - 220)); // Ensure it fits
+          setPosition({ x: safeX, y: 120 }); // Y=120 to position below legend
         } else {
           // Desktop: centered horizontally, top with margin
-          const centerX = (window.innerWidth - 400) / 2; // Approximate player width
-          setPosition({ x: Math.max(16, centerX), y: 16 });
+          const centerX = window.innerWidth / 2 - 175; // Simple center calculation
+          const safeX = Math.max(16, Math.min(centerX, window.innerWidth - 370)); // Ensure it fits
+          setPosition({ x: safeX, y: 16 });
         }
       };
 
@@ -194,8 +197,15 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
     const deltaX = e.clientX - dragStart.x;
     const deltaY = e.clientY - dragStart.y;
     
-    const newX = Math.max(0, Math.min(window.innerWidth - 300, dragStart.startX + deltaX));
-    const newY = Math.max(0, Math.min(window.innerHeight - 100, dragStart.startY + deltaY));
+    // Different padding for mobile vs desktop
+    const isMobile = window.innerWidth < 640;
+    const leftPadding = isMobile ? 0 : 20; // Allow mobile to go to far left edge
+    const rightPadding = 20;
+    const topPadding = 20;
+    const bottomPadding = 50;
+    
+    const newX = Math.max(leftPadding, Math.min(window.innerWidth - rightPadding - 50, dragStart.startX + deltaX));
+    const newY = Math.max(topPadding, Math.min(window.innerHeight - bottomPadding, dragStart.startY + deltaY));
     
     setPosition({ x: newX, y: newY });
   }, [isDragging, dragStart]);
@@ -252,8 +262,15 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
     const deltaX = touch.clientX - dragStart.x;
     const deltaY = touch.clientY - dragStart.y;
     
-    const newX = Math.max(0, Math.min(window.innerWidth - 300, dragStart.startX + deltaX));
-    const newY = Math.max(0, Math.min(window.innerHeight - 100, dragStart.startY + deltaY));
+    // Different padding for mobile vs desktop
+    const isMobile = window.innerWidth < 640;
+    const leftPadding = isMobile ? 0 : 20; // Allow mobile to go to far left edge
+    const rightPadding = 20;
+    const topPadding = 20;
+    const bottomPadding = 50;
+    
+    const newX = Math.max(leftPadding, Math.min(window.innerWidth - rightPadding - 50, dragStart.startX + deltaX));
+    const newY = Math.max(topPadding, Math.min(window.innerHeight - bottomPadding, dragStart.startY + deltaY));
     
     setPosition({ x: newX, y: newY });
   }, [isDragging, dragStart]);
@@ -307,8 +324,8 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
   return (
     <div 
       ref={containerRef}
-      className={`fixed z-[5000] backdrop-blur-md bg-black/80 border border-white/20 rounded-lg shadow-xl text-white 
-                  p-2 sm:p-4 max-w-[95vw] sm:max-w-none select-none
+      className={`fixed z-[9999] backdrop-blur-md bg-black/80 border border-white/20 rounded-lg shadow-xl text-white 
+                  p-2 sm:p-4 max-w-[90vw] sm:max-w-none select-none
                   ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{
         left: `${position.x}px`,
@@ -320,7 +337,7 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
     >
       
       {/* Mobile Layout (stacked) */}
-      <div className="block sm:hidden space-y-2">
+      <div className="block sm:hidden space-y-1">
         {/* Header with drag handle and layer name */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
