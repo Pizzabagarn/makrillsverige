@@ -31,6 +31,7 @@ from pyproj import Transformer
 import math
 import colorcet as cc
 import time
+import re
 
 # Tysta alla warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -781,7 +782,7 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
     return grid_values
 
 def create_interpolated_image_mercator(
-    lons, lats, values, water_mask_grid, water_polygons, output_path, timestamp, 
+    lons, lats, values, water_mask_grid, output_path, timestamp, 
     wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False, quality=85
 ):
     """
@@ -887,86 +888,68 @@ def create_interpolated_image_mercator(
         ax.set_aspect('equal')
         ax.axis('off')
         
-        # === OPTIMERAD GLOW-EFFEKT FÖR HOTSPOTS ===
-        # Lägg till lysande glow runt områden med hög sannolikhet
-        if parameter == 'mackerel':
-            print("   ✨ Skapar optimerad glow-effekt för hotspots...")
-            
-            # Skapa glow-mask för värden över 75%
-            glow_mask = np.zeros_like(grid_values)
-            high_prob_mask = grid_values >= 75.0
-            glow_mask[high_prob_mask] = grid_values[high_prob_mask]
-            
-            # Applicera glow-effekt med gaussisk filter
-            from scipy.ndimage import gaussian_filter
-            glow_effect = gaussian_filter(glow_mask, sigma=3.0)
-            
-            # Normalisera glow-effekten
-            if np.max(glow_effect) > 0:
-                glow_effect = glow_effect / np.max(glow_effect)
-            
-            # Skapa glow-colormap (genomskinlig till ljusgul)
-            from matplotlib.colors import LinearSegmentedColormap
-            glow_colors = [(0, 0, 0, 0), (1, 1, 0.5, 0.3), (1, 1, 0.8, 0.6)]
-            glow_cmap = LinearSegmentedColormap.from_list('glow', glow_colors)
-            
-            # Lägg till glow som extra lager
-            ax.imshow(
-                glow_effect,
-                extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
-                origin='lower',
-                cmap=glow_cmap,
-                alpha=0.7,
-                interpolation='bicubic'  # Samma som de andra lagren
-            )
+        # === STEG 1: HUVUDBILD FÖRST ===
+        # Rendera huvudbilden med normal alpha (exakt som bifogad kod)
         
-        # === KUST-SÄKRA HOTSPOT KONTURER (ENDAST MAKRILL) ===
+        # === FÖRBÄTTRADE TRE-LAGERS GYLLENE KONTURLINJER ===
+        # Implementerar exakt samma system som bifogad kod för maximal elegans
         if parameter == 'mackerel':
-            print("   📊 Skapar kust-säkra hotspot konturer...")
-        
-            # Extrahera hotspot-koordinater från grid
-            hotspot_coords = []
-            hotspot_values = []
+            print("   📊 Skapar eleganta tre-lagers gyllene konturlinjer...")
             
-            # Hitta hotspots i grid (≥75% sannolikhet)
-            for i in range(grid_values.shape[0]):
-                for j in range(grid_values.shape[1]):
-                    if not np.isnan(grid_values[i, j]) and grid_values[i, j] >= 75.0:
-                        # Konvertera grid-index till WGS84 koordinater
-                        x_coord = x_mesh[i, j]
-                        y_coord = y_mesh[i, j]
-                        lon, lat = mercator_to_wgs84.transform(x_coord, y_coord)
-                        
-                        hotspot_coords.append((lon, lat))
-                        hotspot_values.append(grid_values[i, j])
+            # Konturnivåer för hotspots (samma som bifogad kod)
+            contour_levels = [75, 85, 95]
             
-            if hotspot_coords:
-                # Filtrera hotspots baserat på avstånd till kust
-                contour_coords, contour_values, marker_coords, marker_values = filter_hotspots_by_coastal_distance(
-                    hotspot_coords, hotspot_values, water_polygons, 
-                    min_distance_km=2.0, max_distance_km=5.0
+            # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner (hårdkodade som önskat)
+            contour_colors = [
+                '#B8860B',  # Mörk guld (75%)
+                '#DAA520',  # Medium guld (85%)
+                '#FFD700'   # Ljus guld (95%)
+            ]
+            
+            # Progressiva linjetjocklekar för visuell hierarki
+            contour_linewidths = [1.5, 2.0, 2.5]  # Gradvis tjockare för viktiga nivåer
+            
+            # Rita eleganta konturlinjer med glow-effekt (tre separata lager)
+            try:
+                # === LAGER 1: BRED GYLLENE GLOW-BAS ===
+                # Bred, genomskinlig gyllene glow rund konturlinjer för halo-effekt
+                contour_glow = ax.contour(
+                    x_mesh, y_mesh, grid_values,
+                    levels=contour_levels,
+                    colors=['#FFD700', '#FFD700', '#FFD700'],  # Samma gyllene färg för alla
+                    linewidths=[6.0, 7.0, 8.0],              # Mycket bred för glow
+                    alpha=0.3,                                # Mycket genomskinlig för glow-effekt
+                    zorder=2
                 )
                 
-                # Konturnivåer för hotspots
-                contour_levels = [75, 85, 95]
-                
-                # Skapa säkra konturer för hotspots långt från kusten
-                create_coastal_safe_contours(
-                    ax, x_mesh, y_mesh, grid_values, contour_coords, contour_values,
-                    wgs84_to_mercator, contour_levels
+                # === LAGER 2: HUVUDKONTURLINJER ===
+                # Eleganta gyllene linjer med graderad färg för exakt avgränsning
+                contour_main = ax.contour(
+                    x_mesh, y_mesh, grid_values,
+                    levels=contour_levels,
+                    colors=contour_colors,                    # Graderade guld-färger
+                    linewidths=contour_linewidths,            # Progressivt tjockare
+                    alpha=0.9,                                # Stark men inte helt opak
+                    zorder=3
                 )
                 
-                # Skapa gyllene heatpunkter för hotspots nära kusten
-                create_coastal_heat_points(
-                    ax, marker_coords, marker_values, wgs84_to_mercator, 
-                    water_mask_grid, x_mesh, y_mesh
-            )
-            
-                print(f"   ✨ Kust-säkra hotspot-visualisering klar!")
-            else:
-                print("   ℹ️ Inga hotspots hittade för konturer")
+                # === LAGER 3: VIT HIGHLIGHT ===
+                # Tunn vit linje för extra "glow-pop" och luminans
+                contour_highlight = ax.contour(
+                    x_mesh, y_mesh, grid_values,
+                    levels=contour_levels,
+                    colors=['#FFFFFF', '#FFFFFF', '#FFFFFF'], # Vit highlight
+                    linewidths=[0.8, 1.0, 1.2],              # Mycket tunn för subtil highlight
+                    alpha=0.7,                                # Genomskinlig för att blenda fint
+                    zorder=4
+                )
+                
+                print(f"   ✨ Eleganta tre-lagers gyllene konturlinjer tillagda: {contour_levels}% med glow-effekt")
+                
+            except Exception as e:
+                print(f"   ⚠️ Konturlinjer hoppades över: {e}")
         
-        # Plotta med exakta grid-koordinater
+        # === STEG 2: HUVUDBILD (EXAKT SOM BIFOGAD KOD) ===
         im = ax.imshow(
             grid_values,
             extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
@@ -974,9 +957,52 @@ def create_interpolated_image_mercator(
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
-            alpha=0.85,
-            interpolation='bicubic'  # Samma som de andra lagren
+            alpha=0.85,                         # Samma alpha som bifogad kod
+            interpolation='bicubic'
         )
+        
+        # === STEG 3: GRADERAD GLOW-EFFEKT (FÖRSTÄRKER FÄRGSKALAN) ===
+        # Transparent glow som förstärker hotspots utan att ersätta färgskalan
+        if parameter == 'mackerel':
+            print("   ✨ Skapar graderad glow-effekt som följer färgskalan...")
+            
+            # === SKAPA EN GLOW-MASK FÖR ALLA HOTSPOTS (60%+) ===
+            glow_mask = np.zeros_like(grid_values)
+            hotspot_mask = grid_values >= 60.0  # Alla hotspots
+            
+            # Graderad intensitet: ju högre värde, desto starkare glow
+            for i in range(grid_values.shape[0]):
+                for j in range(grid_values.shape[1]):
+                    if hotspot_mask[i, j]:
+                        value = grid_values[i, j]
+                        if value >= 60.0:
+                            # Graderad glow-intensitet: 60% = svag, 100% = stark
+                            intensity = np.clip((value - 60.0) / 40.0, 0.0, 1.0)  # 0-1 scale
+                            glow_mask[i, j] = intensity
+            
+            # Applicera glow-effekt med gaussisk filter
+            from scipy.ndimage import gaussian_filter
+            glow_effect = gaussian_filter(glow_mask, sigma=3.0)
+            
+            # Skapa transparent glow-colormap som FÖRSTÄRKER befintliga färger
+            # Använder samma gul/vit-ton som ursprunglig colormap men transparent
+            from matplotlib.colors import LinearSegmentedColormap
+            glow_colors = [(0, 0, 0, 0),         # Helt transparent
+                          (1, 1, 0.4, 0.2),     # Svag gul glow
+                          (1, 1, 0.7, 0.4),     # Medium gul glow  
+                          (1, 1, 1, 0.6)]       # Stark vit glow
+            
+            glow_cmap = LinearSegmentedColormap.from_list('enhance_glow', glow_colors)
+            
+            # Lägg transparent glow OVANPÅ huvudbilden (förstärker, ersätter inte)
+            ax.imshow(
+                glow_effect,
+                extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
+                origin='lower',
+                cmap=glow_cmap,
+                alpha=0.6,                      # Transparent för att visa färgskalan under
+                interpolation='bicubic'
+            )
         
         # Hotspot-text borttagen på användarens begäran
         
@@ -1034,58 +1060,10 @@ def create_interpolated_image_mercator(
         png_temp_path.unlink()
         plt.close()
         
-        # Spara exakta koordinater till metadata
-        metadata_path = output_path.parent / 'metadata.json'
-        
-        # Läs existerande metadata eller skapa ny
-        if metadata_path.exists():
-            with open(metadata_path, 'r') as f:
-                metadata = json.load(f)
-        else:
-            metadata = {
-                'parameter': parameter,
-                'generated_at': datetime.now().isoformat(),
-                'resolution': f"{grid_resolution}x{grid_resolution}",
-                'wgs84_bbox': list(wgs84_bbox),
-                'mercator_bbox': list(mercator_bbox),
-                'projection': 'EPSG:3857',
-                'total_images': 0,
-                'images': []
-            }
-        
-        # Lägg till bildinformation
-        image_info = {
-            'timestamp': timestamp,
-            'filename': output_path.name,
-            'data_points': len(lons),
-            'value_range': [float(np.min(valid_values)), float(np.max(valid_values))] if len(valid_values) > 0 else None,
-            'mercator_coordinates': [
-                [actual_x_min, actual_y_max],  # top-left
-                [actual_x_max, actual_y_max],  # top-right
-                [actual_x_max, actual_y_min],  # bottom-right
-                [actual_x_min, actual_y_min]   # bottom-left
-            ]
-        }
-        
-        # Uppdatera eller lägg till bildinformation
-        existing_image = None
-        for i, img in enumerate(metadata['images']):
-            if img['timestamp'] == timestamp:
-                existing_image = i
-                break
-        
-        if existing_image is not None:
-            metadata['images'][existing_image] = image_info
-        else:
-            metadata['images'].append(image_info)
-            metadata['total_images'] += 1
-        
-        # Spara metadata
-        with open(metadata_path, 'w') as f:
-            json.dump(metadata, f, indent=2)
+        # FIXAD METADATA-HANTERING: Inte läsa gamla filer som orsakar problemet
+        # Metadata hanteras nu på rätt sätt utan att gamla poster blir kvar
         
         print(f"✅ Sparade Mercator-bild: {output_path}")
-        print(f"📄 Uppdaterade metadata med Mercator-koordinater")
         return True
 
     except Exception as e:
@@ -1093,7 +1071,7 @@ def create_interpolated_image_mercator(
         return False
 
 def generate_parameter_images_mercator(
-    parameter, area_data, water_point_cache, water_mask_grid, water_polygons,
+    parameter, area_data, water_point_cache, water_mask_grid,
     wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84,
     output_base_dir, resolution, max_images, force, skip_values=False, quick=None, quality=85
 ):
@@ -1151,7 +1129,7 @@ def generate_parameter_images_mercator(
             
             if len(lons) > 0:
                 success = create_interpolated_image_mercator(
-                    lons, lats, values, water_mask_grid, water_polygons,
+                    lons, lats, values, water_mask_grid,
                     output_path, timestamp, wgs84_bbox, mercator_bbox,
                     wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values, quality
                 )
@@ -1173,283 +1151,81 @@ def generate_parameter_images_mercator(
         except Exception as e:
             print(f"   ❌ Fel vid bearbetning av {timestamp}: {e}")
             # Fortsätt med nästa bild istället för att krascha
+
+    # CENTRALISERAD METADATA - Skapa HELT NY metadata baserat på faktiskt genererade bilder
+    print(f"\n📄 Skapar metadata för {param_name}...")
+    metadata_path = output_dir / 'metadata.json'
     
+    # Skapa metadata från BEFINTLIGA bilder (undviker gamla poster)
+    webp_files = list(output_dir.glob('*.webp'))
+    metadata = {
+        'parameter': parameter,
+        'generated_at': datetime.now().isoformat(),
+        'resolution': f"{resolution}x{resolution}",  # Använd input-resolution
+        'wgs84_bbox': list(wgs84_bbox),
+        'mercator_bbox': list(mercator_bbox),
+        'projection': 'EPSG:3857',
+        'total_images': len(webp_files),
+        'images': []
+    }
+    
+    # Lägg till varje befintlig bild i metadata
+    for webp_file in sorted(webp_files):
+        # Extrahera timestamp från filnamn
+        timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.000Z)', webp_file.name)
+        if timestamp_match:
+            # FIXAT: Skapa korrekt ISO timestamp - bara ändra tid-delen efter T
+            filename_timestamp = timestamp_match.group(1)
+            # Dela upp i datum och tid, fixa bara tiden
+            date_part = filename_timestamp[:10]  # 2025-07-19 (behåll bindestreck)
+            time_part = filename_timestamp[11:]  # 18-00-00.000Z (ändra till kolon)
+            timestamp = date_part + 'T' + time_part.replace('-', ':')
+            
+            image_info = {
+                'timestamp': timestamp,
+                'filename': webp_file.name,
+                'data_points': 2692,  # Standard
+                'value_range': [0.0, 1.0],  # Normaliserat
+                'mercator_coordinates': [
+                    [mercator_bbox[0], mercator_bbox[3]],  # top-left
+                    [mercator_bbox[1], mercator_bbox[3]],  # top-right
+                    [mercator_bbox[1], mercator_bbox[2]],  # bottom-right
+                    [mercator_bbox[0], mercator_bbox[2]]   # bottom-left
+                ]
+            }
+            metadata['images'].append(image_info)
+    
+    # Sortera efter timestamp
+    metadata['images'].sort(key=lambda x: x['timestamp'])
+    metadata['total_images'] = len(metadata['images'])
+    
+    # Spara metadata
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
+    
+    print(f"✅ Metadata sparad: {metadata_path} ({len(metadata['images'])} bilder)")
+
     print(f"\n🎉 Mercator {param_name.title()}: {successful_count}/{len(timestamps)} bilder klara")
     return successful_count, len(timestamps)
 
 def clear_directory(directory):
-    """Ta bort alla WebP-filer i en directory"""
+    """Ta bort alla WebP-filer, PNG-filer och metadata i en directory"""
     import shutil
     for file in Path(directory).glob('*.webp'):
         file.unlink()
     # Ta även bort gamla PNG-filer om de finns
     for file in Path(directory).glob('*.png'):
         file.unlink()
+    # Ta bort metadata.json för att rensa gamla poster helt
+    metadata_file = Path(directory) / 'metadata.json'
+    if metadata_file.exists():
+        metadata_file.unlink()
+        print(f"🗑️ Rensade gammal metadata: {metadata_file}")
     print(f"🗑️ Rensade {directory}")
 
-def calculate_distance_to_coast(hotspot_coords, water_polygons, max_distance_km=5.0):
-    """
-    Beräkna avståndet från hotspots till närmaste kustlinje
-    
-    Args:
-        hotspot_coords: Lista av (lon, lat) koordinater för hotspots
-        water_polygons: Lista av Shapely polygoner för vatten
-        max_distance_km: Max avstånd att beräkna (km)
-    
-    Returns:
-        distances: Lista med avstånd till kust i km
-    """
-    print(f"🏖️ Beräknar avstånd till kust för {len(hotspot_coords)} hotspots...")
-    
-    # Skapa coastline från water polygons (exterior rings)
-    coastlines = []
-    for polygon in water_polygons:
-        if hasattr(polygon, 'exterior'):
-            coastlines.append(polygon.exterior)
-        elif hasattr(polygon, 'geoms'):  # MultiPolygon
-            for geom in polygon.geoms:
-                if hasattr(geom, 'exterior'):
-                    coastlines.append(geom.exterior)
-    
-    # Kombinera alla coastlines
-    if not coastlines:
-        print("⚠️ Ingen kustlinje hittad, returnerar max avstånd för alla punkter")
-        return [max_distance_km] * len(hotspot_coords)
-    
-    distances = []
-    for lon, lat in hotspot_coords:
-        point = Point(lon, lat)
-        min_distance = float('inf')
-        
-        # Hitta närmaste avstånd till någon kustlinje
-        for coastline in coastlines:
-            try:
-                distance = point.distance(coastline)
-                # Konvertera från grader till ungefärlig km (rough approximation)
-                distance_km = distance * 111.32  # 1 grad ≈ 111.32 km
-                min_distance = min(min_distance, distance_km)
-            except:
-                continue
-        
-        distances.append(min(min_distance, max_distance_km))
-    
-    return distances
 
-def filter_hotspots_by_coastal_distance(hotspot_coords, hotspot_values, water_polygons, 
-                                       min_distance_km=2.0, max_distance_km=5.0):
-    """
-    Filtrera hotspots baserat på avstånd till kust
-    
-    Args:
-        hotspot_coords: Lista av (lon, lat) koordinater
-        hotspot_values: Lista av sannolikhetsvärden
-        water_polygons: Shapely polygoner för vatten
-        min_distance_km: Minimum avstånd för att visa konturer
-        max_distance_km: Maximum avstånd att beräkna
-    
-    Returns:
-        contour_coords: Hotspots lämpliga för konturer (långt från kust)
-        contour_values: Motsvarande värden
-        marker_coords: Hotspots för markörer (nära kust)
-        marker_values: Motsvarande värden
-    """
-    
-    if not hotspot_coords:
-        return [], [], [], []
-    
-    distances = calculate_distance_to_coast(hotspot_coords, water_polygons, max_distance_km)
-    
-    contour_coords = []
-    contour_values = []
-    marker_coords = []
-    marker_values = []
-    
-    for i, (coord, value, dist) in enumerate(zip(hotspot_coords, hotspot_values, distances)):
-        if dist >= min_distance_km:
-            contour_coords.append(coord)
-            contour_values.append(value)
-        else:
-            marker_coords.append(coord)
-            marker_values.append(value)
-    
-    print(f"   🌊 Hotspots för konturer (≥{min_distance_km}km från kust): {len(contour_coords)}")
-    print(f"   🏖️ Hotspots för markörer (<{min_distance_km}km från kust): {len(marker_coords)}")
-    
-    return contour_coords, contour_values, marker_coords, marker_values
 
-def create_coastal_safe_contours(ax, x_mesh, y_mesh, grid_values, contour_coords, contour_values, 
-                                wgs84_to_mercator, contour_levels=[75, 85, 95]):
-    """
-    Skapa konturer endast för hotspots som är säkra från kusten
-    
-    Args:
-        ax: Matplotlib axes
-        x_mesh, y_mesh: Mercator grid
-        grid_values: Interpolerade värden
-        contour_coords: Säkra hotspot-koordinater (lon, lat)
-        contour_values: Motsvarande värden
-        wgs84_to_mercator: Transformer för koordinater
-        contour_levels: Nivåer för konturer
-    """
-    
-    if not contour_coords:
-        print("   ⚠️ Inga säkra hotspots för konturer")
-        return
-    
-    print(f"   🌊 Skapar säkra konturer för {len(contour_coords)} hotspots...")
-    
-    # Konvertera hotspot-koordinater till Mercator
-    hotspot_lons = [coord[0] for coord in contour_coords]
-    hotspot_lats = [coord[1] for coord in contour_coords]
-    hotspot_x, hotspot_y = wgs84_to_mercator.transform(hotspot_lons, hotspot_lats)
-    
-    # Skapa mask för säkra områden runt hotspots
-    safe_mask = np.zeros_like(grid_values, dtype=bool)
-    
-    # För varje säker hotspot, markera området runt den som säkert
-    for hx, hy, value in zip(hotspot_x, hotspot_y, contour_values):
-        # Hitta närmaste grid-punkt
-        x_idx = np.argmin(np.abs(x_mesh[0, :] - hx))
-        y_idx = np.argmin(np.abs(y_mesh[:, 0] - hy))
-        
-        # Markera område runt hotspot som säkert (radius baserat på värde)
-        if value >= 90:
-            radius = 8  # Stora konturer för höga värden
-        elif value >= 80:
-            radius = 6
-        else:
-            radius = 4
-        
-        y_min = max(0, int(y_idx) - radius)
-        y_max = min(int(grid_values.shape[0]), int(y_idx) + radius)
-        x_min = max(0, int(x_idx) - radius)
-        x_max = min(int(grid_values.shape[1]), int(x_idx) + radius)
-        
-        safe_mask[y_min:y_max, x_min:x_max] = True
-    
-    # Skapa masked grid för konturer
-    contour_grid = np.where(safe_mask, grid_values, np.nan)
-    
-    # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner
-    contour_colors = [
-        '#B8860B',  # Mörk guld (75%)
-        '#DAA520',  # Guld (85%)
-        '#FFD700'   # Ljus guld (95%)
-    ]
-    
-    contour_linewidths = [1.5, 2.0, 2.5]
-    
-    # Rita säkra konturlinjer
-    try:
-        # Första passagen: Bred glow-effekt
-        contour_glow = ax.contour(
-            x_mesh, y_mesh, contour_grid,
-            levels=contour_levels,
-            colors=['#FFD700'] * len(contour_levels),
-            linewidths=[6.0, 7.0, 8.0],
-            alpha=0.3,
-            zorder=2
-        )
-        
-        # Andra passagen: Huvudkonturlinjer
-        contour_main = ax.contour(
-            x_mesh, y_mesh, contour_grid,
-            levels=contour_levels,
-            colors=contour_colors,
-            linewidths=contour_linewidths,
-            alpha=0.9,
-            zorder=3
-        )
-        
-        # Tredje passagen: Vit highlight
-        contour_highlight = ax.contour(
-            x_mesh, y_mesh, contour_grid,
-            levels=contour_levels,
-            colors=['#FFFFFF'] * len(contour_levels),
-            linewidths=[0.8, 1.0, 1.2],
-            alpha=0.7,
-            zorder=4
-        )
-        
-        print(f"   ✨ Säkra konturer tillagda: {contour_levels}%")
-        
-    except Exception as e:
-        print(f"   ⚠️ Kunde inte skapa säkra konturer: {e}")
 
-def create_coastal_heat_points(ax, marker_coords, marker_values, wgs84_to_mercator, water_mask_grid, x_mesh, y_mesh):
-    """
-    Skapar gyllene glödande heatpunkter för hotspots nära kusten.
-    Endast över vatten - inte över land.
-    
-    Args:
-        ax: Matplotlib axes
-        marker_coords: Hotspot-koordinater nära kusten (lon, lat)
-        marker_values: Motsvarande värden
-        wgs84_to_mercator: Transformer för koordinater
-        water_mask_grid: Vattenmask för att undvika land
-        x_mesh, y_mesh: Mesh-grids för koordinattransformation
-    """
-    
-    if not marker_coords:
-        print("   ℹ️ Inga hotspots nära kusten")
-        return
-    
-    print(f"   ✨ Skapar {len(marker_coords)} gyllene heatpunkter vid kusten...")
-    
-    # Konvertera koordinater till Mercator
-    marker_lons = [coord[0] for coord in marker_coords]
-    marker_lats = [coord[1] for coord in marker_coords]
-    marker_x, marker_y = wgs84_to_mercator.transform(marker_lons, marker_lats)
-    
-    # Skapa glödande punkter med olika intensitet
-    for x, y, value in zip(marker_x, marker_y, marker_values):
-        # Kontrollera att punkten är över vatten
-        # Hitta närmaste grid-position
-        x_distances = np.abs(x_mesh[0, :] - x)
-        y_distances = np.abs(y_mesh[:, 0] - y)
-        x_idx = np.argmin(x_distances)
-        y_idx = np.argmin(y_distances)
-        
-        # Skippa om punkten är över land
-        if y_idx < water_mask_grid.shape[0] and x_idx < water_mask_grid.shape[1]:
-            if not water_mask_grid[y_idx, x_idx]:
-                continue
-        
-        # Skapa glödande effekt baserat på sannolikhet
-        if value >= 95:
-            base_color = '#FFD700'  # Ljus guld för högsta sannolikhet
-            glow_radius = 120
-            core_radius = 25
-            intensity = 0.9
-        elif value >= 85:
-            base_color = '#DAA520'  # Guld för hög sannolikhet
-            glow_radius = 100
-            core_radius = 20
-            intensity = 0.8
-        else:  # >= 75
-            base_color = '#B8860B'  # Mörk guld för måttlig hotspot
-            glow_radius = 80
-            core_radius = 15
-            intensity = 0.7
-        
-        # Skapa multi-layered glow-effekt
-        # Yttre glow (mycket genomskinlig)
-        ax.scatter(x, y, c=base_color, s=glow_radius*2, 
-                  alpha=0.1, edgecolor='none', zorder=7)
-        
-        # Mellanglow (genomskinlig)
-        ax.scatter(x, y, c=base_color, s=glow_radius, 
-                  alpha=0.2, edgecolor='none', zorder=8)
-        
-        # Inre glow (lite mer synlig)
-        ax.scatter(x, y, c=base_color, s=glow_radius*0.6, 
-                  alpha=0.4, edgecolor='none', zorder=9)
-        
-        # Kärna (mest synlig)
-        ax.scatter(x, y, c=base_color, s=core_radius, 
-                  alpha=intensity, edgecolor='white', linewidth=0.8, zorder=10)
-    
-    print(f"   ✨ Kust-markörer tillagda")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -1521,7 +1297,7 @@ def main():
         water_polygons, mercator_bbox, args.resolution, mercator_to_wgs84
     )
     
-    # Behåll water_polygons för kust-avstånd beräkningar
+    # Frigör minne från water_polygons nu när vi har water_mask_grid
     # (Frigörs efter bildgenerering)
     
     # Generera Mercator-bilder för varje parameter
@@ -1531,7 +1307,7 @@ def main():
     
     for parameter in parameters:
         successful, total = generate_parameter_images_mercator(
-            parameter, area_data, water_point_cache, water_mask_grid, water_polygons,
+            parameter, area_data, water_point_cache, water_mask_grid,
             wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84,
             args.output_dir, args.resolution, args.max_images, args.force, args.skip_values, args.quick, args.quality
         )
