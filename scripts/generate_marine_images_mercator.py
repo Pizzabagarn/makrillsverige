@@ -888,68 +888,43 @@ def create_interpolated_image_mercator(
         ax.set_aspect('equal')
         ax.axis('off')
         
-        # === STEG 1: HUVUDBILD FÖRST ===
-        # Rendera huvudbilden med normal alpha (exakt som bifogad kod)
-        
-        # === FÖRBÄTTRADE TRE-LAGERS GYLLENE KONTURLINJER ===
-        # Implementerar exakt samma system som bifogad kod för maximal elegans
+        # === STEG 1: URSPRUNGLIG GLOW-EFFEKT ===
+        # Återställer den ursprungliga glow-logiken med binär tröskel på 75%
         if parameter == 'mackerel':
-            print("   📊 Skapar eleganta tre-lagers gyllene konturlinjer...")
+            print("   ✨ Skapar ursprunglig GLOW-EFFEKT (tröskel 75%, sigma=3.0, alpha=0.7)...")
             
-            # Konturnivåer för hotspots (samma som bifogad kod)
-            contour_levels = [75, 85, 95]
+            # === URSPRUNGLIG GLOW-LOGIK ===
+            # Skapa glow-mask med binär tröskel (exakt som original)
+            glow_mask = np.zeros_like(grid_values)
+            high_prob_mask = grid_values >= 75.0  # URSPRUNGLIG TRÖSKEL
+            glow_mask[high_prob_mask] = grid_values[high_prob_mask]
             
-            # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner (hårdkodade som önskat)
-            contour_colors = [
-                '#B8860B',  # Mörk guld (75%)
-                '#DAA520',  # Medium guld (85%)
-                '#FFD700'   # Ljus guld (95%)
-            ]
+            # Applicera gaussisk filter (samma som original)
+            from scipy.ndimage import gaussian_filter
+            glow_effect = gaussian_filter(glow_mask, sigma=3.0)  # URSPRUNGLIG SIGMA
             
-            # Progressiva linjetjocklekar för visuell hierarki
-            contour_linewidths = [1.5, 2.0, 2.5]  # Gradvis tjockare för viktiga nivåer
+            # Normalisera (samma som original)
+            if glow_effect.max() > 0:
+                glow_effect /= glow_effect.max()
             
-            # Rita eleganta konturlinjer med glow-effekt (tre separata lager)
-            try:
-                # === LAGER 1: BRED GYLLENE GLOW-BAS ===
-                # Bred, genomskinlig gyllene glow rund konturlinjer för halo-effekt
-                contour_glow = ax.contour(
-                    x_mesh, y_mesh, grid_values,
-                    levels=contour_levels,
-                    colors=['#FFD700', '#FFD700', '#FFD700'],  # Samma gyllene färg för alla
-                    linewidths=[6.0, 7.0, 8.0],              # Mycket bred för glow
-                    alpha=0.3,                                # Mycket genomskinlig för glow-effekt
-                    zorder=2
-                )
-                
-                # === LAGER 2: HUVUDKONTURLINJER ===
-                # Eleganta gyllene linjer med graderad färg för exakt avgränsning
-                contour_main = ax.contour(
-                    x_mesh, y_mesh, grid_values,
-                    levels=contour_levels,
-                    colors=contour_colors,                    # Graderade guld-färger
-                    linewidths=contour_linewidths,            # Progressivt tjockare
-                    alpha=0.9,                                # Stark men inte helt opak
-                    zorder=3
-                )
-                
-                # === LAGER 3: VIT HIGHLIGHT ===
-                # Tunn vit linje för extra "glow-pop" och luminans
-                contour_highlight = ax.contour(
-                    x_mesh, y_mesh, grid_values,
-                    levels=contour_levels,
-                    colors=['#FFFFFF', '#FFFFFF', '#FFFFFF'], # Vit highlight
-                    linewidths=[0.8, 1.0, 1.2],              # Mycket tunn för subtil highlight
-                    alpha=0.7,                                # Genomskinlig för att blenda fint
-                    zorder=4
-                )
-                
-                print(f"   ✨ Eleganta tre-lagers gyllene konturlinjer tillagda: {contour_levels}% med glow-effekt")
-                
-            except Exception as e:
-                print(f"   ⚠️ Konturlinjer hoppades över: {e}")
+            # Skapa ursprunglig glow-colormap
+            from matplotlib.colors import LinearSegmentedColormap
+            glow_cmap = LinearSegmentedColormap.from_list('glow',
+                [(0,0,0,0), (1,1,0.5,0.3), (1,1,0.8,0.6)])  # URSPRUNGLIG COLORMAP
+            
+            # Rita glow-effekt FÖRE huvudbilden (ursprunglig ordning)
+            ax.imshow(glow_effect, 
+                     extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max), 
+                     origin='lower',
+                     cmap=glow_cmap, 
+                     alpha=0.7,  # URSPRUNGLIG ALPHA
+                     interpolation='bicubic',
+                     zorder=0)
+            
+            print(f"   ✅ Ursprunglig glow-effekt tillagd med tröskel 75%")
         
-        # === STEG 2: HUVUDBILD (EXAKT SOM BIFOGAD KOD) ===
+        # === STEG 2: HUVUDBILD ===
+        # Rita huvudbilden EFTER glow men FÖRE konturerna
         im = ax.imshow(
             grid_values,
             extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
@@ -957,52 +932,54 @@ def create_interpolated_image_mercator(
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
-            alpha=0.85,                         # Samma alpha som bifogad kod
-            interpolation='bicubic'
+            alpha=0.85,  # Samma alpha som ursprungligt
+            interpolation='bicubic',
+            zorder=1
         )
         
-        # === STEG 3: GRADERAD GLOW-EFFEKT (FÖRSTÄRKER FÄRGSKALAN) ===
-        # Transparent glow som förstärker hotspots utan att ersätta färgskalan
+        # === STEG 3: ELEGANTA GYLLENE KONTURLINJER ÖVER HUVUDBILDEN ===
+        # Rita konturlinjer ÖVER huvudbilden så de syns
         if parameter == 'mackerel':
-            print("   ✨ Skapar graderad glow-effekt som följer färgskalan...")
+            print("   📊 Skapar eleganta tre-lagers gyllene konturlinjer...")
             
-            # === SKAPA EN GLOW-MASK FÖR ALLA HOTSPOTS (60%+) ===
-            glow_mask = np.zeros_like(grid_values)
-            hotspot_mask = grid_values >= 60.0  # Alla hotspots
+            # Konturnivåer för hotspots
+            contour_levels = [75, 85, 95]
             
-            # Graderad intensitet: ju högre värde, desto starkare glow
-            for i in range(grid_values.shape[0]):
-                for j in range(grid_values.shape[1]):
-                    if hotspot_mask[i, j]:
-                        value = grid_values[i, j]
-                        if value >= 60.0:
-                            # Graderad glow-intensitet: 60% = svag, 100% = stark
-                            intensity = np.clip((value - 60.0) / 40.0, 0.0, 1.0)  # 0-1 scale
-                            glow_mask[i, j] = intensity
+            # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner
+            contour_colors = [
+                '#B8860B',  # Mörk guld (75%)
+                '#DAA520',  # Medium guld (85%)
+                '#FFD700'   # Ljus guld (95%)
+            ]
             
-            # Applicera glow-effekt med gaussisk filter
-            from scipy.ndimage import gaussian_filter
-            glow_effect = gaussian_filter(glow_mask, sigma=3.0)
+            # Progressiva linjetjocklekar för visuell hierarki
+            contour_linewidths = [1.5, 2.0, 2.5]
             
-            # Skapa transparent glow-colormap som FÖRSTÄRKER befintliga färger
-            # Använder samma gul/vit-ton som ursprunglig colormap men transparent
-            from matplotlib.colors import LinearSegmentedColormap
-            glow_colors = [(0, 0, 0, 0),         # Helt transparent
-                          (1, 1, 0.4, 0.2),     # Svag gul glow
-                          (1, 1, 0.7, 0.4),     # Medium gul glow  
-                          (1, 1, 1, 0.6)]       # Stark vit glow
-            
-            glow_cmap = LinearSegmentedColormap.from_list('enhance_glow', glow_colors)
-            
-            # Lägg transparent glow OVANPÅ huvudbilden (förstärker, ersätter inte)
-            ax.imshow(
-                glow_effect,
-                extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
-                origin='lower',
-                cmap=glow_cmap,
-                alpha=0.6,                      # Transparent för att visa färgskalan under
-                interpolation='bicubic'
-            )
+            # Rita eleganta konturlinjer ÖVER huvudbilden
+            try:
+                contour_main = ax.contour(
+                    x_mesh, y_mesh, grid_values,
+                    levels=contour_levels,
+                    colors=contour_colors,
+                    linewidths=contour_linewidths,
+                    alpha=0.9,
+                    zorder=2  # Över huvudbild (zorder=1)
+                )
+                
+                # Highlight-lager för extra glow
+                contour_highlight = ax.contour(
+                    x_mesh, y_mesh, grid_values,
+                    levels=contour_levels,
+                    colors=['#FFFFFF', '#FFFFFF', '#FFFFFF'],
+                    linewidths=[0.8, 1.0, 1.2],
+                    alpha=0.7,
+                    zorder=3  # Överst av allt
+                )
+                
+                print(f"   ✨ Eleganta gyllene konturlinjer tillagda ÖVER huvudbild: {contour_levels}%")
+                
+            except Exception as e:
+                print(f"   ⚠️ Konturlinjer hoppades över: {e}")
         
         # Hotspot-text borttagen på användarens begäran
         
