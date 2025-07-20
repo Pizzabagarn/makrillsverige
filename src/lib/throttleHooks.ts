@@ -56,6 +56,7 @@ export function useDraggingDetection(selectedHour: number): boolean {
 export function useCacheOptimization() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isLowEndDevice, setIsLowEndDevice] = useState(false);
+  const isOptimizingRef = useRef(false);
   
   useEffect(() => {
     // Identifiera svag enhet
@@ -74,10 +75,12 @@ export function useCacheOptimization() {
     checkDevice();
   }, []);
   
-  // Rensa API-cache för snabbare popup-uppdateringar
+  // Rensa API-cache för snabbare popup-uppdateringar - STABILISERAD CALLBACK  
   const clearApiCache = useCallback(async () => {
-    if (isOptimizing) return;
+    // Använd ref för att undvika stale closure och callback recreation
+    if (isOptimizingRef.current) return;
     
+    isOptimizingRef.current = true;
     setIsOptimizing(true);
     
     try {
@@ -87,14 +90,16 @@ export function useCacheOptimization() {
     } catch (error) {
       console.error('❌ Kunde inte rensa API-cache:', error);
     } finally {
+      isOptimizingRef.current = false;
       setIsOptimizing(false);
     }
-  }, [isOptimizing]);
+  }, []); // ← INGEN dependencies = stabil callback reference
   
-  // Optimera för svag enhet
+  // Optimera för svag enhet - STABILISERAD CALLBACK
   const optimizeForDevice = useCallback(async () => {
-    if (isOptimizing || !isLowEndDevice) return;
+    if (isOptimizingRef.current || !isLowEndDevice) return;
     
+    isOptimizingRef.current = true;
     setIsOptimizing(true);
     
     try {
@@ -104,9 +109,10 @@ export function useCacheOptimization() {
     } catch (error) {
       console.error('❌ Kunde inte optimera för enhet:', error);
     } finally {
+      isOptimizingRef.current = false;
       setIsOptimizing(false);
     }
-  }, [isOptimizing, isLowEndDevice]);
+  }, [isLowEndDevice]); // Behåll isLowEndDevice dependency eftersom den ändras sällan
   
   // Automatisk optimering vid behov
   useEffect(() => {

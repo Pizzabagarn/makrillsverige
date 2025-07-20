@@ -62,10 +62,10 @@ export default function Home() {
       });
     }
     
-    // NYTT: Rensa API-cache periodiskt för att säkerställa färsk data
+    // NYTT: Rensa API-cache periodiskt - MINSKAT för bättre stabilitet
     const cacheCleanupInterval = setInterval(() => {
       clearApiCache();
-    }, 10 * 60 * 1000); // Var 10:e minut
+    }, 30 * 60 * 1000); // Ändrat från 10 minuter till 30 minuter för färre re-renders // Var 10:e minut
     
     return () => {
       window.removeEventListener('resize', checkLayout);

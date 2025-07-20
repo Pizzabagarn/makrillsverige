@@ -7,6 +7,7 @@ för perfekt kartplacering utan offset-behov.
 
 import json
 import gzip
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -95,6 +96,50 @@ def compress_mackerel_values():
     else:
         print("❌ Ingen komprimering lyckades")
         return False
+
+def clear_all_mackerel_values():
+    """
+    Ta bort ALLA gamla makrill-värdefiler innan nya genereras
+    Vi vill bara ha data för de nya bilderna
+    """
+    values_dir = Path('public/data/mackerel-probability-images-mercator/mackerel-values')
+    
+    if not values_dir.exists():
+        values_dir.mkdir(parents=True, exist_ok=True)
+        return
+    
+    # Ta bort alla gamla filer
+    old_files = list(values_dir.glob('*.json.gz')) + list(values_dir.glob('*.json'))
+    
+    if old_files:
+        print(f"🗑️ Rensar ALLA gamla makrill-värdefiler ({len(old_files)} filer)...")
+        for old_file in old_files:
+            old_file.unlink()
+        print("✅ Alla gamla filer borttagna")
+    else:
+        print("📁 Inga gamla filer att rensa")
+
+def save_all_mackerel_values_single_file(all_values_data, output_dir):
+    """
+    Spara ALL makrill-data i EN komprimerad fil istället för hundratals separata
+    Much smarter approach!
+    """
+    values_dir = Path(output_dir) / 'mackerel-values'
+    values_dir.mkdir(parents=True, exist_ok=True)
+    
+    # EN fil för alla timestamps
+    single_file = values_dir / 'all_mackerel_values.json.gz'
+    
+    print(f"💾 Sparar ALL makrill-data i EN fil: {single_file.name}")
+    
+    with gzip.open(single_file, 'wt', encoding='utf-8', compresslevel=9) as f:
+        json.dump(all_values_data, f, separators=(',', ':'))
+    
+    file_size = single_file.stat().st_size
+    total_timestamps = len(all_values_data.get('timestamps', {}))
+    
+    print(f"✅ Sparad: {file_size:,} bytes, {total_timestamps} timestamps")
+    print(f"📁 Istället för {total_timestamps} separata filer - MYCKET smartare!")
 
 # IDENTISKA FÄRGSKALOR som i original-scriptet
 REVOLUTIONARY_CURRENT_COLORMAP = [
@@ -783,7 +828,7 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
 
 def create_interpolated_image_mercator(
     lons, lats, values, water_mask_grid, output_path, timestamp, 
-    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False, quality=85
+    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False, quality=85, all_mackerel_data=None
 ):
     """
     Skapa interpolerad PNG-bild i Mercator-projektion
@@ -888,43 +933,94 @@ def create_interpolated_image_mercator(
         ax.set_aspect('equal')
         ax.axis('off')
         
-        # === STEG 1: URSPRUNGLIG GLOW-EFFEKT ===
-        # Återställer den ursprungliga glow-logiken med binär tröskel på 75%
+        # === OPTIMERAD GLOW-EFFEKT FÖR HOTSPOTS ===
+        # Lägg till lysande glow runt områden med hög sannolikhet
         if parameter == 'mackerel':
-            print("   ✨ Skapar ursprunglig GLOW-EFFEKT (tröskel 75%, sigma=3.0, alpha=0.7)...")
+            print("   ✨ Skapar optimerad glow-effekt för hotspots...")
             
-            # === URSPRUNGLIG GLOW-LOGIK ===
-            # Skapa glow-mask med binär tröskel (exakt som original)
+            # Skapa glow-mask för värden över 75%
             glow_mask = np.zeros_like(grid_values)
-            high_prob_mask = grid_values >= 75.0  # URSPRUNGLIG TRÖSKEL
+            high_prob_mask = grid_values >= 75.0
             glow_mask[high_prob_mask] = grid_values[high_prob_mask]
             
-            # Applicera gaussisk filter (samma som original)
+            # Applicera glow-effekt med gaussisk filter
             from scipy.ndimage import gaussian_filter
-            glow_effect = gaussian_filter(glow_mask, sigma=3.0)  # URSPRUNGLIG SIGMA
+            glow_effect = gaussian_filter(glow_mask, sigma=3.0)
             
-            # Normalisera (samma som original)
-            if glow_effect.max() > 0:
-                glow_effect /= glow_effect.max()
+            # Normalisera glow-effekten
+            if np.max(glow_effect) > 0:
+                glow_effect = glow_effect / np.max(glow_effect)
             
-            # Skapa ursprunglig glow-colormap
+            # Skapa glow-colormap (genomskinlig till ljusgul)
             from matplotlib.colors import LinearSegmentedColormap
-            glow_cmap = LinearSegmentedColormap.from_list('glow',
-                [(0,0,0,0), (1,1,0.5,0.3), (1,1,0.8,0.6)])  # URSPRUNGLIG COLORMAP
+            glow_colors = [(0, 0, 0, 0), (1, 1, 0.5, 0.3), (1, 1, 0.8, 0.6)]
+            glow_cmap = LinearSegmentedColormap.from_list('glow', glow_colors)
             
-            # Rita glow-effekt FÖRE huvudbilden (ursprunglig ordning)
-            ax.imshow(glow_effect, 
-                     extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max), 
-                     origin='lower',
-                     cmap=glow_cmap, 
-                     alpha=0.7,  # URSPRUNGLIG ALPHA
-                     interpolation='bicubic',
-                     zorder=0)
-            
-            print(f"   ✅ Ursprunglig glow-effekt tillagd med tröskel 75%")
+            # Lägg till glow som extra lager
+            ax.imshow(
+                glow_effect,
+                extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
+                origin='lower',
+                cmap=glow_cmap,
+                alpha=0.7,
+                interpolation='bicubic'  # Samma som de andra lagren
+            )
         
-        # === STEG 2: HUVUDBILD ===
-        # Rita huvudbilden EFTER glow men FÖRE konturerna
+        # === ELEGANTA GYLLENE KONTURLINJER ===
+        print("   📊 Skapar eleganta gyllene konturlinjer...")
+        
+        # Konturnivåer för hotspots
+        contour_levels = [75, 85, 95]  # Fler nivåer för finare gradation
+        
+        # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner
+        # Från mörk guld till ljus vit-guld för maximal elegans
+        contour_colors = [
+            '#B8860B',  # Mörk guld (75%)
+            '#DAA520',  # Guld (85%)
+            '#FFD700'   # Ljus guld (95%)
+        ]
+        
+        # Finare linjetjocklek för elegans
+        contour_linewidths = [1.5, 2.0, 2.5]  # Gradvis tjockare för viktiga nivåer
+        
+        # Rita eleganta konturlinjer med glow-effekt
+        try:
+            # Första passagen: Bred glow-effekt i genomskinlig guld
+            contour_glow = ax.contour(
+                x_mesh, y_mesh, grid_values,
+                levels=contour_levels,
+                colors=['#FFD700', '#FFD700', '#FFD700'],  # Samma gyllene färg för alla
+                linewidths=[6.0, 7.0, 8.0],  # Mycket bred för glow
+                alpha=0.3,  # Mycket genomskinlig för glow-effekt
+                zorder=2
+            )
+            
+            # Andra passagen: Huvudkonturlinjer med eleganta färger
+            contour_main = ax.contour(
+                x_mesh, y_mesh, grid_values,
+                levels=contour_levels,
+                colors=contour_colors,
+                linewidths=contour_linewidths,
+                alpha=0.9,  # Stark men inte helt opak
+                zorder=3
+            )
+            
+            # Tredje passagen: Fin vit highlight för extra glow
+            contour_highlight = ax.contour(
+                x_mesh, y_mesh, grid_values,
+                levels=contour_levels,
+                colors=['#FFFFFF', '#FFFFFF', '#FFFFFF'],  # Vit highlight
+                linewidths=[0.8, 1.0, 1.2],  # Mycket tunn för subtil highlight
+                alpha=0.7,  # Genomskinlig för att blenda fint
+                zorder=4
+            )
+            
+            print(f"   ✨ Eleganta gyllene konturlinjer tillagda: {contour_levels}% med glow-effekt")
+            
+        except Exception as e:
+            print(f"   ⚠️ Konturlinjer hoppades över: {e}")
+        
+        # Plotta med exakta grid-koordinater
         im = ax.imshow(
             grid_values,
             extent=(actual_x_min, actual_x_max, actual_y_min, actual_y_max),
@@ -932,87 +1028,32 @@ def create_interpolated_image_mercator(
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
-            alpha=0.85,  # Samma alpha som ursprungligt
-            interpolation='bicubic',
-            zorder=1
+            alpha=0.85,
+            interpolation='bicubic'  # Samma som de andra lagren
         )
-        
-        # === STEG 3: ELEGANTA GYLLENE KONTURLINJER ÖVER HUVUDBILDEN ===
-        # Rita konturlinjer ÖVER huvudbilden så de syns
-        if parameter == 'mackerel':
-            print("   📊 Skapar eleganta tre-lagers gyllene konturlinjer...")
-            
-            # Konturnivåer för hotspots
-            contour_levels = [75, 85, 95]
-            
-            # ELEGANT GYLLENE FÄRGPALETT - mjuka, lyxiga toner
-            contour_colors = [
-                '#B8860B',  # Mörk guld (75%)
-                '#DAA520',  # Medium guld (85%)
-                '#FFD700'   # Ljus guld (95%)
-            ]
-            
-            # Progressiva linjetjocklekar för visuell hierarki
-            contour_linewidths = [1.5, 2.0, 2.5]
-            
-            # Rita eleganta konturlinjer ÖVER huvudbilden
-            try:
-                contour_main = ax.contour(
-                    x_mesh, y_mesh, grid_values,
-                    levels=contour_levels,
-                    colors=contour_colors,
-                    linewidths=contour_linewidths,
-                    alpha=0.9,
-                    zorder=2  # Över huvudbild (zorder=1)
-                )
-                
-                # Highlight-lager för extra glow
-                contour_highlight = ax.contour(
-                    x_mesh, y_mesh, grid_values,
-                    levels=contour_levels,
-                    colors=['#FFFFFF', '#FFFFFF', '#FFFFFF'],
-                    linewidths=[0.8, 1.0, 1.2],
-                    alpha=0.7,
-                    zorder=3  # Överst av allt
-                )
-                
-                print(f"   ✨ Eleganta gyllene konturlinjer tillagda ÖVER huvudbild: {contour_levels}%")
-                
-            except Exception as e:
-                print(f"   ⚠️ Konturlinjer hoppades över: {e}")
         
         # Hotspot-text borttagen på användarens begäran
         
         # Spara makrill-värden för popup-användning (samma struktur som andra parametrar)
-        if parameter == 'mackerel' and not skip_values:
-            print("   💾 Sparar makrill-värden för popup (samma struktur som andra parametrar)...")
-            
+        # Samla makrill-värden för senare sparande i EN fil
+        if parameter == 'mackerel' and not skip_values and all_mackerel_data is not None:
             # Använd samma struktur som andra parametrar - bara spara för ursprungliga punkter
             mackerel_data = []
             for i, (lon, lat, value) in enumerate(zip(lons, lats, values)):
                 mackerel_data.append({
                     'lat': float(lat),
                     'lon': float(lon),
-                    'value': float(value),
-                    'timestamp': timestamp
+                    'value': float(value)
                 })
             
-            # Spara till JSON-fil för denna tidsstämpel
-            mackerel_values_dir = output_path.parent / 'mackerel-values'
-            mackerel_values_dir.mkdir(exist_ok=True)
+            # Lägg till i samlad data istället för att spara separat fil
+            all_mackerel_data['timestamps'][timestamp] = {
+                'bbox': list(wgs84_bbox),
+                'total_points': len(mackerel_data),
+                'values': mackerel_data
+            }
             
-            safe_timestamp = timestamp.replace(':', '-').replace('+', 'plus')
-            mackerel_values_file = mackerel_values_dir / f'mackerel_values_{safe_timestamp}.json'
-            
-            with open(mackerel_values_file, 'w') as f:
-                json.dump({
-                    'timestamp': timestamp,
-                    'bbox': list(wgs84_bbox),
-                    'total_points': len(mackerel_data),
-                    'values': mackerel_data
-                }, f, indent=2)
-            
-            print(f"   ✅ Sparade {len(mackerel_data)} makrill-värden till {mackerel_values_file}")
+            print(f"   ✅ Samlade {len(mackerel_data)} makrill-värden för {timestamp}")
         elif parameter == 'mackerel' and skip_values:
             print("   ⚡ Hoppade över makrill-värden (--skip-values)")
         
@@ -1064,6 +1105,10 @@ def generate_parameter_images_mercator(
     if skip_values and parameter == 'mackerel':
         print("⚡ Snabbläge: Hoppar över makrill-värden")
     
+    # Rensa ALLA gamla makrill-värdefiler innan nya genereras
+    if parameter == 'mackerel' and not skip_values:
+        clear_all_mackerel_values()
+    
     if force:
         clear_directory(output_dir)
     
@@ -1081,6 +1126,17 @@ def generate_parameter_images_mercator(
     
     successful_count = 0
     start_time = time.time()
+    
+    # Samla ALL makrill-data i EN dictionary för senare sparande
+    all_mackerel_data = None
+    if parameter == 'mackerel' and not skip_values:
+        all_mackerel_data = {
+            'parameter': 'mackerel_probability',
+            'generated_at': time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            'total_timestamps': len(timestamps),
+            'wgs84_bbox': list(wgs84_bbox),
+            'timestamps': {}  # Här samlas data för varje timestamp
+        }
     
     for i, timestamp in enumerate(timestamps):
         image_start_time = time.time()
@@ -1108,7 +1164,7 @@ def generate_parameter_images_mercator(
                 success = create_interpolated_image_mercator(
                     lons, lats, values, water_mask_grid,
                     output_path, timestamp, wgs84_bbox, mercator_bbox,
-                    wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values, quality
+                    wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values, quality, all_mackerel_data
                 )
                 if success:
                     successful_count += 1
@@ -1182,6 +1238,10 @@ def generate_parameter_images_mercator(
     
     print(f"✅ Metadata sparad: {metadata_path} ({len(metadata['images'])} bilder)")
 
+    # Spara ALL makrill-data i EN fil vid slutet
+    if all_mackerel_data is not None and len(all_mackerel_data['timestamps']) > 0:
+        save_all_mackerel_values_single_file(all_mackerel_data, output_dir.parent)
+    
     print(f"\n🎉 Mercator {param_name.title()}: {successful_count}/{len(timestamps)} bilder klara")
     return successful_count, len(timestamps)
 

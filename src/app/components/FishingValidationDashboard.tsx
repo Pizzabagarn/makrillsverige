@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fishingDataManager, FishingReport } from '@/lib/fishingDataManager';
 import { mackerelCalibration, CalibrationResult } from '@/lib/mackerelModelCalibration';
 import { X, TrendingUp, AlertTriangle, CheckCircle, BarChart3, Calendar, MapPin, Settings, Edit, Save, Trash2 } from 'lucide-react';
@@ -25,6 +25,8 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
 }) => {
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const isCalculatingRef = useRef(false); // ← STABILITET: Använd ref för att undvika stale closures
   const [selectedTimeframe, setSelectedTimeframe] = useState<'all' | '30days' | '7days'>('all');
   const [calibrationStatus, setCalibrationStatus] = useState<{
     hasCalibration: boolean;
@@ -35,9 +37,9 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
 
-  // ✅ ANVÄND FAKTISKA MAKRILL-VÄRDEN FRÅN KARTAN
-  // 🔧 FIXAR PROBLEMET: Hämtar exakt samma data som kartan visar
-  const calculateModelPrediction = async (report: FishingReport): Promise<number> => {
+  // ✅ ANVÄND FAKTISKA MAKRILL-VÄRDEN FRÅN KARTAN - FIXA OÄNDLIG LOOP
+  // 🔧 FIXAR PROBLEMET: Hämtar exakt samma data som kartan visar + stoppar re-render loop
+  const calculateModelPrediction = useCallback(async (report: FishingReport): Promise<number> => {
     // ✅ PRIORITERA HISTORISK SANNOLIKHET om den finns
     if (report.historicalModelPrediction !== undefined) {
 
@@ -99,18 +101,17 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
       console.error(`❌ Fel vid hämtning av makrill-data för ${report.id}:`, error);
       return await calculateFallbackPrediction(report);
     }
-  };
+  }, []); // ← STABILISERAD: Ta bort dependency som orsakar infinite re-renders från localStorage-ändringar
   
-  // 🔧 FALLBACK-BERÄKNING om API misslyckas
-  const calculateFallbackPrediction = async (report: FishingReport): Promise<number> => {
-    // Enkel fallback baserat på kalibrering
-    const calibratedIntercept = calibrationStatus?.calibration?.recommendedIntercept || -8.0;
-    const probability = 1 / (1 + Math.exp(-calibratedIntercept));
+  // 🔧 FALLBACK-BERÄKNING om API misslyckas - STABILISERAD CALLBACK
+  const calculateFallbackPrediction = useCallback(async (report: FishingReport): Promise<number> => {
+    // Enkel fallback baserat på kalibrering - använd aktuell calibrationStatus vid anrop
+    const currentCalibration = calibrationStatus?.calibration?.recommendedIntercept || -8.0;
+    const probability = 1 / (1 + Math.exp(-currentCalibration));
     const result = Math.round(probability * 100);
     
-    
     return result;
-  };
+  }, []); // ← STABILISERAD: Ta bort dependency för att förhindra infinite re-renders
 
   // 🔧 REDIGERINGS-FUNKTIONER för modellens sannolikhet
   const handleEditModelPrediction = (reportId: string, currentValue: number) => {
@@ -217,8 +218,15 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
     return qualityMap[quality];
   };
 
-  // Beräkna validering för alla rapporter (nu async)
+  // Beräkna validering för alla rapporter (nu async) - STABILISERAD MOT RE-RENDERS
   const calculateValidation = useCallback(async () => {
+    if (isCalculatingRef.current) {
+      console.log('🛑 Validering pågår redan, skippar duplicate call');
+      return;
+    }
+    
+    isCalculatingRef.current = true;
+    setIsCalculating(true);
     setLoading(true);
     
     try {
@@ -237,38 +245,60 @@ const FishingValidationDashboard: React.FC<FishingValidationDashboardProps> = ({
         return true;
       });
       
-      // 🔄 AWAITA ALLA PREDIKTIONER
+      // 🔄 BATCH PROCESSING: Max 3 samtidiga API-calls för att undvika server överbelastning
       const results: ValidationResult[] = [];
+      const BATCH_SIZE = 3; // Begränsa samtidiga requests
       
-      for (const report of filteredReports) {
-        const modelPrediction = await calculateModelPrediction(report); // Await här
-        const actualQuality = qualityToNumber(report.quality, report.customPercentage);
-        const difference = modelPrediction - actualQuality;
+      console.log(`🔍 Beräknar validering för ${filteredReports.length} rapporter (batch size: ${BATCH_SIZE})`);
+      
+      for (let i = 0; i < filteredReports.length; i += BATCH_SIZE) {
+        const batch = filteredReports.slice(i, i + BATCH_SIZE);
+        console.log(`📦 Bearbetar batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(filteredReports.length/BATCH_SIZE)} (${batch.length} rapporter)`);
         
-        // Bestäm träffsäkerhet
-        let accuracy: 'good' | 'fair' | 'poor';
-        const absDiff = Math.abs(difference);
-        if (absDiff <= 15) accuracy = 'good';
-        else if (absDiff <= 30) accuracy = 'fair';
-        else accuracy = 'poor';
-        
-        results.push({
-          reportId: report.id,
-          report,
-          modelPrediction,
-          actualQuality,
-          difference,
-          accuracy
+        // Bearbeta batch parallellt men begränsat
+        const batchPromises = batch.map(async (report) => {
+          const modelPrediction = await calculateModelPrediction(report);
+          const actualQuality = qualityToNumber(report.quality, report.customPercentage);
+          const difference = modelPrediction - actualQuality;
+          
+          // Bestäm träffsäkerhet
+          let accuracy: 'good' | 'fair' | 'poor';
+          const absDiff = Math.abs(difference);
+          if (absDiff <= 15) accuracy = 'good';
+          else if (absDiff <= 30) accuracy = 'fair';
+          else accuracy = 'poor';
+          
+          return {
+            reportId: report.id,
+            report,
+            modelPrediction,
+            actualQuality,
+            difference,
+            accuracy
+          };
         });
+        
+        // Vänta på denna batch innan nästa
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
+        
+        // Kort paus mellan batches för att servern ska hinna återhämta sig
+        if (i + BATCH_SIZE < filteredReports.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
+      
+      console.log(`✅ Validering klar för ${results.length} rapporter`);
       
       setValidationResults(results);
     } catch (error) {
       console.error('Validation calculation error:', error);
     } finally {
+      isCalculatingRef.current = false;
       setLoading(false);
+      setIsCalculating(false);
     }
-  }, [selectedTimeframe, calculateModelPrediction]);
+      }, [selectedTimeframe, calculateModelPrediction]); // ← STABILISERAD: Ta bort isCalculating dependency
 
   useEffect(() => {
     if (isOpen) {

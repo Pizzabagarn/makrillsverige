@@ -14,8 +14,9 @@ const mackerelValuesCache = new Map<string, any>();
 const mackerelCacheTimestamps = new Map<string, number>();
 const MACKEREL_CACHE_DURATION = 1000 * 60 * 60 * 2; // 2 timmar cache för makrill-värden
 
-// Preloading status för makrill-data
+// Preloading status för makrill-data - FÖRHINDRAR DUPLICATE REQUESTS
 const mackerelPreloadingStatus = new Map<string, boolean>();
+const mackerelLoadingPromises = new Map<string, Promise<any>>();
 
 // Cache för vattenmask
 let waterMaskCache: any = null;
@@ -141,7 +142,7 @@ function pointInPolygon(point: [number, number], polygon: any[]): boolean {
   return inside;
 }
 
-// Hjälpfunktion för att ladda makrill-värden via API (hanterar .gz filer) - FÖRBÄTTRAD CACHING
+// Hjälpfunktion för att ladda makrill-värden via API - FÖRHINDRAR DUPLICATE REQUESTS
 async function loadMackerelValues(timestamp: string): Promise<any> {
   const cacheKey = timestamp;
   const now = Date.now();
@@ -158,6 +159,11 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
     }
   }
   
+  // KRITISKT: Förhindra duplicate requests - returnera befintlig promise
+  if (mackerelLoadingPromises.has(cacheKey)) {
+    return mackerelLoadingPromises.get(cacheKey);
+  }
+  
   // Kontrollera om makrill-data är förladdad från popup preload manager
   const popupPreloadManager = PopupPreloadManager.getInstance();
   const preloadedMackerelData = popupPreloadManager.getMackerelData(timestamp);
@@ -169,29 +175,37 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
     return preloadedMackerelData;
   }
   
-  try {
-    const startTime = performance.now();
-    
-    // Använd API-route som hanterar dekomprimering på servern
-    const response = await fetch(`/api/mackerel-values/${encodeURIComponent(timestamp)}`);
-    
-    if (!response.ok) {
-      console.warn(`⚠️ Kunde inte ladda makrill-värden för ${timestamp}`);
+  // Skapa en loading promise för att förhindra duplicate requests
+  const loadingPromise = (async () => {
+    try {
+      // Använd API-route som hanterar dekomprimering på servern
+      const response = await fetch(`/api/mackerel-values/${encodeURIComponent(timestamp)}`);
+      
+      if (!response.ok) {
+        console.warn(`⚠️ Kunde inte ladda makrill-värden för ${timestamp}`);
+        return null;
+      }
+      
+      const data = await response.json();
+      
+      // Spara i cache med timestamp
+      mackerelValuesCache.set(cacheKey, data);
+      mackerelCacheTimestamps.set(cacheKey, now);
+      
+      return data;
+    } catch (error) {
+      console.warn(`⚠️ Fel vid laddning av makrill-värden för ${timestamp}:`, error);
       return null;
+    } finally {
+      // Rensa loading promise när den är klar
+      mackerelLoadingPromises.delete(cacheKey);
     }
-    
-    const data = await response.json();
-    const loadTime = performance.now() - startTime;
-    
-    // Spara i cache med timestamp
-    mackerelValuesCache.set(cacheKey, data);
-    mackerelCacheTimestamps.set(cacheKey, now);
-    
-    return data;
-  } catch (error) {
-    console.warn(`⚠️ Fel vid laddning av makrill-värden för ${timestamp}:`, error);
-    return null;
-  }
+  })();
+  
+  // Cacha loading promise för att förhindra duplicate requests
+  mackerelLoadingPromises.set(cacheKey, loadingPromise);
+  
+  return loadingPromise;
 }
 
 // Preloading-funktion för makrill-data

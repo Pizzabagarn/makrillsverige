@@ -58,19 +58,17 @@ const FishingDataForm: React.FC<FishingDataFormProps> = ({
       setExistingReports(fishingDataManager.getAllReports());
       setBboxTemplates(fishingDataManager.getAllBBoxTemplates());
       
-      // 🔄 AUTOMATISK KONTROLL: Kör backfill om det behövs
+      // 🔄 KONTROLLERAD BACKFILL: Kör bara om användaren öppnar formuläret explicit (inte automatiskt)
+      // ANLEDNING: Automatisk backfill orsakar localStorage-ändringar som triggar infinite re-renders i valideringen
       const checkAndBackfillHistoricalData = async () => {
         const reports = fishingDataManager.getAllReports();
         const reportsWithoutHistorical = reports.filter(r => r.historicalModelPrediction === undefined);
         
-        if (reportsWithoutHistorical.length > 0) {
-    
-          
+        // STOPPAD: Ingen automatisk backfill för att förhindra validation blinking
+        // Användaren kan köra manuell backfill via knappen istället
+        if (false && reportsWithoutHistorical.length > 0) {
           try {
             const result = await fishingDataManager.backfillHistoricalPredictions();
-    
-            
-            // Uppdatera listan efter backfill
             setExistingReports(fishingDataManager.getAllReports());
           } catch (error) {
             console.error('❌ Automatisk backfill misslyckades:', error);

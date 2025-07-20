@@ -18,8 +18,8 @@ export function usePopupPreloadStatus() {
     // Check immediately
     checkStatus();
 
-    // Check every 500ms during preloading
-    const interval = setInterval(checkStatus, 500);
+    // Check every 2 seconds instead of 500ms to reduce re-renders
+    const interval = setInterval(checkStatus, 2000);
 
     // Stop checking once ready
     const stopInterval = () => {
