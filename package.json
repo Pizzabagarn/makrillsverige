@@ -20,13 +20,16 @@
     "build:quick": "python scripts/build_everything.py --quick 24",
     "build:force": "python scripts/build_everything.py --force",
     "build:current": "python scripts/build_everything.py --parameter current",
-    "build:temperature": "python scripts/build_everything.py --parameter temperature", 
+    "build:temperature": "python scripts/build_everything.py --parameter temperature",
     "build:salinity": "python scripts/build_everything.py --parameter salinity",
     "build:mackerel": "python scripts/build_everything.py --parameter mackerel",
     "build:hq": "python scripts/build_everything.py --quality 95",
     "build:fast": "python scripts/build_everything.py --quality 75"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.52.0",
     "@turf/boolean-point-in-polygon": "^7.2.0",
     "@turf/helpers": "^7.2.0",
     "@turf/turf": "^7.2.0",

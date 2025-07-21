@@ -10,6 +10,8 @@ import { LayerProvider } from "./context/LayerContext";
 import { AreaParametersProvider } from "./context/AreaParametersContext";
 import { ImageLayerProvider, type ImageLayerType } from "./context/ImageLayerContext";
 import { ManualPointsProvider } from "./context/ManualPointsContext";
+import { AuthProvider } from "./context/AuthContext";
+import { SubscriptionProvider } from "./context/SubscriptionContext";
 import { useState, createContext, useContext, useEffect } from "react";
 
 const geistSans = Geist({
@@ -68,24 +70,28 @@ export default function RootLayout({
   return (
     <html lang="sv">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AreaParametersProvider>
-          <TimeSliderProvider>
-            <LayerProvider>
-              <ImageLayerProvider>
-                <ManualPointsProvider>
-                  <SimulationContext.Provider value={{ simulationLayer, setSimulationLayer }}>
-                    <SidebarWithToggle 
-                      simulationLayer={simulationLayer}
-                      onSimulationLayerChange={setSimulationLayer}
-                    >
-                      {children}
-                    </SidebarWithToggle>
-                  </SimulationContext.Provider>
-                </ManualPointsProvider>
-              </ImageLayerProvider>
-            </LayerProvider>
-          </TimeSliderProvider>
-        </AreaParametersProvider>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <AreaParametersProvider>
+              <TimeSliderProvider>
+                <LayerProvider>
+                  <ImageLayerProvider>
+                    <ManualPointsProvider>
+                      <SimulationContext.Provider value={{ simulationLayer, setSimulationLayer }}>
+                        <SidebarWithToggle 
+                          simulationLayer={simulationLayer}
+                          onSimulationLayerChange={setSimulationLayer}
+                        >
+                          {children}
+                        </SidebarWithToggle>
+                      </SimulationContext.Provider>
+                    </ManualPointsProvider>
+                  </ImageLayerProvider>
+                </LayerProvider>
+              </TimeSliderProvider>
+            </AreaParametersProvider>
+          </SubscriptionProvider>
+        </AuthProvider>
       </body>
     </html>
   );

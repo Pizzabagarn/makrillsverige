@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ClockKnob from './ClockKnob';
+import UserMenu from './UserMenu';
 import { getLayoutType, type LayoutType } from '../../lib/layoutUtils';
 import { useImageLayer, type ImageLayerType } from '../context/ImageLayerContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -223,6 +224,11 @@ export default function Sidebar({
       style={{ padding: styles.padding }}
     >
       <div>
+        {/* User Menu - längst upp till vänster */}
+        <div className="flex justify-start mb-4">
+          <UserMenu />
+        </div>
+
         {/* Rubrik borttagen enligt användarens önskemål */}
         
         {styles.showDescription && (
