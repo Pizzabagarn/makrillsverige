@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import AreaParametersLayer from './AreaParametersLayer';
 import CurrentMagnitudeLayerMercator from './CurrentMagnitudeLayerMercator';
+import MarineShaderComponent from './MarineShaderComponent';
 import TemperatureLayerMercator from './TemperatureLayerMercator';
 import SalinityLayerMercator from './SalinityLayerMercator';
 import MackerelProbabilityLayer from './MackerelProbabilityLayer';
@@ -47,6 +48,10 @@ export default function MapView({
   const { showCurrentVectors: contextShowCurrentVectors } = useLayerVisibility();
   const { activeLayer } = useImageLayer();
   const { simulationLayer } = useSimulationLayer();
+  
+  // 🚀 SHADER vs BILD-RENDERING TOGGLE
+  const [useShaderRendering, setUseShaderRendering] = useState(false);
+  
   const { 
     isManualPointMode, 
     addManualPoint, 
@@ -359,11 +364,20 @@ export default function MapView({
         {/* Grundlager */}
         <AreaParametersLayer />
         
-        {/* Bildlager - bara ett kan vara aktivt åt gången */}
-        <CurrentMagnitudeLayerMercator 
-          visible={activeLayer === 'current'}
-          opacity={1.0}
-        />
+        {/* Strömstyrka-lager - växla mellan shader och bild-rendering */}
+        {useShaderRendering ? (
+          <MarineShaderComponent
+            parameter="current"
+            visible={activeLayer === 'current'}
+            opacity={1.0}
+            enhanced={false}
+          />
+        ) : (
+          <CurrentMagnitudeLayerMercator 
+            visible={activeLayer === 'current'}
+            opacity={1.0}
+          />
+        )}
         
         <TemperatureLayerMercator 
           visible={activeLayer === 'temperature'}
@@ -391,7 +405,7 @@ export default function MapView({
         {/* PIN KOMPONENT - RENDERAS SIST FÖR ATT VARA OVANPÅ ALLT */}
         {!isManualPointMode && <MapPin visible={showPin} />}
         
-        {/* Manual Point Popup */}
+                {/* Manual Point Popup */}
         {manualPointPopupState.isOpen && (
           <ManualPointPopup
             longitude={manualPointPopupState.coordinates.lng}
@@ -400,7 +414,7 @@ export default function MapView({
             onConfirm={handleManualPointConfirm}
           />
         )}
-        
+
         {/* Delete Point Popup */}
         {deletePointPopupState.isOpen && deletePointPopupState.point && (
           <DeletePointPopup
@@ -412,6 +426,28 @@ export default function MapView({
         
 
       </Map>
+      
+      {/* 🚀 SHADER TOGGLE - endast när strömstyrka-lager är aktivt */}
+      {activeLayer === 'current' && (
+        <div className="absolute top-20 left-4 z-20 bg-black/70 text-white p-3 rounded-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Rendering:</span>
+            <button
+              onClick={() => setUseShaderRendering(!useShaderRendering)}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                useShaderRendering 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
+              }`}
+            >
+              {useShaderRendering ? '⚡ Shader' : '🖼️ Bild'}
+            </button>
+            <div className="text-xs text-gray-300">
+              {useShaderRendering ? 'GPU WebGL' : 'Prerenderade bilder'}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Legender - bara en synlig åt gången baserat på aktivt lager */}
       <CurrentMagnitudeLegend 
