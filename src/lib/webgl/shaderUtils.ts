@@ -71,61 +71,7 @@ export function createProgram(
 }
 
 /**
- * Konvertera geographic koordinater till Mercator-koordinater för MapLibre
- */
-function lngLatToMercator(lng: number, lat: number): { x: number, y: number } {
-  // MapLibre GL JS använder Web Mercator projection (0-1 coordinates)
-  const x = (lng + 180) / 360;
-  
-  const latRad = lat * Math.PI / 180;
-  const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
-  const y = (1 - mercN / Math.PI) / 2;
-  
-  return { x, y };
-}
-
-/**
- * Skapa en quad för geographic bounds
- */
-export function createDataQuad(
-  gl: WebGLRenderingContext, 
-  bounds: [number, number, number, number] // [lon_min, lon_max, lat_min, lat_max]
-): WebGLBuffer | null {
-  const [lonMin, lonMax, latMin, latMax] = bounds;
-  
-  console.log(`🗺️ Creating geo quad for bounds:`, { lonMin, lonMax, latMin, latMax });
-  
-  // Konvertera till Mercator coordinates
-  const bottomLeft = lngLatToMercator(lonMin, latMin);  // Bottom-left corner
-  const topRight = lngLatToMercator(lonMax, latMax);    // Top-right corner
-  
-  console.log(`📍 Mercator coordinates:`, { 
-    bottomLeft, 
-    topRight, 
-    width: topRight.x - bottomLeft.x,
-    height: topRight.y - bottomLeft.y 
-  });
-  
-  const buffer = gl.createBuffer();
-  if (!buffer) return null;
-
-  // Skapa quad som täcker geografiskt område
-  const positions = new Float32Array([
-    bottomLeft.x, bottomLeft.y,  // Bottom-left
-    topRight.x,   bottomLeft.y,  // Bottom-right  
-    bottomLeft.x, topRight.y,    // Top-left
-    topRight.x,   topRight.y     // Top-right
-  ]);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
-  console.log(`✅ Geographic quad created with ${positions.length / 2} vertices`);
-  return buffer;
-}
-
-/**
- * Skapa en fullscreen quad för shader-rendering (legacy)
+ * Skapa en fullscreen quad för shader-rendering
  */
 export function createFullscreenQuad(gl: WebGLRenderingContext): WebGLBuffer | null {
   const buffer = gl.createBuffer();
@@ -234,28 +180,16 @@ export function createDataTexture(
   console.log('📊 Converting to UNSIGNED_BYTE format...');
   
   // Konvertera till 0-255 range för UNSIGNED_BYTE
-  // Speciell hantering för NaN-värden (landmassor)
   const normalizedData = new Uint8Array(data.length);
   const [minVal, maxVal] = findDataRange(data);
   const range = maxVal - minVal || 1;
   
   console.log(`📈 Data range: ${minVal.toFixed(3)} - ${maxVal.toFixed(3)}`);
   
-  let nanCount = 0;
   for (let i = 0; i < data.length; i++) {
-    if (isNaN(data[i]) || !isFinite(data[i])) {
-      // Sätt NaN-värden till 0 för att identifiera landmassor
-      normalizedData[i] = 0;
-      nanCount++;
-    } else {
-      // Mappa giltiga värden till 1-255 (sparar 0 för NaN)
-      const normalized = (data[i] - minVal) / range;
-      normalizedData[i] = Math.round(normalized * 254) + 1; // 1-255
-    }
+    const normalized = (data[i] - minVal) / range;
+    normalizedData[i] = Math.round(normalized * 255);
   }
-  
-  console.log(`🏝️ NaN values (land pixels): ${nanCount}/${data.length} (${((nanCount/data.length)*100).toFixed(1)}%)`);
-  
   
   // Skapa texture med UNSIGNED_BYTE
   gl.texImage2D(

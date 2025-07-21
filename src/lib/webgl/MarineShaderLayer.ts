@@ -12,7 +12,6 @@ import {
   extractFrame,
   createShader,
   createProgram,
-  createDataQuad,
   createFullscreenQuad,
   checkWebGLError,
   type ShaderDataSet
@@ -53,7 +52,6 @@ export class MarineShaderLayer implements CustomLayerInterface {
 
   // Uniform locations
   private uniforms: {
-    matrix: WebGLUniformLocation | null;
     dataFrame0: WebGLUniformLocation | null;
     dataFrame1: WebGLUniformLocation | null;
     colormap: WebGLUniformLocation | null;
@@ -65,7 +63,6 @@ export class MarineShaderLayer implements CustomLayerInterface {
     contourLevel?: WebGLUniformLocation | null;
     contourWidth?: WebGLUniformLocation | null;
   } = {
-    matrix: null,
     dataFrame0: null,
     dataFrame1: null,
     colormap: null,
@@ -131,18 +128,9 @@ export class MarineShaderLayer implements CustomLayerInterface {
    * MapLibre lifecycle: Called for each frame render
    */
   render(gl: WebGLRenderingContext, options: CustomRenderMethodInput): void {
-    console.log(`🎬 RENDER CALLED - Layer: ${this.id}`);
-    
     if (!this.isInitialized || !this.dataset || !this.program) {
-      console.log(`❌ RENDER ABORTED - Missing resources:`, {
-        initialized: this.isInitialized,
-        dataset: !!this.dataset,
-        program: !!this.program
-      });
       return;
     }
-
-    console.log(`🚀 RENDER EXECUTING - Viewport:`, gl.getParameter(gl.VIEWPORT));
 
     // Uppdatera temporal state baserat på aktuell tid
     updateTemporalState(this.dataset, this.currentTime);
@@ -152,8 +140,6 @@ export class MarineShaderLayer implements CustomLayerInterface {
 
     // Rendera
     this.renderFrame(gl, options);
-    
-    console.log(`✅ RENDER COMPLETE`);
   }
 
   /**
@@ -228,8 +214,7 @@ export class MarineShaderLayer implements CustomLayerInterface {
     this.getUniformLocations(gl);
     this.getAttributeLocations(gl);
 
-    // DEBUG: Använd fullscreen quad för att testa
-    console.log(`🌍 DEBUG: Using fullscreen quad for testing`);
+    // Skapa vertex buffer för fullscreen quad
     this.vertexBuffer = createFullscreenQuad(gl);
     if (!this.vertexBuffer) {
       throw new Error('Failed to create vertex buffer');
@@ -279,11 +264,6 @@ export class MarineShaderLayer implements CustomLayerInterface {
    * Hämta shader-konfiguration
    */
   private getShaderConfig(): ShaderConfig {
-    // DEBUG: Använd fullscreen_test shader för att testa grundfunktionalitet
-    console.log(`🔍 DEBUG: Using fullscreen_test shader for debugging`);
-    return SHADER_CONFIGS.fullscreen_test;
-    
-    /*
     const configKey = this.enhanced ? `${this.parameter}_enhanced` : this.parameter;
     const config = SHADER_CONFIGS[configKey];
     
@@ -293,7 +273,6 @@ export class MarineShaderLayer implements CustomLayerInterface {
     }
 
     return config;
-    */
   }
 
   /**
@@ -302,7 +281,6 @@ export class MarineShaderLayer implements CustomLayerInterface {
   private getUniformLocations(gl: WebGLRenderingContext): void {
     if (!this.program) return;
 
-    this.uniforms.matrix = gl.getUniformLocation(this.program, 'u_matrix');
     this.uniforms.dataFrame0 = gl.getUniformLocation(this.program, 'u_dataFrame0');
     this.uniforms.dataFrame1 = gl.getUniformLocation(this.program, 'u_dataFrame1');
     this.uniforms.colormap = gl.getUniformLocation(this.program, 'u_colormap');
@@ -372,16 +350,7 @@ export class MarineShaderLayer implements CustomLayerInterface {
 
     const config = this.getShaderConfig();
 
-    // Aktivera blending för transparency
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
     gl.useProgram(this.program);
-
-    // Sätt projection matrix från MapLibre
-    if (this.uniforms.matrix && options.projectionMatrix) {
-      gl.uniformMatrix4fv(this.uniforms.matrix, false, options.projectionMatrix);
-    }
 
     // Bind vertex buffer
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -422,7 +391,7 @@ export class MarineShaderLayer implements CustomLayerInterface {
       }
     }
 
-    // Rendera data quad
+    // Rendera fullscreen quad
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     checkWebGLError(gl, 'frame render');

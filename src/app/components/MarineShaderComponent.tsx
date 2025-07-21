@@ -57,7 +57,6 @@ const MarineShaderComponent = React.memo<MarineShaderComponentProps>(({
         setError(null);
 
         // Skapa shader layer
-        console.log(`🚀 Creating shader layer with parameter: ${parameter}`);
         const shaderLayer = new MarineShaderLayer(layerId, {
           parameter,
           opacity,

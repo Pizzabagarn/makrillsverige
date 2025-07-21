@@ -4,19 +4,16 @@
  */
 
 /**
- * Vertex shader - MapLibre projection
+ * Vertex shader - Standard fullscreen quad
  */
 export const VERTEX_SHADER = `
   attribute vec2 a_position;
-  uniform mat4 u_matrix;
   varying vec2 v_uv;
 
   void main() {
-    // UV-koordinater från vertex position  
+    // Konvertera från [-1,1] till [0,1] för UV-koordinater
     v_uv = (a_position + 1.0) * 0.5;
-    
-    // Använd MapLibre's projection matrix
-    gl_Position = u_matrix * vec4(a_position, 0.0, 1.0);
+    gl_Position = vec4(a_position, 0.0, 1.0);
   }
 `;
 
@@ -44,16 +41,12 @@ export const MARINE_FRAGMENT_SHADER = `
   varying vec2 v_uv;
 
   /**
-   * Normalisera datavärde till [0,1] för colormap lookup  
-   * OBS: Giltiga värden mappade till 1-255, NaN till 0
+   * Normalisera datavärde till [0,1] för colormap lookup
+   * OBS: Med UNSIGNED_BYTE texturer är värdet redan normaliserat [0,1]
    */
   float normalizeValue(float value) {
-    // Konvertera från 1-255 range tillbaka till 0-1
-    // (0 är reserverat för NaN/land)
-    if (value <= 0.001) {
-      return 0.0; // Land/NaN
-    }
-    return clamp((value - 1.0/255.0) * (255.0/254.0), 0.0, 1.0);
+    // Värdet från UNSIGNED_BYTE texture är redan normaliserat
+    return clamp(value, 0.0, 1.0);
   }
 
   /**
@@ -66,12 +59,11 @@ export const MARINE_FRAGMENT_SHADER = `
   }
 
   /**
-   * Kontrollera om punkt är i vatten
-   * NaN-värden konverteras till 0 i UNSIGNED_BYTE texture
+   * Kontrollera om punkt är i vatten (baserat på NaN-värden)
    */
   bool isInWater(float value0, float value1) {
-    // Värde 0 indikerar landområden (tidigare NaN)
-    return value0 > 0.001 && value1 > 0.001;
+    // NaN-värden indikerar landområden i vår data
+    return (value0 == value0) && (value1 == value1); // !isNaN check
   }
 
   void main() {
@@ -145,11 +137,8 @@ export const ENHANCED_FRAGMENT_SHADER = `
   varying vec2 v_uv;
   
   float normalizeValue(float value) {
-    // Konvertera från 1-255 range tillbaka till 0-1
-    if (value <= 0.001) {
-      return 0.0; // Land/NaN
-    }
-    return clamp((value - 1.0/255.0) * (255.0/254.0), 0.0, 1.0);
+    // Värdet från UNSIGNED_BYTE texture är redan normaliserat [0,1]
+    return clamp(value, 0.0, 1.0);
   }
   
   vec4 sampleColormap(float normalizedValue) {
@@ -158,7 +147,7 @@ export const ENHANCED_FRAGMENT_SHADER = `
   }
   
   bool isInWater(float value0, float value1) {
-    return value0 > 0.001 && value1 > 0.001;
+    return (value0 == value0) && (value1 == value1);
   }
   
   /**
@@ -227,7 +216,7 @@ export const SHADER_CONFIGS: Record<string, ShaderConfig> = {
   current: {
     fragmentShader: MARINE_FRAGMENT_SHADER,
     uniforms: {
-      dataRange: [0.0, 1.224], // m/s baserat på export-data
+      dataRange: [0.0, 1.3], // m/s
     }
   },
   
@@ -258,41 +247,6 @@ export const SHADER_CONFIGS: Record<string, ShaderConfig> = {
   
   debug: {
     fragmentShader: DEBUG_FRAGMENT_SHADER,
-    uniforms: {
-      dataRange: [0.0, 1.0],
-    }
-  },
-  
-  simple_test: {
-    fragmentShader: `
-      precision mediump float;
-      varying vec2 v_uv;
-      uniform float u_opacity;
-      
-      void main() {
-        // Enkel test - röd fyrkant som täcker UV-området
-        // Gör den mycket synlig med full alpha
-        vec3 testColor = vec3(1.0, 0.0, 0.0); // Röd
-        gl_FragColor = vec4(testColor, 0.8); // Fast alpha, ingen opacity
-      }
-    `,
-    uniforms: {
-      dataRange: [0.0, 1.0],
-    }
-  },
-  
-  fullscreen_test: {
-    fragmentShader: `
-      precision mediump float;
-      varying vec2 v_uv;
-      uniform float u_opacity;
-      
-      void main() {
-        // Fullscreen test med gradient för att se UV-mapping
-        vec3 gradientColor = vec3(v_uv.x, v_uv.y, 1.0); 
-        gl_FragColor = vec4(gradientColor, 0.7);
-      }
-    `,
     uniforms: {
       dataRange: [0.0, 1.0],
     }
