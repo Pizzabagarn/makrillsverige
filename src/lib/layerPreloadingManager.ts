@@ -30,11 +30,11 @@ class LayerPreloadingManager {
   private isPreloading: boolean = false;
   private isPaused: boolean = false; // NYTT: För pausning av preloading
   
-  // FÖRBÄTTRAD prioritering för optimal mobil-prestanda
+  // FÖRBÄTTRAD prioritering för optimal prestanda med temperatur som default
   private readonly LAYER_PRIORITY = [
+    'temperature',        // Flytta temperatur först eftersom det är default
     'current-magnitude',
     'mackerel-probability', 
-    'temperature', 
     'salinity'
   ] as const;
   
@@ -48,14 +48,23 @@ class LayerPreloadingManager {
     priority: 'critical' | 'high' | 'normal' | 'low';
     maxImages?: number; // NYTT: Begränsa antal bilder
   }> = {
+    'temperature': {
+      metadataUrl: '/data/temperature-images-mercator/metadata.json',
+      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
+      delay: 0, // OMEDELBAR start för default layer
+      batchDelay: 1, // ULTRA-snabb mellan bilder
+      maxParallelLoads: 12, // Hög hastighet för default layer
+      priority: 'critical', // Kritisk prioritet för default layer
+      maxImages: undefined
+    },
     'current-magnitude': {
       metadataUrl: '/data/current-images-mercator/metadata.json',
       imageUrlPattern: '/data/current-images-mercator/current_magnitude_{timestamp}.webp',
-      delay: 0, // OMEDELBAR start för critical layers
-      batchDelay: 1, // ULTRA-snabb mellan bilder med 8GB heap
-      maxParallelLoads: 16, // DUBBLA parallella laddningar för snabbhet
-      priority: 'critical',
-      maxImages: undefined // Alla bilder för full funktionalitet
+      delay: 10, // Start snabbt efter temperatur
+      batchDelay: 1, // Samma snabbhet som critical
+      maxParallelLoads: 16, // Fortfarande höga värden
+      priority: 'high', // Höga prioritet istället för critical
+      maxImages: undefined
     },
     'mackerel-probability': {
       metadataUrl: '/data/mackerel-probability-images-mercator/metadata.json',
@@ -64,15 +73,6 @@ class LayerPreloadingManager {
       batchDelay: 1, // Samma snabbhet som critical
       maxParallelLoads: 12, // Hög hastighet för högt prioriterat lager
       priority: 'high',
-      maxImages: undefined
-    },
-    'temperature': {
-      metadataUrl: '/data/temperature-images-mercator/metadata.json',
-      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
-      delay: 50, // Mycket snabbare start
-      batchDelay: 2, // Snabbare mellan bilder
-      maxParallelLoads: 8, // Dubbla parallella laddningar
-      priority: 'normal',
       maxImages: undefined
     },
     'salinity': {
@@ -96,14 +96,23 @@ class LayerPreloadingManager {
     priority: 'critical' | 'high' | 'normal' | 'low';
     maxImages: number; // KRITISKT: Begränsa bilder drastiskt
   }> = {
+    'temperature': {
+      metadataUrl: '/data/temperature-images-mercator/metadata.json',
+      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
+      delay: 1000, // Snabb start för default layer på mobil
+      batchDelay: 50, // Samma som tidigare critical
+      maxParallelLoads: 1, // En i taget
+      priority: 'critical', // Kritisk prioritet för default layer
+      maxImages: 24 // Samma som tidigare critical layer
+    },
     'current-magnitude': {
       metadataUrl: '/data/current-images-mercator/metadata.json',
       imageUrlPattern: '/data/current-images-mercator/current_magnitude_{timestamp}.webp',
-      delay: 1000, // Långsammare start för stabilitet
-      batchDelay: 50, // Mycket långsammare mellan bilder
-      maxParallelLoads: 1, // En i taget
-      priority: 'critical',
-      maxImages: 24 // Bara 24 bilder (1 dag) för kritiskt lager
+      delay: 3000, // Vänta 3 sekunder efter temperatur
+      batchDelay: 100,
+      maxParallelLoads: 1,
+      priority: 'high', // Höga prioritet istället för critical
+      maxImages: 12 // Färre bilder än tidigare
     },
     'mackerel-probability': {
       metadataUrl: '/data/mackerel-probability-images-mercator/metadata.json',
@@ -113,15 +122,6 @@ class LayerPreloadingManager {
       maxParallelLoads: 1,
       priority: 'high',
       maxImages: 12 // Bara 12 bilder (½ dag) för höga prioritet
-    },
-    'temperature': {
-      metadataUrl: '/data/temperature-images-mercator/metadata.json',
-      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
-      delay: 8000, // Vänta 8 sekunder - ladda bara om användaren är kvar
-      batchDelay: 200,
-      maxParallelLoads: 1,
-      priority: 'low',
-      maxImages: 6 // Bara 6 bilder för låg prioritet
     },
     'salinity': {
       metadataUrl: '/data/salinity-images-mercator/metadata.json',
@@ -144,14 +144,23 @@ class LayerPreloadingManager {
     priority: 'critical' | 'high' | 'normal' | 'low';
     maxImages: number;
   }> = {
+    'temperature': {
+      metadataUrl: '/data/temperature-images-mercator/metadata.json',
+      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
+      delay: 2000, // Start för default layer
+      batchDelay: 100,
+      maxParallelLoads: 1,
+      priority: 'critical', // Kritisk prioritet för default layer
+      maxImages: 12 // Samma som tidigare critical
+    },
     'current-magnitude': {
       metadataUrl: '/data/current-images-mercator/metadata.json',
       imageUrlPattern: '/data/current-images-mercator/current_magnitude_{timestamp}.webp',
-      delay: 2000,
-      batchDelay: 100,
+      delay: 8000, // Senare start
+      batchDelay: 200,
       maxParallelLoads: 1,
-      priority: 'critical',
-      maxImages: 12 // Bara 12 bilder för svagaste enheter
+      priority: 'high', // Höga prioritet
+      maxImages: 6 // Färre bilder
     },
     'mackerel-probability': {
       metadataUrl: '/data/mackerel-probability-images-mercator/metadata.json',
@@ -161,15 +170,6 @@ class LayerPreloadingManager {
       maxParallelLoads: 1,
       priority: 'high',
       maxImages: 6
-    },
-    'temperature': {
-      metadataUrl: '/data/temperature-images-mercator/metadata.json',
-      imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
-      delay: 20000, // Skippa nästan helt
-      batchDelay: 500,
-      maxParallelLoads: 1,
-      priority: 'low',
-      maxImages: 3
     },
     'salinity': {
       metadataUrl: '/data/salinity-images-mercator/metadata.json',

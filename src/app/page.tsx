@@ -304,7 +304,7 @@ export default function LandingPage() {
             ref={titleRef}
             onMouseEnter={handleTitleHover}
             onMouseLeave={handleTitleLeave}
-            className="text-5xl md:text-7xl lg:text-8xl font-light text-white mb-8 tracking-[-0.02em] cursor-pointer"
+            className="text-5xl md:text-7xl lg:text-8xl font-light text-white mb-8 tracking-[-0.02em] cursor-default"
             style={{ opacity: 0 }}
           >
             Fiskdata
@@ -312,9 +312,9 @@ export default function LandingPage() {
           </h1>
           <p 
             ref={subtitleRef}
-            onMouseEnter={handleSubtitleHover}
-            onMouseLeave={handleSubtitleLeave}
-            className="text-xl md:text-2xl lg:text-3xl text-white/80 font-extralight tracking-wide leading-relaxed mb-12 cursor-pointer"
+            onMouseEnter={(e) => scopeRef.current?.methods.featureHover(e.currentTarget)}
+            onMouseLeave={(e) => scopeRef.current?.methods.featureLeave(e.currentTarget)}
+            className="text-xl md:text-2xl lg:text-3xl text-white/80 font-extralight tracking-wide leading-relaxed mb-12 cursor-default"
             style={{ opacity: 0 }}
           >
             Avancerad marinanalys för professionellt fiske
@@ -328,7 +328,7 @@ export default function LandingPage() {
             <span 
               onMouseEnter={handleFeatureHover}
               onMouseLeave={handleFeatureLeave}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-2 cursor-default"
               style={{ opacity: 0 }}
             >
               <div className="w-1 h-1 bg-teal-400 rounded-full animate-pulse"></div>
@@ -337,7 +337,7 @@ export default function LandingPage() {
             <span 
               onMouseEnter={handleFeatureHover}
               onMouseLeave={handleFeatureLeave}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-2 cursor-default"
               style={{ opacity: 0 }}
             >
               <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></div>
@@ -346,7 +346,7 @@ export default function LandingPage() {
             <span 
               onMouseEnter={handleFeatureHover}
               onMouseLeave={handleFeatureLeave}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-2 cursor-default"
               style={{ opacity: 0 }}
             >
               <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>
