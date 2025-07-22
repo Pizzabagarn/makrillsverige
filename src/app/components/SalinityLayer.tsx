@@ -119,8 +119,8 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
         
         img.src = imageUrl;
         
-        // Small delay to prevent blocking the UI
-        await new Promise(resolve => setTimeout(resolve, 7));
+        // MINIMAL delay för maximal hastighet med 8GB heap  
+        await new Promise(resolve => setTimeout(resolve, 1));
       }
       
       // All images preloaded

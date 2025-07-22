@@ -206,8 +206,8 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
         
         img.src = imageUrl;
         
-        // Small delay to prevent blocking the UI
-        await new Promise(resolve => setTimeout(resolve, 15));
+        // ULTRA-snabb laddning med 8GB heap-stöd
+        await new Promise(resolve => setTimeout(resolve, 1));
       }
       
 

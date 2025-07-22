@@ -29,7 +29,7 @@ import DeletePointPopup from './DeletePointPopup';
 import { useLayerVisibility } from '../context/LayerContext';
 import { useImageLayer } from '../context/ImageLayerContext';
 import { useManualPoints } from '../context/ManualPointsContext';
-import { useSimulationLayer } from '../layout';
+import { useSimulationLayer } from '../context/SimulationContext';
 import { ManualGridPoint } from '@/lib/points';
 
 interface MapViewProps {

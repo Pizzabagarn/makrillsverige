@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "set NODE_OPTIONS=--max-old-space-size=8192 --expose-gc && next dev",
+    "build": "set NODE_OPTIONS=--max-old-space-size=8192 --expose-gc && next build",
     "start": "next start",
     "lint": "next lint",
     "generate:grid": "ts-node scripts/generateGrid.ts",
@@ -36,6 +36,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/maplibre-gl": "^1.13.2",
     "@types/pako": "^2.0.3",
+    "animejs": "^4.0.2",
     "chroma-js": "^3.1.2",
     "dotenv": "^16.5.0",
     "lucide-react": "^0.525.0",

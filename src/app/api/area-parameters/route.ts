@@ -4,11 +4,43 @@ import { createReadStream } from 'fs';
 import { createGunzip } from 'zlib';
 import path from 'path';
 
-// Global memory cache for area parameters data
+// Global memory cache for area parameters data - BEGRÄNSAD för minnesäkerhet
 let cachedAreaData: any = null;
 let cachedResponseJson: string = '';  // Pre-serialized JSON string
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache
+const CACHE_DURATION = 1000 * 60 * 30; // 30 minuter cache (reducerat för att frigöra minne oftare)
+const MAX_CACHE_SIZE_MB = 100; // Maximal cache-storlek i MB
+
+// Cache-rensningsfunktion för minneshantering
+function clearAreaParametersCache() {
+  console.log('🧹 Rensar area-parameters cache för att frigöra minne');
+  cachedAreaData = null;
+  cachedResponseJson = '';
+  cacheTimestamp = 0;
+  
+  // Tvinga garbage collection om tillgängligt
+  if (global.gc) {
+    global.gc();
+    console.log('🗑️ Garbage collection utfört');
+  }
+}
+
+// Auto-rensning av cache vid minnespress
+function scheduleMemoryCleanup() {
+  setInterval(() => {
+    const memUsage = process.memoryUsage();
+    const memUsedMB = memUsage.heapUsed / (1024 * 1024);
+    
+    // Rensa cache om minnesanvändningen är över 1GB
+    if (memUsedMB > 1024) {
+      console.warn(`⚠️ Hög minnesanvändning detekterad: ${memUsedMB.toFixed(1)}MB`);
+      clearAreaParametersCache();
+    }
+  }, 5 * 60 * 1000); // Kontrollera var 5:e minut
+}
+
+// Starta minnesövervakning
+scheduleMemoryCleanup();
 
 // Pre-load data on server startup
 let isPreloading = false;
@@ -73,9 +105,19 @@ async function loadAreaData() {
       });
   });
 
+  // Kontrollera cache-storlek innan lagring
+  const jsonString = JSON.stringify(data);
+  const cacheSizeMB = Buffer.byteLength(jsonString, 'utf8') / (1024 * 1024);
+  
+  if (cacheSizeMB > MAX_CACHE_SIZE_MB) {
+    console.warn(`⚠️ Cache-storlek ${cacheSizeMB.toFixed(1)}MB överskrider limit ${MAX_CACHE_SIZE_MB}MB - skippar cache`);
+    return data; // Returnera data utan att cacha för att undvika minnesexplodering
+  }
+  
   cachedAreaData = data;
-  cachedResponseJson = JSON.stringify(data);  // Pre-serialize for faster responses
+  cachedResponseJson = jsonString;  // Pre-serialize for faster responses
   cacheTimestamp = Date.now();
+  console.log(`💾 Area-parameters cachad: ${cacheSizeMB.toFixed(1)}MB`);
   return data;
 }
 

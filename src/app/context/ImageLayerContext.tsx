@@ -18,7 +18,7 @@ interface ImageLayerProviderProps {
 }
 
 export function ImageLayerProvider({ children }: ImageLayerProviderProps) {
-  const [activeLayer, setActiveLayerState] = useState<ImageLayerType>('temperature'); // Default to temperature
+  const [activeLayer, setActiveLayerState] = useState<ImageLayerType>('current'); // Default to current
   const lastSimulationLayer = useRef<ImageLayerType>(null);
 
   // Manuell lagerbyte (från sidebar) - hantera simulering automatiskt

@@ -51,36 +51,36 @@ class LayerPreloadingManager {
     'current-magnitude': {
       metadataUrl: '/data/current-images-mercator/metadata.json',
       imageUrlPattern: '/data/current-images-mercator/current_magnitude_{timestamp}.webp',
-      delay: 50,
-      batchDelay: 2,
-      maxParallelLoads: 8, // Öka för desktop
+      delay: 0, // OMEDELBAR start för critical layers
+      batchDelay: 1, // ULTRA-snabb mellan bilder med 8GB heap
+      maxParallelLoads: 16, // DUBBLA parallella laddningar för snabbhet
       priority: 'critical',
-      maxImages: undefined // Alla bilder på desktop
+      maxImages: undefined // Alla bilder för full funktionalitet
     },
     'mackerel-probability': {
       metadataUrl: '/data/mackerel-probability-images-mercator/metadata.json',
       imageUrlPattern: '/data/mackerel-probability-images-mercator/mackerel_probability_{timestamp}.webp',
-      delay: 100,
-      batchDelay: 3,
-      maxParallelLoads: 6,
+      delay: 10, // Start nästan omedelbart efter strömbilder
+      batchDelay: 1, // Samma snabbhet som critical
+      maxParallelLoads: 12, // Hög hastighet för högt prioriterat lager
       priority: 'high',
       maxImages: undefined
     },
     'temperature': {
       metadataUrl: '/data/temperature-images-mercator/metadata.json',
       imageUrlPattern: '/data/temperature-images-mercator/temperature_{timestamp}.webp',
-      delay: 200,
-      batchDelay: 4,
-      maxParallelLoads: 4,
+      delay: 50, // Mycket snabbare start
+      batchDelay: 2, // Snabbare mellan bilder
+      maxParallelLoads: 8, // Dubbla parallella laddningar
       priority: 'normal',
       maxImages: undefined
     },
     'salinity': {
       metadataUrl: '/data/salinity-images-mercator/metadata.json',
       imageUrlPattern: '/data/salinity-images-mercator/salinity_{timestamp}.webp',
-      delay: 300,
-      batchDelay: 5,
-      maxParallelLoads: 3,
+      delay: 100, // 3x snabbare start än tidigare
+      batchDelay: 2, // Mycket snabbare
+      maxParallelLoads: 6, // Dubbla parallella laddningar
       priority: 'normal',
       maxImages: undefined
     }
@@ -182,10 +182,12 @@ class LayerPreloadingManager {
     }
   };
 
-  // ALLA ENHETER FÅR ALLA BILDER - ingen diskriminering!
+  // AGGRESSIV men SMART preloadning - ger omedelbar visning med minnesstyrning
   private getDeviceClass(): 'desktop' | 'tablet' | 'mobile' | 'ultra-mobile' {
-    // ALLA enheter behandlas som desktop för FULL funktionalitet
-    console.log('🖥️ LADDAR ALLA BILDER för bästa användarupplevelse - ingen begränsning!');
+    console.log('🚀 FULL PRESTANDA AKTIVERAD - alla bilder laddas för omedelbar visning!');
+    console.log('💡 Nu med 8GB heap och smart minnesstyrning - inga begränsningar!');
+    
+    // Alla enheter får full funktionalitet tack vare våra minnesoptimeringar
     return 'desktop';
   }
 

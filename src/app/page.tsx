@@ -2,130 +2,436 @@
 
 'use client';
 
-import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
-import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../lib/layoutUtils';
-import { useLayer } from './context/LayerContext';
-import { useImageLayer, type ImageLayerType } from './context/ImageLayerContext';
-import { useSimulationLayer } from './layout';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { animate, createScope } from 'animejs';
 import LayerPreloadingManager from '@/lib/layerPreloadingManager';
 import PopupPreloadManager from '@/lib/popupPreloadManager';
 import { useCacheOptimization } from '@/lib/throttleHooks';
+import { useNavigation } from './context/NavigationContext';
+import UserMenu from './components/UserMenu';
+import { Loader2 } from 'lucide-react';
 
-const MapView = dynamic(() => import('./components/Map'), { ssr: false });
-const ClockKnob = dynamic(() => import('./components/ClockKnob'), { ssr: false });
-const SimulationPlayer = dynamic(() => import('./components/SimulationPlayer'), { ssr: false });
+export default function LandingPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [preloadingProgress, setPreloadingProgress] = useState(0);
+  const [isPreloading, setIsPreloading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const router = useRouter();
+  const { isLowEndDevice } = useCacheOptimization();
+  const { setNavigating } = useNavigation();
 
-export default function Home() {
-  const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
-  const { simulationLayer, setSimulationLayer } = useSimulationLayer();
-  
-  // Layer state från LayerContext - kontrolleras nu från sidebaren
-  const { showCurrentVectors } = useLayer();
-  
-  // NYTT: Global cache-optimering
-  const { isLowEndDevice, optimizeForDevice, clearApiCache } = useCacheOptimization();
+  // Refs för anime.js animationer
+  const rootRef = useRef<HTMLDivElement>(null);
+  const scopeRef = useRef<any>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const buttonsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const checkLayout = () => {
-      setLayoutType(getLayoutType());
-    };
-    
-    checkLayout();
-    window.addEventListener('resize', checkLayout);
-    window.addEventListener('orientationchange', checkLayout);
-    
-    // FÖRBÄTTRAD: Anpassa global preloading baserat på enhet
+    // Starta preloading i bakgrunden utan att blockera UI
     const startPreloading = async () => {
-      const preloadingManager = LayerPreloadingManager.getInstance();
-      
-      if (isLowEndDevice) {
-        console.log('📱 Svag enhet - begränsar preloading');
-        // Vänta lite innan preloading startar
-        setTimeout(() => {
-          preloadingManager.startPreloading();
-        }, 3000);
-      } else {
-        preloadingManager.startPreloading();
+      try {
+        const preloadingManager = LayerPreloadingManager.getInstance();
+        
+        // Snabb progress animation för bättre UX
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += Math.random() * 25 + 10; // Snabbare progress
+          if (progress > 95) {
+            clearInterval(progressInterval);
+            progress = 100;
+            setPreloadingProgress(100);
+            // Kortare loading-tid för snabbare känsla
+            setTimeout(() => {
+              setIsLoading(false);
+            }, 500);
+          } else {
+            setPreloadingProgress(progress);
+          }
+        }, 150); // Snabbare uppdateringar
+        
+        // Starta preloading asynkront utan await (blockerar inte UI)
+        if (isLowEndDevice) {
+          console.log('📱 Mobil-optimerad preloading');
+          setTimeout(() => {
+            preloadingManager.startPreloading().catch(console.warn);
+          }, 500);
+        } else {
+          // Starta direkt för desktop
+          preloadingManager.startPreloading().catch(console.warn);
+          
+          // Popup preloading för starka enheter
+          const popupPreloadManager = PopupPreloadManager.getInstance();
+          popupPreloadManager.startPreloading().catch(console.warn);
+        }
+        
+      } catch (error) {
+        console.warn('⚠️ Preloading startar i bakgrunden:', error);
+        setIsLoading(false);
       }
     };
     
-    startPreloading().catch(error => {
-      console.error('❌ Fel vid global layer preloading:', error);
-    });
-    
-    // FÖRBÄTTRAD: Popup preloading endast för starka enheter
-    if (!isLowEndDevice) {
-      const popupPreloadManager = PopupPreloadManager.getInstance();
-      popupPreloadManager.startPreloading().catch(error => {
-        console.error('❌ Fel vid popup preloading:', error);
-      });
-    }
-    
-    // NYTT: Rensa API-cache periodiskt - MINSKAT för bättre stabilitet
-    const cacheCleanupInterval = setInterval(() => {
-      clearApiCache();
-    }, 30 * 60 * 1000); // Ändrat från 10 minuter till 30 minuter för färre re-renders // Var 10:e minut
-    
-    return () => {
-      window.removeEventListener('resize', checkLayout);
-      window.removeEventListener('orientationchange', checkLayout);
-      clearInterval(cacheCleanupInterval);
-    };
-  }, [isLowEndDevice, clearApiCache]);
+    startPreloading();
+  }, [isLowEndDevice]);
 
-  // NYTT: Optimera för enheten efter initial laddning
+  // Visa laddningsindikator när användaren navigerar
   useEffect(() => {
-    if (isLowEndDevice) {
-      // Optimera efter att appen har laddat
-      const timer = setTimeout(optimizeForDevice, 5000);
+    if (isPreloading) {
+      // Visa något som indikerar att navigation pågår
+      const timer = setTimeout(() => {
+        setIsPreloading(false);
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isLowEndDevice, optimizeForDevice]);
+  }, [isPreloading]);
+
+  // Anime.js setup med nya API:n
+  useEffect(() => {
+    if (isLoading || !rootRef.current) return;
+
+    // Skapa en anime scope för alla animationer
+    const scope = createScope();
+    scopeRef.current = scope;
+
+    // Sekventiell animation av element med anime.js
+    setTimeout(() => {
+      if (titleRef.current) {
+        animate(titleRef.current, {
+          opacity: [0, 1],
+          translateY: [30, 0],
+          duration: 1000,
+          delay: 200,
+          ease: 'outExpo'
+        });
+      }
+    }, 0);
+
+    setTimeout(() => {
+      if (subtitleRef.current) {
+        animate(subtitleRef.current, {
+          opacity: [0, 1],
+          translateY: [30, 0],
+          duration: 800,
+          delay: 400,
+          ease: 'outExpo'
+        });
+      }
+    }, 200);
+
+    setTimeout(() => {
+      if (featuresRef.current?.children) {
+        animate(featuresRef.current.children, {
+          opacity: [0, 1],
+          translateY: [20, 0],
+          duration: 600,
+          delay: (_: any, i: number) => i * 100,
+          ease: 'outBack'
+        });
+      }
+    }, 400);
+
+    setTimeout(() => {
+      if (buttonsRef.current?.children) {
+        animate(buttonsRef.current.children, {
+          opacity: [0, 1],
+          scale: [0.95, 1],
+          duration: 700,
+          delay: (_: any, i: number) => i * 150,
+          ease: 'outElastic'
+        });
+      }
+    }, 600);
+
+    // Hover-animationer som metoder
+    scopeRef.current.methods = {
+      titleHover: () => {
+        if (titleRef.current) {
+          animate(titleRef.current, {
+            color: '#22d3ee',
+            scale: 1.02,
+            duration: 300
+          });
+        }
+      },
+      titleLeave: () => {
+        if (titleRef.current) {
+          animate(titleRef.current, {
+            color: '#ffffff',
+            scale: 1,
+            duration: 300
+          });
+        }
+      },
+      subtitleHover: () => {
+        if (subtitleRef.current) {
+          animate(subtitleRef.current, {
+            color: '#a5f3fc',
+            duration: 300
+          });
+        }
+      },
+      subtitleLeave: () => {
+        if (subtitleRef.current) {
+          animate(subtitleRef.current, {
+            color: 'rgba(255, 255, 255, 0.8)',
+            duration: 300
+          });
+        }
+      },
+      featureHover: (target: Element) => {
+        animate(target, {
+          scale: 1.05,
+          translateY: -5,
+          duration: 200,
+          ease: 'outQuart'
+        });
+      },
+      featureLeave: (target: Element) => {
+        animate(target, {
+          scale: 1,
+          translateY: 0,
+          duration: 200
+        });
+      },
+      buttonHover: (target: Element) => {
+        animate(target, {
+          scale: 1.05,
+          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          duration: 200,
+          ease: 'outQuart'
+        });
+      },
+      buttonLeave: (target: Element) => {
+        animate(target, {
+          scale: 1,
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          duration: 200
+        });
+      }
+    };
+
+    return () => {
+      // Cleanup
+      scope.revert();
+    };
+  }, [isLoading]);
+
+  // Event handlers för interaktioner
+  const handleTitleHover = () => scopeRef.current?.methods.titleHover();
+  const handleTitleLeave = () => scopeRef.current?.methods.titleLeave();
+  
+  const handleSubtitleHover = () => scopeRef.current?.methods.subtitleHover();
+  const handleSubtitleLeave = () => scopeRef.current?.methods.subtitleLeave();
+  
+  const handleFeatureHover = (e: React.MouseEvent) => {
+    scopeRef.current?.methods.featureHover(e.currentTarget);
+  };
+  const handleFeatureLeave = (e: React.MouseEvent) => {
+    scopeRef.current?.methods.featureLeave(e.currentTarget);
+  };
+
+  const handleButtonHover = (e: React.MouseEvent) => {
+    scopeRef.current?.methods.buttonHover(e.currentTarget);
+  };
+  const handleButtonLeave = (e: React.MouseEvent) => {
+    scopeRef.current?.methods.buttonLeave(e.currentTarget);
+  };
+
+  // CLEAN navigation handlers - bara starta navigation och låt Next.js sköta resten
+  const handleNavigateToMap = () => {
+    // Pausa preloading för att inte konkurrera med navigation
+    const preloadingManager = LayerPreloadingManager.getInstance();
+    preloadingManager.pausePreloading();
+    
+    // Navigera omedelbart - låt inte preloading blockera  
+    setIsPreloading(true);
+    setNavigating(true);
+    router.push('/map');
+  };
+
+  const handleNavigateToSignup = () => {
+    // Pausa preloading för att inte konkurrera med navigation
+    const preloadingManager = LayerPreloadingManager.getInstance();
+    preloadingManager.pausePreloading();
+    
+    setIsRegistering(true);
+    setNavigating(true);
+    router.push('/signup');
+  };
 
   return (
-    <div className="max-h-dvh h-full w-full flex flex-col lg:flex-row overflow-hidden">
-      {/* KARTA */}
-      <div 
-        className="flex-1 relative overflow-hidden"
+    <div ref={rootRef} className="relative min-h-screen w-full overflow-hidden">
+      {/* Video Bakgrund med subtil blur för elegans */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover z-0"
         style={{
-          paddingBottom: layoutType === 'mobileLandscape' ? '25vh' : '0'
+          filter: 'brightness(0.4) contrast(1.05) saturate(0.8) blur(1px)',
+        }}
+        autoPlay
+        muted
+        loop
+        playsInline
+        onLoadedData={(e) => {
+          const video = e.target as HTMLVideoElement;
+          video.playbackRate = 0.5;
+          console.log('📹 Video laddad med hastighet:', video.playbackRate);
+        }}
+        onCanPlay={(e) => {
+          const video = e.target as HTMLVideoElement;
+          video.playbackRate = 0.5; // Säkerställ hastigheten även när videon är redo att spelas
         }}
       >
-        <MapView 
-          showZoom={false}
-          showCurrentVectors={showCurrentVectors}
-        />
-        
-        {/* Lager-kontroller flyttade till sidebaren - ingen overlay längre */}
-        
-        {/* Simulation Player */}
-        <SimulationPlayer 
-          simulationLayer={simulationLayer}
-          onLayerChange={setSimulationLayer}
-        />
-        
-        {/* NYTT: Visa optimering-status för debugging */}
-        {isLowEndDevice && (
-          <div className="absolute bottom-4 left-4 bg-yellow-500/20 text-yellow-100 px-2 py-1 rounded text-xs">
-            📱 Mobil-optimering aktiv
-          </div>
-        )}
+        <source src="/videos/seal-chasing-fish.mp4" type="video/mp4" />
+        Din webbläsare stöder inte video.
+      </video>
+      
+      {/* Modern minimal overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70 z-10" />
+      
+      {/* UserMenu i högra hörnet */}
+      <div className="absolute top-8 right-8 z-40">
+        <UserMenu />
       </div>
 
-      {/* MOBIL (PORTRAIT & SMALL LANDSCAPE): ClockKnob under/över kartan */}
-      {(layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
-        <div
-          className={`w-full px-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-x border-b border-white/10 ring-1 ring-white/10 flex flex-col justify-center ${
-            layoutType === 'mobileLandscape' 
-              ? 'h-[25vh] fixed bottom-0 left-0 right-0 z-[1001]' 
-              : 'h-[18vh] z-10'
-          }`}
-          style={{ ['--mtscale' as any]: `calc(${layoutType === 'mobileLandscape' ? '25vh' : '18vh'} / 120px)` } as React.CSSProperties}
-        >
-          <ClockKnob />
+      {/* Innehåll med avancerade anime.js animationer */}
+      <div className="relative z-30 min-h-screen flex flex-col items-center justify-center px-6 md:px-12 lg:px-16">
+        
+        {/* Modern minimal header med anime.js animationer */}
+        <div className="text-center mb-16 max-w-4xl">
+          <h1 
+            ref={titleRef}
+            onMouseEnter={handleTitleHover}
+            onMouseLeave={handleTitleLeave}
+            className="text-5xl md:text-7xl lg:text-8xl font-light text-white mb-8 tracking-[-0.02em] cursor-pointer"
+            style={{ opacity: 0 }}
+          >
+            Fiskdata
+            <span className="text-white/50 font-extralight">.se</span>
+          </h1>
+          <p 
+            ref={subtitleRef}
+            onMouseEnter={handleSubtitleHover}
+            onMouseLeave={handleSubtitleLeave}
+            className="text-xl md:text-2xl lg:text-3xl text-white/80 font-extralight tracking-wide leading-relaxed mb-12 cursor-pointer"
+            style={{ opacity: 0 }}
+          >
+            Avancerad marinanalys för professionellt fiske
+          </p>
+
+          {/* Subtila features med interactive hover */}
+          <div 
+            ref={featuresRef}
+            className="flex flex-wrap justify-center gap-8 text-white/60 text-sm font-light"
+          >
+            <span 
+              onMouseEnter={handleFeatureHover}
+              onMouseLeave={handleFeatureLeave}
+              className="flex items-center gap-2 cursor-pointer"
+              style={{ opacity: 0 }}
+            >
+              <div className="w-1 h-1 bg-teal-400 rounded-full animate-pulse"></div>
+              AI-prediktioner
+            </span>
+            <span 
+              onMouseEnter={handleFeatureHover}
+              onMouseLeave={handleFeatureLeave}
+              className="flex items-center gap-2 cursor-pointer"
+              style={{ opacity: 0 }}
+            >
+              <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></div>
+              Prognoser
+            </span>
+            <span 
+              onMouseEnter={handleFeatureHover}
+              onMouseLeave={handleFeatureLeave}
+              className="flex items-center gap-2 cursor-pointer"
+              style={{ opacity: 0 }}
+            >
+              <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>
+              Historisk analys
+            </span>
+          </div>
         </div>
-      )}
+
+        {/* Subtil laddningsindikator */}
+        {isLoading && (
+          <div className="mb-12">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-1 h-1 bg-white/50 rounded-full animate-pulse"></div>
+              <div className="w-1 h-1 bg-white/50 rounded-full animate-pulse delay-200"></div>
+              <div className="w-1 h-1 bg-white/50 rounded-full animate-pulse delay-500"></div>
+            </div>
+          </div>
+        )}
+
+        {/* Modern Action Buttons med anime.js */}
+        <div ref={buttonsRef} className="flex flex-col sm:flex-row items-center gap-4 max-w-lg mx-auto">
+          
+          {/* Öppna Karta */}
+          <button
+            onClick={handleNavigateToMap}
+            onMouseEnter={handleButtonHover}
+            onMouseLeave={handleButtonLeave}
+            disabled={isPreloading}
+            className="group relative w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-medium rounded-2xl border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ opacity: 0 }}
+          >
+            <span className="relative flex items-center justify-center gap-3">
+              {isPreloading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Öppnar analys...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m-6 3l6-3" />
+                  </svg>
+                  <span>Starta analys</span>
+                </>
+              )}
+            </span>
+          </button>
+
+          {/* Sekundär knapp */}
+          <button
+            onClick={handleNavigateToSignup}
+            onMouseEnter={handleButtonHover}
+            onMouseLeave={handleButtonLeave}
+            disabled={isRegistering}
+            className="group relative w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-medium rounded-2xl border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ opacity: 0 }}
+          >
+            <span className="relative flex items-center justify-center gap-3">
+              {isRegistering ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Omdirigerar...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  <span>Registrera</span>
+                </>
+              )}
+            </span>
+          </button>
+        </div>
+
+        {/* Minimal footer - visas med delay */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+          <p className="text-white/40 text-xs font-light">
+            © 2025 Fiskdata.se
+          </p>
+          <p className="text-white/30 text-xs font-light mt-1">
+            Powered by Norentix
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

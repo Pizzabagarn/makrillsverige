@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
+import { useNavigation } from '../context/NavigationContext'
 import { useRouter } from 'next/navigation'
 import { User, LogIn, LogOut, UserPlus, Settings, Crown, Loader2 } from 'lucide-react'
 
@@ -10,6 +11,7 @@ import { User, LogIn, LogOut, UserPlus, Settings, Crown, Loader2 } from 'lucide-
 
 export default function UserMenu() {
   const { user, signOut, signIn, signUp, signInWithGoogle, loading } = useAuth()
+  const { setNavigating } = useNavigation()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [showAuthForm, setShowAuthForm] = useState(false)
@@ -19,6 +21,7 @@ export default function UserMenu() {
   const [authLoading, setAuthLoading] = useState(false)
   const [error, setError] = useState('')
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
+  const [positionReady, setPositionReady] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
@@ -26,10 +29,17 @@ export default function UserMenu() {
   const updateDropdownPosition = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
+      const menuWidth = 240; // Mindre menu för landing page
+      const windowWidth = window.innerWidth;
+      
+      // Check if there's enough space to the right
+      const hasSpaceRight = rect.left + menuWidth <= windowWidth - 16; // 16px margin
+      
       setDropdownPosition({
         top: rect.bottom + 8, // 8px margin from button
-        left: rect.left
+        left: hasSpaceRight ? rect.left : rect.right - menuWidth
       })
+      setPositionReady(true)
     }
   }
 
@@ -49,9 +59,11 @@ export default function UserMenu() {
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      setPositionReady(false) // Reset position first
       updateDropdownPosition()
     } else {
       resetForm()
+      setPositionReady(false)
     }
 
     return () => {
@@ -65,6 +77,7 @@ export default function UserMenu() {
   }
 
   const handleNavigation = (path: string) => {
+    setNavigating(true)
     router.push(path)
     setIsOpen(false)
   }
@@ -127,18 +140,19 @@ export default function UserMenu() {
       </button>
 
       {/* Dropdown Menu - Portal to body */}
-      {isOpen && typeof window !== 'undefined' && createPortal(
+      {isOpen && positionReady && typeof window !== 'undefined' && createPortal(
         <div 
           ref={menuRef}
           className="
             fixed
-            w-80 min-h-[200px]
+            w-[240px] min-h-[160px]
             bg-gradient-to-br from-black/95 via-black/90 to-black/85
             backdrop-blur-xl border border-white/20
             rounded-lg shadow-2xl
             text-white
             z-[9999]
-            animate-in slide-in-from-top-2 duration-200
+            opacity-0 scale-95 transform
+            animate-dropdown-in
           "
           style={{
             top: dropdownPosition.top,
@@ -206,7 +220,7 @@ export default function UserMenu() {
           {!user && !showAuthForm && (
             <div className="p-4">
               <div className="mb-2">
-                <h3 className="font-semibold text-sm mb-3">Användarområde</h3>
+                <h3 className="font-semibold text-sm mb-3">Meny</h3>
               </div>
 
               <button
@@ -298,13 +312,14 @@ export default function UserMenu() {
               <div className="mt-3 pt-3 border-t border-white/10 text-center">
                 <button
                   onClick={() => {
+                    setNavigating(true)
                     router.push('/signup')
                     setIsOpen(false)
                     resetForm()
                   }}
                   className="text-xs text-blue-400 hover:text-blue-300"
                 >
-                  Skapa konto istället
+                  Registrera nytt konto
                 </button>
               </div>
             </div>
