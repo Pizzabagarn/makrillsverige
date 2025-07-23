@@ -37,7 +37,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
       
-      console.log('🌊 Hämtar area-parameters data...');
+      // Tyst area-parameters hämtning
       const startTime = Date.now();
       
       // Försök först med API
@@ -45,7 +45,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       try {
         areaData = await fetchFromAPI(signal);
       } catch (apiError) {
-        console.warn('⚠️ API-anrop misslyckades, försöker med direkt filaccess:', apiError);
+        // Tyst API fallback
         
         // Fallback: försök ladda direkt från statisk fil
         areaData = await fetchFromStaticFile(signal);
@@ -68,10 +68,8 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
       
     } catch (err: any) {
       // Detaljerad felhantering
-      console.error('❌ Detailed error information:');
-      console.error('Error name:', err.name);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
+      // Tyst detaljerad felhantering
+      // Tyst felhantering
       
       if (err.name === 'AbortError') {
         console.log('🚫 Fetch aborted (normal behavior)');
@@ -93,7 +91,7 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
   // Försök med API först
   const fetchFromAPI = async (signal?: AbortSignal): Promise<AreaParametersData> => {
     const url = '/api/area-parameters';
-    console.log('📡 Gör fetch till API:', url);
+          // Tyst API fetch
     
     const response = await fetch(url, { 
       signal,
@@ -118,11 +116,11 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
 
   // Fallback: ladda direkt från statisk fil
   const fetchFromStaticFile = async (signal?: AbortSignal): Promise<AreaParametersData> => {
-    console.log('📁 Försöker ladda direkt från statisk fil...');
+          // Tyst statisk filladdning
     
     // Först, testa om komprimerad fil finns
     let fileUrl = '/data/area-parameters-extended.json.gz';
-    console.log('📡 Testar komprimerad fil:', fileUrl);
+          // Tyst komprimerad filtest
     
     try {
       const response = await fetch(fileUrl, { 
@@ -155,12 +153,12 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (gzError) {
-      console.warn('⚠️ Komprimerad fil misslyckades:', gzError);
+              // Tyst komprimerad fil fallback
     }
     
     // Fallback: försök med okomprimerad fil
     fileUrl = '/data/area-parameters-extended.json';
-    console.log('📡 Försöker okomprimerad fil:', fileUrl);
+            // Tyst okomprimerad filtest
     
     const response = await fetch(fileUrl, { 
       signal,
@@ -179,12 +177,12 @@ export function AreaParametersProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('🔄 AreaParametersProvider mounted, starting fetch...');
+    // Tyst provider mounting
     const abortController = new AbortController();
     fetchData(abortController.signal);
     
     return () => {
-      console.log('🛑 AreaParametersProvider unmounting, aborting fetch...');
+      // Tyst provider unmounting
       abortController.abort();
     };
   }, []);

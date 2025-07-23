@@ -44,7 +44,7 @@ class AreaParametersStreamingLoader {
     const deviceClass = options.deviceClass || this.detectDeviceClass();
     const optimizedOptions = this.getOptimizedOptions(deviceClass, options);
     
-    console.log(`🌊 Startar streaming area-parameters för ${deviceClass}`);
+    // Tyst streaming start
     
     // Ladda full data först (för att dela upp i chunks)
     const fullData = await this.loadFullData();

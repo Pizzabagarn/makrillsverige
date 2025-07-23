@@ -63,7 +63,7 @@ function RootLayoutContent({ children, shouldShowSidebar }: { children: React.Re
           const { default: LayerPreloadingManager } = await import('@/lib/layerPreloadingManager');
           const preloadingManager = LayerPreloadingManager.getInstance();
           preloadingManager.resumePreloading();
-          console.log('🔄 Preloading återupptaget efter navigation');
+          // Tyst preloading återupptagning
         } catch (error) {
           console.warn('Kunde inte återuppta preloading:', error);
         }

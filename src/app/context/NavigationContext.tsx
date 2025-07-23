@@ -29,7 +29,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   
   const setNavigating = (navigating: boolean) => {
     if (navigating) {
-      console.log('🚀 Startar navigation...');
+              // Tyst navigation start
       setIsNavigating(true);
       // INGEN hårdkodad timer - låt path change stoppa loading!
     } else {

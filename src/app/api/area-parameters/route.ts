@@ -48,10 +48,10 @@ async function preloadAreaData() {
   if (isPreloading || cachedAreaData) return;
   isPreloading = true;
   
-  console.log('🚀 Pre-loading area-parameters data on server startup...');
+  // Tyst server preloading
   try {
     await loadAreaData();
-    console.log('✅ Area-parameters data pre-loaded successfully');
+    // Tyst preload success
   } catch (error) {
     console.error('❌ Failed to pre-load area-parameters data:', error);
   } finally {
@@ -117,7 +117,7 @@ async function loadAreaData() {
   cachedAreaData = data;
   cachedResponseJson = jsonString;  // Pre-serialize for faster responses
   cacheTimestamp = Date.now();
-  console.log(`💾 Area-parameters cachad: ${cacheSizeMB.toFixed(1)}MB`);
+  // Tyst cache success
   return data;
 }
 

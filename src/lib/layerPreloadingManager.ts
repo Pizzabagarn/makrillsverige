@@ -184,8 +184,7 @@ class LayerPreloadingManager {
 
   // AGGRESSIV men SMART preloadning - ger omedelbar visning med minnesstyrning
   private getDeviceClass(): 'desktop' | 'tablet' | 'mobile' | 'ultra-mobile' {
-    console.log('🚀 FULL PRESTANDA AKTIVERAD - alla bilder laddas för omedelbar visning!');
-    console.log('💡 Nu med 8GB heap och smart minnesstyrning - inga begränsningar!');
+    // Tyst preloading aktivering
     
     // Alla enheter får full funktionalitet tack vare våra minnesoptimeringar
     return 'desktop';
@@ -274,7 +273,7 @@ class LayerPreloadingManager {
 
     this.isPreloading = true;
     const deviceClass = this.getDeviceClass();
-    console.log(`🚀 Startar ${deviceClass}-optimerad layer preloading...`);
+    // Tyst preloading start
 
     try {
       // Ladda metadata för alla lager först (parallellt)
@@ -313,7 +312,7 @@ class LayerPreloadingManager {
 
   // NYTT: Ultra-mobil preloading - minimal laddning
   private async preloadUltraMobile(): Promise<void> {
-    console.log('📱 Ultra-mobil preloading: Bara kritiska bilder');
+          // Tyst ultra-mobil preloading
     
     // Bara kritiska lager
     const criticalLayers = this.LAYER_PRIORITY.filter(layer => {
@@ -499,9 +498,9 @@ class LayerPreloadingManager {
     
     const deviceClass = this.getDeviceClass();
     if (preloadTimestamps.length === timestamps.length) {
-      console.log(`🚀 ${layer}: Laddar ALLA ${timestamps.length} bilder för SMOOTH upplevelse!`);
+      // Tyst bildladdning
     } else {
-      console.log(`📱 ${layer}: Laddar ${preloadTimestamps.length}/${timestamps.length} bilder`);
+              // Tyst partiell bildladdning
     }
     
     // Dynamisk delay baserat på nätverksförhållanden
@@ -562,7 +561,7 @@ class LayerPreloadingManager {
     status.endTime = Date.now();
     const loadTime = status.endTime - (status.startTime || 0);
     
-    console.log(`✅ ${layer} KLART: ${totalLoaded}/${preloadTimestamps.length} bilder laddade på ${loadTime}ms - REDO FÖR SMOOTH ANVÄNDNING!`);
+    // Tyst bildladdning klar
   }
 
   // Optimerad bildladdning med timeout och retry
@@ -628,7 +627,7 @@ class LayerPreloadingManager {
   // NYTT: Återuppta preloading
   resumePreloading(): void {
     this.isPaused = false;
-    console.log('▶️ Preloading återupptagen');
+    // Tyst preloading återupptagning
     this.startPreloading();
   }
 

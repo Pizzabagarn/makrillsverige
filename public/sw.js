@@ -115,16 +115,16 @@ async function handleUltraSmartRequest(request, resourceInfo) {
         }
         
         if (age < maxAge) {
-          console.log(`✅ Cache hit: ${url.pathname} (ålder: ${Math.round(age/60000)}min)`);
+          // Tyst cache hit - ingen konsol-spam
           return cachedResponse;
         } else {
-          console.log(`⏰ Cache expired: ${url.pathname} (ålder: ${Math.round(age/60000)}min)`);
+          // Cache expired - hämta från nätet
         }
       }
     }
     
     // 2. NETWORK strategi med smart error-hantering
-    console.log(`🌐 Hämtar från nätet: ${url.pathname}`);
+    // Tyst nätverks-hämtning
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -157,7 +157,7 @@ async function handleUltraSmartRequest(request, resourceInfo) {
       // Cache med prioritet - kritiska resurser först
       if (resourceInfo.isCritical) {
         await cache.put(request, modifiedResponse);
-        console.log(`⚡ Kritisk resurs cachad: ${url.pathname}`);
+        // Tyst caching
       } else {
         // Non-blocking cache för icke-kritiska resurser
         cache.put(request, modifiedResponse).catch(error => {
@@ -174,7 +174,7 @@ async function handleUltraSmartRequest(request, resourceInfo) {
     // 4. OFFLINE FALLBACK - returnera cache även om den är gammal
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log(`💾 Offline fallback: ${url.pathname}`);
+      // Tyst offline fallback
       return cachedResponse;
     }
     
@@ -186,11 +186,11 @@ async function handleUltraSmartRequest(request, resourceInfo) {
       try {
         const pngResponse = await fetch(pngRequest);
         if (pngResponse.ok) {
-          console.log(`🔄 WebP fallback till PNG: ${url.pathname}`);
+          // Tyst WebP till PNG fallback
           return pngResponse;
         }
       } catch (pngError) {
-        console.warn(`❌ PNG fallback misslyckades för ${url.pathname}`);
+        // Tyst PNG fallback fel
       }
     }
     
