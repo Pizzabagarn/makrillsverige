@@ -1,0 +1,232 @@
+[
+  {
+    "fish_species": "Abborre",
+    "recommended_baits": [
+      {
+        "id": "abborre_spinn_1",
+        "name": "Abu Garcia Droppen 12g",
+        "type": "Spinnare",
+        "description": "Klassisk spinnare perfekt för abborre i vass och grunt vatten",
+        "image": "/images/baits/abu-droppen-12g.jpg",
+        "price_sek": 89,
+        "retailers": [
+          {
+            "name": "Sportfiskeprylar", 
+            "url": "https://www.sportfiskeprylar.se/abu-garcia-droppen-12g?ref=makrillsverige",
+            "price": 89,
+            "in_stock": true,
+            "affiliate_id": "MSV001"
+          },
+          {
+            "name": "Fishsports",
+            "url": "https://fishsports.se/spinnare/abu-droppen-12g?affiliate=makrill_se", 
+            "price": 95,
+            "in_stock": true,
+            "affiliate_id": "FS_MSV_002"
+          }
+        ],
+        "techniques": ["spinnfiske"],
+        "seasons": ["vår", "sommar", "höst"],
+        "water_types": ["sötvatten", "bräckt"],
+        "effectiveness_rating": 4.8
+      },
+      {
+        "id": "abborre_jigg_1", 
+        "name": "Berkley PowerBait Minnow 7.5cm",
+        "type": "Jiggbete",
+        "description": "Mjukt bete med stark doft som är oemotståndlig för abborre",
+        "image": "/images/baits/berkley-powerbait-minnow.jpg",
+        "price_sek": 65,
+        "retailers": [
+          {
+            "name": "Fishsports",
+            "url": "https://fishsports.se/jigg/berkley-powerbait-minnow-75cm?affiliate=makrill_se",
+            "price": 65,
+            "in_stock": true,
+            "affiliate_id": "FS_MSV_003"
+          },
+          {
+            "name": "Fiskegrossisten",
+            "url": "https://fiskegrossisten.com/berkley-powerbait-minnow?ref=makrillsverige",
+            "price": 68,
+            "in_stock": false,
+            "affiliate_id": "FG_MSV_001"
+          }
+        ],
+        "techniques": ["jiggfiske", "vertikalfiske"],
+        "seasons": ["vår", "sommar", "höst"],
+        "water_types": ["sötvatten"],
+        "effectiveness_rating": 4.6
+      },
+      {
+        "id": "abborre_mask_1",
+        "name": "Drakkar Mask + Abborrkrok #6",
+        "type": "Naturligt bete",
+        "description": "Klassisk mask på krok - fungerar alltid för abborre",
+        "image": "/images/baits/mask-abborrkrok.jpg",
+        "price_sek": 25,
+        "retailers": [
+          {
+            "name": "Lokalfiskebutiken",
+            "url": "https://lokalfiskebutiken.se/mask-abborrkrok-paket?ref=makrill",
+            "price": 25,
+            "in_stock": true,
+            "affiliate_id": "LFB_MSV_001"
+          }
+        ],
+        "techniques": ["mete", "flötmete"],
+        "seasons": ["vår", "sommar", "höst"],
+        "water_types": ["sötvatten"],
+        "effectiveness_rating": 4.9
+      }
+    ]
+  },
+  {
+    "fish_species": "Gädda", 
+    "recommended_baits": [
+      {
+        "id": "gadda_wobbler_1",
+        "name": "Rapala Original Floating F11",
+        "type": "Wobbler",
+        "description": "Världens mest populära gäddwobbler - fungerar överallt",
+        "image": "/images/baits/rapala-f11.jpg", 
+        "price_sek": 129,
+        "retailers": [
+          {
+            "name": "Sportfiskeprylar",
+            "url": "https://www.sportfiskeprylar.se/rapala-original-f11?ref=makrillsverige", 
+            "price": 129,
+            "in_stock": true,
+            "affiliate_id": "MSV001"
+          },
+          {
+            "name": "Fishsports",
+            "url": "https://fishsports.se/wobbler/rapala-f11?affiliate=makrill_se",
+            "price": 135,
+            "in_stock": true, 
+            "affiliate_id": "FS_MSV_004"
+          }
+        ],
+        "techniques": ["spinnfiske", "trolling"],
+        "seasons": ["vår", "sommar", "höst"],
+        "water_types": ["sötvatten", "bräckt"],
+        "effectiveness_rating": 4.9
+      },
+      {
+        "id": "gadda_gummifisk_1",
+        "name": "Savage Gear 4D Herring Shad 16cm",
+        "type": "Gummifisk",
+        "description": "Realistisk gummifisk som får även aviga gäddor att hugga",
+        "image": "/images/baits/savage-gear-4d-herring.jpg",
+        "price_sek": 185,
+        "retailers": [
+          {
+            "name": "Fishsports", 
+            "url": "https://fishsports.se/gummifisk/savage-gear-4d-herring-16cm?affiliate=makrill_se",
+            "price": 185,
+            "in_stock": true,
+            "affiliate_id": "FS_MSV_005"
+          }
+        ],
+        "techniques": ["jiggfiske", "spinnfiske"],
+        "seasons": ["vår", "sommar", "höst", "vinter"],
+        "water_types": ["sötvatten", "bräckt"],
+        "effectiveness_rating": 4.7
+      }
+    ]
+  },
+  {
+    "fish_species": "Lax",
+    "recommended_baits": [
+      {
+        "id": "lax_spoon_1", 
+        "name": "ABU Garcia Toby 18g Silver",
+        "type": "Skeddrag",
+        "description": "Klassisk skeddrag för lax i älv och hav",
+        "image": "/images/baits/abu-toby-18g.jpg",
+        "price_sek": 89,
+        "retailers": [
+          {
+            "name": "Sportfiskeprylar",
+            "url": "https://www.sportfiskeprylar.se/abu-toby-18g-silver?ref=makrillsverige",
+            "price": 89, 
+            "in_stock": true,
+            "affiliate_id": "MSV001"
+          }
+        ],
+        "techniques": ["spinnfiske", "trolling"],
+        "seasons": ["vår", "sommar", "höst"],
+        "water_types": ["sötvatten", "saltvatten"],
+        "effectiveness_rating": 4.8
+      },
+      {
+        "id": "lax_fluga_1",
+        "name": "Guideline Sunray Shadow #6",
+        "type": "Laxfluga",
+        "description": "Beprövad laxfluga för svenska älvar",
+        "image": "/images/baits/sunray-shadow.jpg",
+        "price_sek": 95,
+        "retailers": [
+          {
+            "name": "Fiskeflugans Hus",
+            "url": "https://fiskeflugans.se/laxflugor/sunray-shadow-6?ref=makrillsverige",
+            "price": 95,
+            "in_stock": true,
+            "affiliate_id": "FFH_MSV_001"
+          }
+        ],
+        "techniques": ["flugfiske"],
+        "seasons": ["vår", "sommar", "höst"],
+        "water_types": ["sötvatten"],
+        "effectiveness_rating": 4.6
+      }
+    ]
+  },
+  {
+    "fish_species": "Torsk",
+    "recommended_baits": [
+      {
+        "id": "torsk_pilk_1",
+        "name": "Hansen Fight 250g Blå/Silver",
+        "type": "Pilk",
+        "description": "Tung pilk för djup torskfiske utanför västkusten",
+        "image": "/images/baits/hansen-fight-250g.jpg",
+        "price_sek": 149,
+        "retailers": [
+          {
+            "name": "Havsfiske.com",
+            "url": "https://havsfiske.com/pilk/hansen-fight-250g?affiliate=makrill_sverige",
+            "price": 149,
+            "in_stock": true,
+            "affiliate_id": "HF_MSV_001"  
+          }
+        ],
+        "techniques": ["pilkfiske", "jiggfiske"],
+        "seasons": ["vår", "sommar", "höst", "vinter"],
+        "water_types": ["saltvatten"],
+        "effectiveness_rating": 4.7
+      },
+      {
+        "id": "torsk_agn_1",
+        "name": "Frysta Havsräkor 500g",
+        "type": "Naturligt bete", 
+        "description": "Torskens favorit-agn för bottenmete",
+        "image": "/images/baits/havsrakor.jpg",
+        "price_sek": 85,
+        "retailers": [
+          {
+            "name": "Havsfiske.com",
+            "url": "https://havsfiske.com/agn/frysta-havsrakor-500g?affiliate=makrill_sverige",
+            "price": 85,
+            "in_stock": true,
+            "affiliate_id": "HF_MSV_002"
+          }
+        ],
+        "techniques": ["bottenmete", "flötmete"],
+        "seasons": ["vår", "sommar", "höst", "vinter"],
+        "water_types": ["saltvatten"],
+        "effectiveness_rating": 4.9
+      }
+    ]
+  }
+] 

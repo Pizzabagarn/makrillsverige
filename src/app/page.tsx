@@ -199,7 +199,7 @@ export default function LandingPage() {
         animate(target, {
           scale: 1.05,
           backgroundColor: 'rgba(255, 255, 255, 0.2)',
-          duration: 200,
+          duration: 100,
           ease: 'outQuart'
         });
       },
@@ -207,7 +207,7 @@ export default function LandingPage() {
         animate(target, {
           scale: 1,
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          duration: 200
+          duration: 100
         });
       }
     };
@@ -367,7 +367,7 @@ export default function LandingPage() {
         )}
 
         {/* Modern Action Buttons med anime.js */}
-        <div ref={buttonsRef} className="flex flex-col sm:flex-row items-center gap-4 max-w-lg mx-auto">
+        <div ref={buttonsRef} className="flex flex-col sm:flex-row items-center gap-4 max-w-2xl mx-auto">
           
           {/* Öppna Karta */}
           <button
@@ -395,7 +395,26 @@ export default function LandingPage() {
             </span>
           </button>
 
-          {/* Sekundär knapp */}
+          {/* Fiskinformation knapp */}
+          <button
+            onClick={() => {
+              setNavigating(true);
+              router.push('/fiskinformation');
+            }}
+            onMouseEnter={handleButtonHover}
+            onMouseLeave={handleButtonLeave}
+            className="group relative w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-medium rounded-2xl border border-white/20"
+            style={{ opacity: 0 }}
+          >
+            <span className="relative flex items-center justify-center gap-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              <span>Fiskguide</span>
+            </span>
+          </button>
+
+          {/* Registrera knapp */}
           <button
             onClick={handleNavigateToSignup}
             onMouseEnter={handleButtonHover}

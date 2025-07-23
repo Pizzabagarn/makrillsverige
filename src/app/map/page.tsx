@@ -150,7 +150,7 @@ export default function MapPage() {
 
 
   return (
-    <div className="max-h-dvh h-full w-full flex flex-col lg:flex-row overflow-hidden">
+    <div className="map-page max-h-dvh h-full w-full flex flex-col lg:flex-row overflow-hidden">
       {/* Map Loading Overlay - inte används längre */}
       {isMapLoading && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center">

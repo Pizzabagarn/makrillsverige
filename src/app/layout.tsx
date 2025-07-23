@@ -107,8 +107,10 @@ export default function RootLayout({
     registerServiceWorker();
   }, []);
 
-  // Kontrollera om vi ska visa sidebaren (inte på startsidan)
-  const shouldShowSidebar = pathname !== '/';
+  // Kontrollera om vi ska visa sidebaren (inte på startsidan, fiskinformationssidan eller admin-sidor)
+  const shouldShowSidebar = pathname !== '/' && 
+                           pathname !== '/fiskinformation' && 
+                           !pathname.startsWith('/admin');
 
   return (
     <html lang="sv">
