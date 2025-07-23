@@ -1176,7 +1176,7 @@ export default function FiskinformationPage() {
         {filteredFish.length === 0 && (
           <div className="text-center py-16">
             <Fish className="w-16 h-16 text-white/20 mx-auto mb-4" />
-            <p className="text-white/60 text-lg">Inga fiskar hittades för "{searchTerm}"</p>
+            <p className="text-white/60 text-lg">Inga fiskar hittades för &quot;{searchTerm}&quot;</p>
             <p className="text-white/40 text-sm mt-2">Prova att söka på ett annat namn</p>
           </div>
         )}

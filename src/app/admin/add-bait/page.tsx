@@ -460,7 +460,7 @@ export default function AddBaitPage() {
                         placeholder="Förklara vad denna kategori av beten används till och när de är mest effektiva..."
                       />
                       <p className="text-xs text-white/50 mt-1">
-                        Denna beskrivning visas för alla beten i kategorien "{editedInfo?.category || 'vald kategori'}"
+                        Denna beskrivning visas för alla beten i kategorien &quot;{editedInfo?.category || 'vald kategori'}&quot;
                       </p>
                     </div>
                   ) : (
@@ -697,7 +697,7 @@ export default function AddBaitPage() {
 
             <div className="mt-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
               <p className="text-blue-200 text-sm">
-                ✅ <strong>Produkterna är permanent sparade!</strong> De visas nu automatiskt på websidan (localhost:3001) under respektive fiskarts "Fiske"-flik.
+                ✅ <strong>Produkterna är permanent sparade!</strong> De visas nu automatiskt på websidan (localhost:3001) under respektive fiskarts &quot;Fiske&quot;-flik.
                 <strong>INGEN mock data används</strong> - bara produkter du lagt till här. Du kan sätta egna stjärnbetyg och ta bort produkter.
               </p>
             </div>
@@ -812,7 +812,7 @@ export default function AddBaitPage() {
                     placeholder="Förklara vad denna kategori av beten används till och när de är mest effektiva..."
                   />
                   <p className="text-xs text-white/50 mt-1">
-                    Denna beskrivning visas för alla beten i kategorien "{editedInfo.category || 'vald kategori'}"
+                    Denna beskrivning visas för alla beten i kategorien &quot;{editedInfo.category || 'vald kategori'}&quot;
                   </p>
                 </div>
 

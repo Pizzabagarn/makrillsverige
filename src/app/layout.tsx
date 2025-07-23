@@ -58,14 +58,17 @@ function RootLayoutContent({ children, shouldShowSidebar }: { children: React.Re
   useEffect(() => {
     if (!isNavigating) {
       // Navigation just finished, resume preloading
-      try {
-        const LayerPreloadingManager = require('@/lib/layerPreloadingManager').default;
-        const preloadingManager = LayerPreloadingManager.getInstance();
-        preloadingManager.resumePreloading();
-        console.log('🔄 Preloading återupptaget efter navigation');
-      } catch (error) {
-        console.warn('Kunde inte återuppta preloading:', error);
-      }
+      const resumePreloading = async () => {
+        try {
+          const { default: LayerPreloadingManager } = await import('@/lib/layerPreloadingManager');
+          const preloadingManager = LayerPreloadingManager.getInstance();
+          preloadingManager.resumePreloading();
+          console.log('🔄 Preloading återupptaget efter navigation');
+        } catch (error) {
+          console.warn('Kunde inte återuppta preloading:', error);
+        }
+      };
+      resumePreloading();
     }
   }, [isNavigating]); // Lyssna på isNavigating state
 
