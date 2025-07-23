@@ -1,15 +1,10 @@
 // src/lib/fetchCurrentVectors.ts
-import fetch from 'node-fetch';
 import path from 'path';
 import dotenv from 'dotenv';
 
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+// Load environment variables
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config({ path: resolve(__dirname, '../../.env.local') });
 export type CurrentVector = {
     u: number | null;
     v: number | null;
@@ -40,7 +35,9 @@ export async function fetchCurrentVectors(lat: number, lon: number): Promise<Cur
     url.searchParams.set("format", "CoverageJSON");
     url.searchParams.set("api-key", apiKey);
 
-    const res = await fetch(url.toString());
+    // Use built-in fetch in Node.js 18+ or imported fetch
+    const fetchFn = globalThis.fetch || (await import('node-fetch')).default;
+    const res = await fetchFn(url.toString());
     if (!res.ok) throw new Error(`API-fel (${res.status}) vid ${lat},${lon}`);
 
     const data = await res.json() as DMIResponse;
