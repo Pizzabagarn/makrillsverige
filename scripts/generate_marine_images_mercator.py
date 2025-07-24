@@ -1112,7 +1112,8 @@ def generate_parameter_images_mercator(
     if force:
         clear_directory(output_dir)
     
-    timestamps = area_data['metadata']['timestamps']
+    # VIKTIGT: Kopiera timestamps för att undvika att påverka andra parametrar
+    timestamps = area_data['metadata']['timestamps'].copy()
     
     # Hantera quick mode (senaste N bilder)
     if quick:
@@ -1132,7 +1133,7 @@ def generate_parameter_images_mercator(
     if parameter == 'mackerel' and not skip_values:
         all_mackerel_data = {
             'parameter': 'mackerel_probability',
-            'generated_at': time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            'generated_at': datetime.now().isoformat() + 'Z',
             'total_timestamps': len(timestamps),
             'wgs84_bbox': list(wgs84_bbox),
             'timestamps': {}  # Här samlas data för varje timestamp
@@ -1268,8 +1269,9 @@ def main():
     parser = argparse.ArgumentParser(
         description='Mercator Marina Bildgenerator - Löser projektionsproblem'
     )
-    parser.add_argument('--parameter', choices=['current', 'temperature', 'salinity', 'mackerel', 'all'], 
-                       default='all', help='Parameter att generera (default: all)')
+    parser.add_argument('--parameter', 
+                       default='all', 
+                       help='Parameter att generera. Använd komma-separation för flera: current,temperature,salinity,mackerel eller "all" för alla (default: all)')
     parser.add_argument('--input', default='public/data/area-parameters-extended.json.gz',
                        help='Sökväg till area-parameters fil')
     parser.add_argument('--water-mask', default='public/data/scandinavian-waters.geojson',
@@ -1301,14 +1303,31 @@ def main():
     if args.skip_values:
         print("⚡ Snabbläge: Hoppar över makrill-värden")
     
-    # Bestäm parametrar
+    # Bestäm parametrar - FÖRBÄTTRAD HANTERING
+    valid_parameters = ['current', 'temperature', 'salinity', 'mackerel']
+    
     if args.parameter == 'all':
-        parameters = ['current', 'temperature', 'salinity', 'mackerel']
+        parameters = valid_parameters
         print("🎯 Genererar ALLA parametrar i Mercator (inkl. makrill)")
     else:
-        parameters = [args.parameter]
-        config = get_parameter_config(args.parameter)
-        print(f"🎯 Genererar Mercator {config['name']}")
+        # Hantera komma-separerade parametrar
+        requested_params = [p.strip() for p in args.parameter.split(',')]
+        parameters = []
+        
+        for param in requested_params:
+            if param in valid_parameters:
+                parameters.append(param)
+                print(f"✅ Inkluderar: {get_parameter_config(param)['name']}")
+            else:
+                print(f"❌ Okänd parameter: {param}")
+                print(f"   Giltiga parametrar: {', '.join(valid_parameters)}")
+                return
+        
+        if not parameters:
+            print("❌ Inga giltiga parametrar specificerade!")
+            return
+            
+        print(f"🎯 Genererar {len(parameters)} parametrar: {', '.join(parameters)}")
     
     print(f"📦 Input: {args.input}")
     print(f"📁 Output: {args.output_dir}")
