@@ -44,6 +44,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [generatedAt, setGeneratedAt] = useState<number | null>(null);
 
   // Dynamisk upptäckt av tillgängliga bilder från metadata
   const availableImages = useMemo(() => {
@@ -55,23 +56,26 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     );
   }, [metadata?.timestamps]);
 
-  // 1) Ladda metadata FÖRST, sedan preload bilder i bakgrunden - EAGER LOADING
+  // Load metadata - EAGER LOADING
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch('/data/current-magnitude-images/metadata.json');
+        const response = await fetch('/data/current-images-mercator/metadata.json');
         
         if (!response.ok) {
-          // console.warn('⚠️ Current magnitude metadata inte tillgänglig än');
           return;
         }
         
         const data = await response.json();
         setMetadata(data);
-  
         
-          } catch (error) {
-      // console.warn('⚠️ Kunde inte ladda current magnitude metadata:', error);
+        // CACHE BUSTING: Spara generated_at för senare usage
+        if (data.generated_at) {
+          setGeneratedAt(new Date(data.generated_at).getTime());
+        }
+        
+      } catch (error) {
+        // Tyst fail - ta bort console.warn för bättre prestanda
       }
     };
     
@@ -79,19 +83,19 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     loadMetadata();
   }, []);
 
-  // 1.5) Preload bilder i bakgrunden EFTER metadata laddats - IMMEDIATE PRELOADING
+  // Preload bilder i bakgrunden - IMMEDIATE PRELOADING
   useEffect(() => {
-    if (availableImages.length === 0) return;
+    if (availableImages.length === 0 || !generatedAt) return;
     
     const preloadImages = async () => {
-
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
       // Preload bilder gradvis för att inte blockera UI
       for (const safeTimestamp of availableImages) {
         const img = new Image();
-        const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.webp`;
+        // CACHE BUSTING: Lägg till generated_at som cache buster
+        const imageUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp?v=${generatedAt}`;
         
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
@@ -132,7 +136,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     
     // Start preloading immediately - no delay
     setTimeout(preloadImages, 100);
-  }, [availableImages]);
+  }, [availableImages, generatedAt]);
 
   // 2) Memoized timestamp prefix - DEFAULT till current time om baseTime saknas
   const timestampPrefix = useMemo(() => {
@@ -172,7 +176,9 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         img.onerror = () => {
           console.log('❌ Kunde inte ladda initial magnitude bild:', safeTimestamp);
         };
-        img.src = imageUrl;
+        // CACHE BUSTING: Lägg till generated_at parameter
+        const imageUrlWithCache = generatedAt ? `${imageUrl}?v=${generatedAt}` : imageUrl;
+        img.src = imageUrlWithCache;
       }
     }
   }, [metadata?.timestamps, preloadedImages, currentImageUrl]);
@@ -199,7 +205,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     }
     
     // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
-    const imageUrl = `/data/current-magnitude-images/current_magnitude_${safeTimestamp}.webp`;
+    const imageUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp`;
     
     return imageUrl;
   }, [metadata, availableImages]);
@@ -239,9 +245,12 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
             const img = new Image();
             let isCurrentRequest = true;
             
+            // CACHE BUSTING: Lägg till generated_at parameter
+            const imageUrlWithCache = generatedAt ? `${imageUrl}?v=${generatedAt}` : imageUrl;
+            
             img.onload = () => {
               // Dubbelkolla att detta fortfarande är rätt bild OCH att requesten inte är avbruten
-              if (isCurrentRequest && img.src === imageUrl) {
+              if (isCurrentRequest && img.src === imageUrlWithCache) {
                 setImageLoaded(true);
               }
             };
@@ -250,7 +259,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
                 // console.log('❌ Kunde inte ladda magnitude bild:', safeTimestamp);
               }
             };
-            img.src = imageUrl;
+            img.src = imageUrlWithCache;
             
             // Cleanup function för att avbryta gamla requests
             return () => {

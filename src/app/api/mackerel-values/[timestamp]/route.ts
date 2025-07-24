@@ -39,7 +39,6 @@ async function loadGlobalMackerelData(): Promise<any> {
       process.cwd(), 
       'public', 
       'data', 
-      'mackerel-probability-images-mercator', 
       'mackerel-values', 
       'all_mackerel_values.json.gz'
     );

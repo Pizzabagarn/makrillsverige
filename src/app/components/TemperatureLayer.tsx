@@ -41,6 +41,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [generatedAt, setGeneratedAt] = useState<number | null>(null);
 
   // Dynamisk upptäckt av tillgängliga bilder från metadata - samma som CurrentMagnitudeLayer
   const availableImages = useMemo(() => {
@@ -56,7 +57,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch('/data/temperature-images/metadata.json');
+        const response = await fetch('/data/temperature-images-mercator/metadata.json');
         
         if (!response.ok) {
           return;
@@ -64,7 +65,11 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         
         const data = await response.json();
         setMetadata(data);
-  
+        
+        // CACHE BUSTING: Spara generated_at för senare usage
+        if (data.generated_at) {
+          setGeneratedAt(new Date(data.generated_at).getTime());
+        }
         
       } catch (error) {
         // Tyst fail - ta bort console.warn för bättre prestanda
@@ -77,17 +82,17 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
 
   // Preload bilder i bakgrunden EFTER metadata laddats - IMMEDIATE PRELOADING
   useEffect(() => {
-    if (availableImages.length === 0) return;
+    if (availableImages.length === 0 || !generatedAt) return;
     
     const preloadImages = async () => {
-
       const imageMap = new Map<string, HTMLImageElement>();
       let loadedCount = 0;
       
       // Preload ALLA bilder gradvis för att inte blockera UI
       for (const safeTimestamp of availableImages) {
         const img = new Image();
-        const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.webp`;
+        // CACHE BUSTING: Lägg till generated_at som cache buster
+        const imageUrl = `/data/temperature-images-mercator/temperature_${safeTimestamp}.webp?v=${generatedAt}`;
         
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
@@ -128,7 +133,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
     
     // Start preloading immediately with delay after current images
     setTimeout(preloadImages, 200);
-  }, [availableImages]);
+  }, [availableImages, generatedAt]);
 
   // Memoized timestamp prefix - samma som CurrentMagnitudeLayer
   const timestampPrefix = useMemo(() => {
@@ -148,7 +153,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
     
     if (initialTimestamp) {
       const safeTimestamp = initialTimestamp.replaceAll(':', '-').replaceAll('+', 'plus');
-      const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.png`;
+      const imageUrl = `/data/temperature-images-mercator/temperature_${safeTimestamp}.png`;
       
 
       setCurrentImageUrl(imageUrl);
@@ -168,7 +173,9 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         img.onerror = () => {
 
         };
-        img.src = imageUrl;
+        // CACHE BUSTING: Lägg till generated_at parameter
+        const imageUrlWithCache = generatedAt ? `${imageUrl}?v=${generatedAt}` : imageUrl;
+        img.src = imageUrlWithCache;
       }
     }
   }, [metadata?.timestamps, preloadedImages, currentImageUrl]);
@@ -195,7 +202,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
     }
     
     // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
-    const imageUrl = `/data/temperature-images/temperature_${safeTimestamp}.webp`;
+    const imageUrl = `/data/temperature-images-mercator/temperature_${safeTimestamp}.webp`;
     
     return imageUrl;
   }, [metadata, availableImages]);
@@ -222,16 +229,19 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
           // Bilden är inte preloaded, ladda den direkt
           setImageLoaded(false);
           const img = new Image();
+          // CACHE BUSTING: Lägg till generated_at parameter
+          const imageUrlWithCache = generatedAt ? `${imageUrl}?v=${generatedAt}` : imageUrl;
+          
           img.onload = () => {
             // Dubbelkolla att detta fortfarande är rätt bild (använd img.src istället för currentImageUrl)
-            if (img.src === imageUrl) {
+            if (img.src === imageUrlWithCache) {
               setImageLoaded(true);
             }
           };
           img.onerror = () => {
             // Tyst fail
           };
-          img.src = imageUrl;
+          img.src = imageUrlWithCache;
         }
       } else {
         setImageLoaded(false);

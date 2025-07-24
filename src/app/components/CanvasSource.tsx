@@ -53,6 +53,7 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
   const [metadata, setMetadata] = useState<CanvasSourceMetadata | null>(null);
   const [preloadedImages, setPreloadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const [currentImageKey, setCurrentImageKey] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<number | null>(null);
   const [canvasSource, setCanvasSource] = useState<any>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
@@ -77,6 +78,11 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
         if (response.ok) {
           const data = await response.json();
           setMetadata(data);
+          
+          // CACHE BUSTING: Spara generated_at för senare usage
+          if (data.generated_at) {
+            setGeneratedAt(new Date(data.generated_at).getTime());
+          }
         }
       } catch (error) {
         // Silent fail
@@ -136,7 +142,7 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
 
   // 3) Preload images after metadata is loaded
   useEffect(() => {
-    if (!metadata || preloadedImages.size > 0) return;
+    if (!metadata || preloadedImages.size > 0 || !generatedAt) return;
     
     const preloadImages = async () => {
 
@@ -164,9 +170,12 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
         const img = new Image();
         img.crossOrigin = 'anonymous';
         
-        const imageUrl = imageUrlPattern.includes('{filename}') 
+        const baseImageUrl = imageUrlPattern.includes('{filename}') 
           ? imageUrlPattern.replace('{filename}', imageInfo.filename)
           : `${imageUrlPattern}/${imageInfo.filename}`;
+        
+        // CACHE BUSTING: Lägg till generated_at som cache buster
+        const imageUrl = `${baseImageUrl}?v=${generatedAt}`;
         
         img.onload = () => {
           const key = imageInfo.filename || imageInfo.timestamp;
@@ -215,7 +224,7 @@ const CanvasSource = React.memo<CanvasSourceProps>(({
     
     // Start preloading after a short delay
     setTimeout(preloadImages, 500);
-  }, [metadata, preloadedImages.size, id, imageUrlPattern]);
+  }, [metadata, preloadedImages.size, id, imageUrlPattern, generatedAt]);
 
   // 4) Find nearest image based on time
   const findNearestImage = useCallback((time: Date) => {

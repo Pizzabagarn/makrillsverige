@@ -20,6 +20,7 @@ export interface LayerMetadata {
   total_images: number;
   parameter?: string;
   wgs84_bbox?: [number, number, number, number];
+  generated_at?: string; // NYTT: Lägg till generated_at för cache busting
 }
 
 class LayerPreloadingManager {
@@ -486,6 +487,9 @@ class LayerPreloadingManager {
     // Hämta timestamps
     const timestamps = this.getTimestampsFromMetadata(metadata);
     
+    // CACHE BUSTING: Använd generated_at från metadata för att undvika gamla cachade bilder
+    const cacheKey = this.getCacheBustingKey(metadata);
+    
     // SMART PRELOADING-begränsning (alla bilder fortfarande tillgängliga on-demand)
     let maxPreloadImages = timestamps.length;
     if (config.maxImages !== undefined) {
@@ -530,7 +534,9 @@ class LayerPreloadingManager {
     for (const batch of batches) {
       const batchPromises = batch.map(async (timestamp: string) => {
         const safeTimestamp = timestamp.replace(/:/g, '-').replace(/\+/g, 'plus');
-        const imageUrl = config.imageUrlPattern.replace('{timestamp}', safeTimestamp);
+        const baseImageUrl = config.imageUrlPattern.replace('{timestamp}', safeTimestamp);
+        // CACHE BUSTING: Lägg till cache buster för att undvika gamla bilder
+        const imageUrl = `${baseImageUrl}?v=${cacheKey}`;
         
         try {
           const img = await this.preloadImage(imageUrl);
@@ -562,6 +568,19 @@ class LayerPreloadingManager {
     const loadTime = status.endTime - (status.startTime || 0);
     
     // Tyst bildladdning klar
+  }
+
+  // NYTT: Skapa cache busting key från metadata
+  private getCacheBustingKey(metadata: any): string {
+    // Använd generated_at från metadata som cache buster
+    if (metadata.generated_at) {
+      // Konvertera till unix timestamp för kortare URL
+      const generatedAt = new Date(metadata.generated_at);
+      return generatedAt.getTime().toString();
+    }
+    
+    // Fallback till nuvarande tid
+    return Date.now().toString();
   }
 
   // Optimerad bildladdning med timeout och retry
@@ -602,13 +621,22 @@ class LayerPreloadingManager {
     return [];
   }
 
-  // Hämta preloaded bild
+  // UPPDATERAD: Hämta preloaded bild MED cache buster support
   getPreloadedImage(layer: string, timestamp: string): HTMLImageElement | null {
     const layerCache = this.imageCache.get(layer);
     if (!layerCache) return null;
     
     const safeTimestamp = timestamp.replace(/:/g, '-').replace(/\+/g, 'plus');
     return layerCache.get(safeTimestamp) || null;
+  }
+
+  // NYTT: Hämta cache busting key för ett lager (för komponenter att använda)
+  getCacheBustingKeyForLayer(layer: string): string {
+    const metadata = this.metadataCache.get(layer);
+    if (metadata) {
+      return this.getCacheBustingKey(metadata);
+    }
+    return Date.now().toString();
   }
 
   // NYTT: Pausera preloading för svaga enheter
