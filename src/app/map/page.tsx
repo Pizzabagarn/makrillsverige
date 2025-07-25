@@ -12,6 +12,7 @@ import LayerPreloadingManager, { type PreloadStatus } from '@/lib/layerPreloadin
 import PopupPreloadManager from '@/lib/popupPreloadManager';
 import { useCacheOptimization } from '@/lib/throttleHooks';
 import { Loader2 } from 'lucide-react';
+import ValidationDashboard from '../components/FishingValidationDashboard';
 
 const MapView = dynamic(() => import('../components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('../components/ClockKnob'), { ssr: false });
@@ -210,6 +211,8 @@ export default function MapPage() {
           <ClockKnob />
         </div>
       )}
+      
+      {/* Cache Debug Panel - endast synlig på utveckling eller vid behov */}
     </div>
   );
 } 

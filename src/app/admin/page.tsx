@@ -1,6 +1,10 @@
 'use client';
 
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import CacheDebugPanel from '../components/CacheDebugPanel';
 import { Package, TrendingUp, Settings, Users, BarChart3, Link as LinkIcon } from 'lucide-react';
 
 export default function AdminPage() {
@@ -87,6 +91,19 @@ export default function AdminPage() {
                 <div className={`absolute inset-0 bg-gradient-to-r ${section.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
               </Link>
             ))}
+          </div>
+
+          {/* Cache Debug Panel - Admin only */}
+          <div className="mt-12">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">Cache Management</h2>
+              <p className="text-white/60">Hantera cache-problem och optimering</p>
+            </div>
+            <div className="flex justify-center">
+              <div className="relative">
+                <CacheDebugPanel alwaysOpen={true} />
+              </div>
+            </div>
           </div>
 
           {/* Quick stats */}

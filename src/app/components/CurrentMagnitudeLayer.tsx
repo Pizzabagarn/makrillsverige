@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useTimeSlider } from '../context/TimeSliderContext';
+import { useAreaParameters } from '../context/AreaParametersContext';
+import LayerPreloadingManager from '@/lib/layerPreloadingManager';
+import { useSimulationLayer } from '../context/SimulationContext';
+import { useCacheInvalidation } from '../context/CacheInvalidationContext';
 import { useMap } from 'react-map-gl/maplibre';
 import { Source, Layer } from 'react-map-gl/maplibre';
 import React from 'react';
-import { useTimeSlider } from '../context/TimeSliderContext';
 import { useHeavyThrottle, useDraggingDetection } from '../../lib/throttleHooks';
 import { getLayerOffsetForBbox } from '../../lib/layerOffsets';
-import LayerPreloadingManager from '@/lib/layerPreloadingManager';
+
 
 interface CurrentMagnitudeMetadata {
   bbox: [number, number, number, number]; // [lon_min, lon_max, lat_min, lat_max]
@@ -29,15 +33,17 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
   visible = true, 
   opacity = 0.8 
 }) => {
-  const { current: map } = useMap();
-  const { selectedHour, displayHour, baseTime } = useTimeSlider();
-  
+  const { selectedHour, baseTime } = useTimeSlider();
+  const { simulationLayer } = useSimulationLayer();
+  const { lastInvalidation } = useCacheInvalidation();
+  const mapInstance = useMap();
+
   // Detect if user is actively dragging
   const isDragging = useDraggingDetection(selectedHour);
   
   // Much faster throttling for smooth simulation effect
-  const lightThrottledHour = useHeavyThrottle(displayHour, 10);   // Very fast when not dragging
-  const heavyThrottledHour = useHeavyThrottle(displayHour, 50);   // Still fast when dragging
+  const lightThrottledHour = useHeavyThrottle(selectedHour, 10);   // Very fast when not dragging
+  const heavyThrottledHour = useHeavyThrottle(selectedHour, 50);   // Still fast when dragging
   const effectiveSelectedHour = isDragging ? heavyThrottledHour : lightThrottledHour;
   
   const [metadata, setMetadata] = useState<CurrentMagnitudeMetadata | null>(null);
@@ -56,11 +62,13 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     );
   }, [metadata?.timestamps]);
 
-  // Load metadata - EAGER LOADING
+  // Load metadata - EAGER LOADING med cache invalidation support
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch('/data/current-images-mercator/metadata.json');
+        // Använd cache busting om cache har invaliderats
+        const cacheParam = lastInvalidation ? `?t=${lastInvalidation}` : '';
+        const response = await fetch(`/data/current-images-mercator/metadata.json${cacheParam}`);
         
         if (!response.ok) {
           return;
@@ -81,7 +89,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     
     // Ladda metadata direkt vid komponentstart - ingen visible check
     loadMetadata();
-  }, []);
+  }, [lastInvalidation]); // Re-run när cache invalideras
 
   // Preload bilder i bakgrunden - IMMEDIATE PRELOADING
   useEffect(() => {
@@ -94,8 +102,12 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       // Preload bilder gradvis för att inte blockera UI
       for (const safeTimestamp of availableImages) {
         const img = new Image();
-        // CACHE BUSTING: Lägg till generated_at som cache buster
-        const imageUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp?v=${generatedAt}`;
+        // CACHE BUSTING: Lägg till generated_at och invalidation som cache buster
+        const cacheParams = [
+          generatedAt && `v=${generatedAt}`,
+          lastInvalidation && `t=${lastInvalidation}`
+        ].filter(Boolean).join('&');
+        const imageUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp?${cacheParams}`;
         
         img.onload = () => {
           imageMap.set(safeTimestamp, img);
@@ -136,7 +148,7 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     
     // Start preloading immediately - no delay
     setTimeout(preloadImages, 100);
-  }, [availableImages, generatedAt]);
+  }, [availableImages, generatedAt, lastInvalidation]);
 
   // 2) Memoized timestamp prefix - DEFAULT till current time om baseTime saknas
   const timestampPrefix = useMemo(() => {
@@ -176,20 +188,24 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
         img.onerror = () => {
           console.log('❌ Kunde inte ladda initial magnitude bild:', safeTimestamp);
         };
-        // CACHE BUSTING: Lägg till generated_at parameter
-        const imageUrlWithCache = generatedAt ? `${imageUrl}?v=${generatedAt}` : imageUrl;
+        // CACHE BUSTING: Lägg till generated_at och invalidation parameter
+        const cacheParams = [
+          generatedAt && `v=${generatedAt}`,
+          lastInvalidation && `t=${lastInvalidation}`
+        ].filter(Boolean).join('&');
+        const imageUrlWithCache = cacheParams ? `${imageUrl}?${cacheParams}` : imageUrl;
         img.src = imageUrlWithCache;
       }
     }
   }, [metadata?.timestamps, preloadedImages, currentImageUrl]);
 
   // 3) Hitta rätt bild för nuvarande tidsstämpel
-  const findImageForTimestamp = useCallback((prefix: string) => {
+  const findImageForTimestamp = useMemo(() => {
     if (!metadata || !metadata.timestamps) return null;
     
     // Hitta exakt match för tidsstämpel-prefix
     const matchingTimestamp = metadata.timestamps.find(ts => 
-      ts.startsWith(prefix)
+      ts.startsWith(timestampPrefix)
     );
     
     if (!matchingTimestamp) {
@@ -208,13 +224,13 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
     const imageUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp`;
     
     return imageUrl;
-  }, [metadata, availableImages]);
+  }, [metadata, availableImages, timestampPrefix]);
 
   // 4) Smart bildväxling - använd GLOBAL preloaded om tillgänglig, annars fallback till lokal
   useEffect(() => {
     if (!timestampPrefix || !metadata) return;
     
-    const imageUrl = findImageForTimestamp(timestampPrefix);
+    const imageUrl = findImageForTimestamp;
     
     if (imageUrl !== currentImageUrl) {
       setCurrentImageUrl(imageUrl);
@@ -245,8 +261,12 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
             const img = new Image();
             let isCurrentRequest = true;
             
-            // CACHE BUSTING: Lägg till generated_at parameter
-            const imageUrlWithCache = generatedAt ? `${imageUrl}?v=${generatedAt}` : imageUrl;
+            // CACHE BUSTING: Lägg till generated_at och invalidation parameter
+            const cacheParams = [
+              generatedAt && `v=${generatedAt}`,
+              lastInvalidation && `t=${lastInvalidation}`
+            ].filter(Boolean).join('&');
+            const imageUrlWithCache = cacheParams ? `${imageUrl}?${cacheParams}` : imageUrl;
             
             img.onload = () => {
               // Dubbelkolla att detta fortfarande är rätt bild OCH att requesten inte är avbruten

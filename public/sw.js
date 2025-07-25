@@ -1,44 +1,45 @@
 // 🚀 ULTRA-AGGRESSIV Service Worker för Mobil-prestanda
-const CACHE_NAME = 'makrillsverige-mobile-v2';
+const CACHE_NAME = 'makrillsverige-mobile-v3'; // Uppdaterad version
 const CACHE_EXPIRY = {
   webp: 7 * 24 * 60 * 60 * 1000,    // 7 dagar för WebP
   avif: 7 * 24 * 60 * 60 * 1000,    // 7 dagar för AVIF  
   images: 3 * 24 * 60 * 60 * 1000,  // 3 dagar för andra bilder
-  metadata: 60 * 60 * 1000,         // 1 timme för metadata
+  metadata: 60 * 60 * 1000,         // 1 timme för metadata (276KB totalt, uppdateras bara 1x/dag)
   critical: 30 * 24 * 60 * 60 * 1000 // 30 dagar för kritiska resurser
 };
 
-// Lista över kritiska filer som alltid ska cachas aggressivt
-const CRITICAL_RESOURCES = [
+// Lista över kritiska metadata-filer som behöver smart caching
+const METADATA_FILES = [
   '/data/current-images-mercator/metadata.json',
-  '/data/mackerel-probability-images-mercator/metadata.json',
-  '/data/area-parameters-extended.json.gz'
+  '/data/temperature-images-mercator/metadata.json',
+  '/data/salinity-images-mercator/metadata.json',
+  '/data/mackerel-probability-images-mercator/metadata.json'
 ];
 
 // SMART installation med prefetch av kritiska resurser
 self.addEventListener('install', event => {
-  console.log('🔧 Installerar ultra-mobil Service Worker');
+  console.log('🔧 Installerar ultra-mobil Service Worker v3');
   
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       
-      // Prefetch kritiska metadata-filer
+      // Prefetch metadata-filer med kortare cache
       try {
-        await cache.addAll(CRITICAL_RESOURCES.slice(0, 2)); // Bara metadata först
+        await cache.addAll(METADATA_FILES.slice(0, 2)); // Bara viktiga metadata först
         console.log('✅ Kritiska metadata-filer prefetchade');
       } catch (error) {
         console.warn('⚠️ Kunde inte prefetch alla kritiska resurser:', error);
       }
       
-  self.skipWaiting();
+      self.skipWaiting();
     })()
   );
 });
 
 // Aktivering med cleanup av gamla cacher
 self.addEventListener('activate', event => {
-  console.log('🚀 Aktiverar ultra-mobil Service Worker');
+  console.log('🚀 Aktiverar ultra-mobil Service Worker v3');
   
   event.waitUntil(
     (async () => {
@@ -58,7 +59,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// ULTRA-SMART request-hantering
+// ULTRA-SMART request-hantering med förbättrad metadata-hantering
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   
@@ -74,29 +75,35 @@ self.addEventListener('fetch', event => {
   const isWebP = /\.webp$/i.test(url.pathname);
   const isAVIF = /\.avif$/i.test(url.pathname);
   const isImage = /\.(png|jpg|jpeg|gif|webp|avif)$/i.test(url.pathname);
-  const isMetadata = /metadata\.json$/i.test(url.pathname) || /\.json$/i.test(url.pathname);
-  const isCritical = CRITICAL_RESOURCES.some(resource => url.pathname.endsWith(resource.split('/').pop()));
+  const isMetadata = /metadata\.json$/i.test(url.pathname) || 
+                    (url.pathname.endsWith('.json') && url.pathname.includes('/data/'));
+  const isCriticalMetadata = METADATA_FILES.some(file => url.pathname.endsWith(file.split('/').pop()));
   const isDataResource = url.pathname.startsWith('/data/');
   
-  // Cache alla marina data-resurser
+  // Cache alla marina data-resurser med smart metadata-hantering
   if (isDataResource && (isImage || isMetadata)) {
     event.respondWith(handleUltraSmartRequest(event.request, {
       isWebP,
       isAVIF, 
       isImage,
       isMetadata,
-      isCritical
+      isCriticalMetadata
     }));
   }
 });
 
-// 🚀 ULTRA-SMART REQUEST HANDLER med adaptiv caching
+// 🚀 ULTRA-SMART REQUEST HANDLER med förbättrad metadata-hantering
 async function handleUltraSmartRequest(request, resourceInfo) {
   const cache = await caches.open(CACHE_NAME);
   const url = new URL(request.url);
   
   try {
-    // 1. CACHE FIRST strategi för bilder och kritiska resurser
+    // SPECIAL HANDLING för kritisk metadata - alltid kolla freshness
+    if (resourceInfo.isCriticalMetadata) {
+      return await handleCriticalMetadata(request, cache);
+    }
+    
+    // 1. CACHE FIRST strategi för bilder och vanlig metadata
     const cachedResponse = await cache.match(request);
     
     if (cachedResponse) {
@@ -106,28 +113,22 @@ async function handleUltraSmartRequest(request, resourceInfo) {
         
         // Olika cache-tider baserat på resurstyp
         let maxAge = CACHE_EXPIRY.images;
-        if (resourceInfo.isCritical) {
-          maxAge = CACHE_EXPIRY.critical;
-        } else if (resourceInfo.isWebP || resourceInfo.isAVIF) {
+        if (resourceInfo.isWebP || resourceInfo.isAVIF) {
           maxAge = CACHE_EXPIRY.webp;
         } else if (resourceInfo.isMetadata) {
-          maxAge = CACHE_EXPIRY.metadata;
+          maxAge = CACHE_EXPIRY.metadata; // Kortare för metadata
         }
         
         if (age < maxAge) {
-          // Tyst cache hit - ingen konsol-spam
+          // Cache hit - return cached version
           return cachedResponse;
-        } else {
-          // Cache expired - hämta från nätet
         }
       }
     }
     
     // 2. NETWORK strategi med smart error-hantering
-    // Tyst nätverks-hämtning
-    
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout för bättre UX
     
     const networkResponse = await fetch(request, {
       signal: controller.signal
@@ -136,34 +137,8 @@ async function handleUltraSmartRequest(request, resourceInfo) {
     clearTimeout(timeoutId);
     
     if (networkResponse.ok) {
-      // 3. SMART CACHING baserat på resurstyp
-      const responseToCache = networkResponse.clone();
-      const headers = new Headers(responseToCache.headers);
-      headers.set('sw-cached', Date.now().toString());
-      headers.set('sw-resource-type', getResourceType(resourceInfo));
-      
-      // Lägg till extra cache-headers för optimerade format
-      if (resourceInfo.isWebP || resourceInfo.isAVIF) {
-        headers.set('sw-optimized', 'true');
-        headers.set('sw-format', resourceInfo.isWebP ? 'webp' : 'avif');
-      }
-      
-      const modifiedResponse = new Response(responseToCache.body, {
-        status: responseToCache.status,
-        statusText: responseToCache.statusText,
-        headers: headers
-      });
-      
-      // Cache med prioritet - kritiska resurser först
-      if (resourceInfo.isCritical) {
-        await cache.put(request, modifiedResponse);
-        // Tyst caching
-      } else {
-        // Non-blocking cache för icke-kritiska resurser
-        cache.put(request, modifiedResponse).catch(error => {
-          console.warn(`⚠️ Cache-fel för ${url.pathname}:`, error);
-        });
-      }
+      // 3. SMART CACHING med specialbehandling för metadata
+      await cacheResponse(cache, request, networkResponse, resourceInfo);
     }
     
     return networkResponse;
@@ -174,7 +149,6 @@ async function handleUltraSmartRequest(request, resourceInfo) {
     // 4. OFFLINE FALLBACK - returnera cache även om den är gammal
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      // Tyst offline fallback
       return cachedResponse;
     }
     
@@ -186,11 +160,10 @@ async function handleUltraSmartRequest(request, resourceInfo) {
       try {
         const pngResponse = await fetch(pngRequest);
         if (pngResponse.ok) {
-          // Tyst WebP till PNG fallback
           return pngResponse;
         }
       } catch (pngError) {
-        // Tyst PNG fallback fel
+        // Silent failure
       }
     }
     
@@ -198,21 +171,123 @@ async function handleUltraSmartRequest(request, resourceInfo) {
   }
 }
 
+// SPECIAL HANDLER för kritisk metadata
+async function handleCriticalMetadata(request, cache) {
+  const cachedResponse = await cache.match(request);
+  
+  try {
+    // Försök alltid hämta från nätet först för metadata
+    const networkResponse = await fetch(request, {
+      signal: AbortSignal.timeout(5000) // 5s timeout
+    });
+    
+    if (networkResponse.ok) {
+      // Kolla om innehållet faktiskt har ändrats
+      const networkText = await networkResponse.clone().text();
+      
+      if (cachedResponse) {
+        const cachedText = await cachedResponse.text();
+        
+        // Om innehållet är samma, returnera cache (för prestanda)
+        if (networkText === cachedText) {
+          console.log('📊 Metadata oförändrad, använder cache');
+          return cachedResponse;
+        }
+      }
+      
+      // Innehållet har ändrats eller är nytt - cache och returnera
+      console.log('🔄 Metadata uppdaterad, cachar ny version');
+      await cacheResponse(cache, request, networkResponse, { isMetadata: true, isCriticalMetadata: true });
+      return networkResponse;
+      
+    } else if (cachedResponse) {
+      // Network misslyckades men vi har cache
+      console.log('⚠️ Network misslyckades för metadata, använder cache');
+      return cachedResponse;
+    }
+    
+    throw new Error('No network response and no cache');
+    
+  } catch (error) {
+    // Network fel - använd cache om tillgänglig
+    if (cachedResponse) {
+      console.log('📊 Metadata network fel, använder cache fallback');
+      return cachedResponse;
+    }
+    
+    throw error;
+  }
+}
+
+// Hjälpfunktion för att cacha svar
+async function cacheResponse(cache, request, response, resourceInfo) {
+  const responseToCache = response.clone();
+  const headers = new Headers(responseToCache.headers);
+  headers.set('sw-cached', Date.now().toString());
+  headers.set('sw-resource-type', getResourceType(resourceInfo));
+  
+  // Lägg till extra headers för optimerade format
+  if (resourceInfo.isWebP || resourceInfo.isAVIF) {
+    headers.set('sw-optimized', 'true');
+    headers.set('sw-format', resourceInfo.isWebP ? 'webp' : 'avif');
+  }
+  
+  // Speciell markering för kritisk metadata
+  if (resourceInfo.isCriticalMetadata) {
+    headers.set('sw-critical-metadata', 'true');
+  }
+  
+  const modifiedResponse = new Response(responseToCache.body, {
+    status: responseToCache.status,
+    statusText: responseToCache.statusText,
+    headers: headers
+  });
+  
+  // Cache med prioritet
+  try {
+    await cache.put(request, modifiedResponse);
+  } catch (error) {
+    console.warn(`⚠️ Cache-fel för ${new URL(request.url).pathname}:`, error);
+  }
+}
+
 // Hjälpfunktion för resurstyp-identifiering
 function getResourceType(resourceInfo) {
-  if (resourceInfo.isCritical) return 'critical';
+  if (resourceInfo.isCriticalMetadata) return 'critical-metadata';
+  if (resourceInfo.isMetadata) return 'metadata';
   if (resourceInfo.isWebP) return 'webp';
   if (resourceInfo.isAVIF) return 'avif';
-  if (resourceInfo.isMetadata) return 'metadata';
   if (resourceInfo.isImage) return 'image';
   return 'unknown';
 }
 
-// 📊 CACHE STATISTIK och meddelanden
+// 📊 FÖRBÄTTRAD message-hantering med cache invalidation
 self.addEventListener('message', async (event) => {
   if (event.data && event.data.action === 'CLEAR_CACHE') {
     await caches.delete(CACHE_NAME);
     console.log('🗑️ Cache rensad manuellt');
+    
+    // Skicka bekräftelse tillbaka
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ success: true });
+    }
+  }
+  
+  if (event.data && event.data.action === 'CLEAR_METADATA') {
+    const cache = await caches.open(CACHE_NAME);
+    const requests = await cache.keys();
+    
+    // Ta bort endast metadata
+    const metadataRequests = requests.filter(request => 
+      request.url.includes('metadata.json')
+    );
+    
+    await Promise.all(metadataRequests.map(request => cache.delete(request)));
+    console.log('🗑️ Metadata cache rensad');
+    
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ success: true, cleared: metadataRequests.length });
+    }
   }
   
   if (event.data && event.data.action === 'GET_CACHE_STATS') {
@@ -237,28 +312,14 @@ self.addEventListener('message', async (event) => {
 // Beräkna ungefärlig cache-storlek
 async function getCacheSize(cache) {
   const keys = await cache.keys();
-  let totalSize = 0;
   
-  // Uppskatta baserat på antal filer (eftersom vi inte kan mäta exakt storlek)
-  for (const request of keys.slice(0, 10)) { // Bara sampla första 10
-    try {
-      const response = await cache.match(request);
-      if (response && response.body) {
-        const reader = response.body.getReader();
-        let size = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          size += value ? value.length : 0;
-        }
-        totalSize += size;
-      }
-    } catch (error) {
-      // Ignorera fel vid storlek-beräkning
-    }
-  }
+  // Uppskatta baserat på antal filer och typ
+  const estimates = {
+    webp: keys.filter(req => req.url.includes('.webp')).length * 50, // ~50KB per WebP
+    png: keys.filter(req => req.url.includes('.png')).length * 100, // ~100KB per PNG
+    metadata: keys.filter(req => req.url.includes('metadata.json')).length * 5 // ~5KB per metadata
+  };
   
-  // Uppskatta total storlek baserat på sample
-  const avgFileSize = totalSize / 10;
-  return Math.round(avgFileSize * keys.length / 1024 / 1024); // MB
+  const totalKB = estimates.webp + estimates.png + estimates.metadata;
+  return Math.round(totalKB / 1024); // MB
 } 

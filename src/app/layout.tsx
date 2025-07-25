@@ -14,6 +14,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
 import { SimulationProvider, useSimulationLayer } from "./context/SimulationContext";
 import { NavigationProvider, useNavigation } from "./context/NavigationContext";
+import { CacheInvalidationProvider } from "./context/CacheInvalidationContext";
 import { useState, useEffect } from "react";
 import { usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -127,9 +128,11 @@ export default function RootLayout({
                                     <ManualPointsProvider>
                   <SimulationProvider>
                     <NavigationProvider>
-                      <RootLayoutContent shouldShowSidebar={shouldShowSidebar}>
-                        {children}
-                      </RootLayoutContent>
+                      <CacheInvalidationProvider>
+                        <RootLayoutContent shouldShowSidebar={shouldShowSidebar}>
+                          {children}
+                        </RootLayoutContent>
+                      </CacheInvalidationProvider>
                     </NavigationProvider>
                   </SimulationProvider>
                 </ManualPointsProvider>
