@@ -16,11 +16,11 @@ export default function PlaceNamesLayer({
       id="place-names"
       type="raster"
       tiles={[
-        // Use CartoDB dark labels for better visibility and Swedish support
-        'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
-        'https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
-        'https://c.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
-        'https://d.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png'
+        // Use CartoDB light labels for better visibility on all zoom levels
+        'https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png',
+        'https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png',
+        'https://d.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png'
       ]}
       tileSize={256}
       attribution="&copy; OpenStreetMap contributors, &copy; CARTO"

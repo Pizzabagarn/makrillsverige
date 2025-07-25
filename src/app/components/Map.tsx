@@ -330,7 +330,7 @@ export default function MapView({
           [16.6, 59.6]  // nordöst (lon_max, lat_max)
         ]}
         minZoom={6}
-        maxZoom={12}
+        maxZoom={18}
         style={{ width: '100%', height: '100%' }}
         cursor="default"
         mapStyle={{
@@ -381,15 +381,15 @@ export default function MapView({
           opacity={1.0}
         />
         
-        {/* PLATSNAMNLAGER - RENDERAS EFTER PARAMETERBILDER FÖR ATT VARA OVANPÅ */}
-        <PlaceNamesLayer visible={true} opacity={0.9} />
-        
         {/* PILAR MÅSTE RENDERAS EFTER BILDLAGER FÖR ATT VARA OVANPÅ */}
         <CurrentVectorsLayer 
           visible={contextShowCurrentVectors && !simulationLayer}
         />
         
-        {/* MANUELLA PUNKTER - RENDERAS EFTER PILAR */}
+        {/* PLATSNAMNLAGER - RENDERAS EFTER PILAR FÖR ATT VARA OVANPÅ */}
+        <PlaceNamesLayer visible={true} opacity={0.9} />
+        
+        {/* MANUELLA PUNKTER - RENDERAS EFTER PLATSNAMN */}
         <ManualPointsLayer visible={isManualPointMode} onPointClick={handlePointClick} />
         
         {/* PIN KOMPONENT - RENDERAS SIST FÖR ATT VARA OVANPÅ ALLT */}
