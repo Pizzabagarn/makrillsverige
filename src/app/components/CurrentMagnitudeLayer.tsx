@@ -220,8 +220,9 @@ const CurrentMagnitudeLayer = React.memo<CurrentMagnitudeLayerProps>(({
       return null; // Tyst fail för bilder som inte finns
     }
     
-    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
-    const imageUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp`;
+    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP) med cache-busting
+    const baseUrl = `/data/current-images-mercator/current_magnitude_${safeTimestamp}.webp`;
+    const imageUrl = generatedAt ? `${baseUrl}?v=${generatedAt}` : baseUrl;
     
     return imageUrl;
   }, [metadata, availableImages, timestampPrefix]);

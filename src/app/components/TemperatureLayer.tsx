@@ -107,7 +107,7 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
         img.onerror = () => {
           // WebP fallback: try PNG if WebP fails
           if (imageUrl.includes('.webp')) {
-            const pngUrl = imageUrl.replace('.webp', '.png');
+            const pngUrl = imageUrl.replace('.webp', '.png'); // Cache-busting behålls från original URL
             const pngImg = new Image();
             pngImg.onload = () => {
               imageMap.set(safeTimestamp, pngImg);
@@ -201,8 +201,9 @@ const TemperatureLayer = React.memo<TemperatureLayerProps>(({
       return null; // Tyst fail för bilder som inte finns
     }
     
-    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
-    const imageUrl = `/data/temperature-images-mercator/temperature_${safeTimestamp}.webp`;
+    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP) med cache-busting
+    const baseUrl = `/data/temperature-images-mercator/temperature_${safeTimestamp}.webp`;
+    const imageUrl = generatedAt ? `${baseUrl}?v=${generatedAt}` : baseUrl;
     
     return imageUrl;
   }, [metadata, availableImages]);

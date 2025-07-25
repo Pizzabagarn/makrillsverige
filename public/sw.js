@@ -1,11 +1,11 @@
 // 🚀 ULTRA-AGGRESSIV Service Worker för Mobil-prestanda
 const CACHE_NAME = 'makrillsverige-mobile-v3'; // Uppdaterad version
 const CACHE_EXPIRY = {
-  webp: 7 * 24 * 60 * 60 * 1000,    // 7 dagar för WebP
-  avif: 7 * 24 * 60 * 60 * 1000,    // 7 dagar för AVIF  
-  images: 3 * 24 * 60 * 60 * 1000,  // 3 dagar för andra bilder
-  metadata: 60 * 60 * 1000,         // 1 timme för metadata (276KB totalt, uppdateras bara 1x/dag)
-  critical: 30 * 24 * 60 * 60 * 1000 // 30 dagar för kritiska resurser
+  webp: 30 * 24 * 60 * 60 * 1000,   // 30 dagar för WebP (optimal för 1x/dygn uppdatering)
+  avif: 30 * 24 * 60 * 60 * 1000,   // 30 dagar för AVIF  
+  images: 30 * 24 * 60 * 60 * 1000, // 30 dagar för andra bilder (optimal för dina behov)
+  metadata: 2 * 60 * 60 * 1000,     // 2 timmar för metadata (cache-busting gör detta säkert)
+  critical: 90 * 24 * 60 * 60 * 1000 // 90 dagar för kritiska resurser
 };
 
 // Lista över kritiska metadata-filer som behöver smart caching
@@ -186,7 +186,7 @@ async function handleCriticalMetadata(request, cache) {
       const networkText = await networkResponse.clone().text();
       
       if (cachedResponse) {
-        const cachedText = await cachedResponse.text();
+        const cachedText = await cachedResponse.clone().text();
         
         // Om innehållet är samma, returnera cache (för prestanda)
         if (networkText === cachedText) {

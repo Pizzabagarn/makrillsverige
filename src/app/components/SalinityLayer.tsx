@@ -201,8 +201,9 @@ const SalinityLayer = React.memo<SalinityLayerProps>(({
       return null; // Tyst fail för bilder som inte finns
     }
     
-    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP)
-    const imageUrl = `/data/salinity-images-mercator/salinity_${safeTimestamp}.webp`;
+    // Skapa URL för bilden baserat på tidsstämpel (prioritera WebP) med cache-busting
+    const baseUrl = `/data/salinity-images-mercator/salinity_${safeTimestamp}.webp`;
+    const imageUrl = generatedAt ? `${baseUrl}?v=${generatedAt}` : baseUrl;
     
     return imageUrl;
   }, [metadata, availableImages]);
