@@ -12,6 +12,7 @@ import CurrentMagnitudeLayerMercator from './CurrentMagnitudeLayerMercator';
 import TemperatureLayerMercator from './TemperatureLayerMercator';
 import SalinityLayerMercator from './SalinityLayerMercator';
 import MackerelProbabilityLayer from './MackerelProbabilityLayer';
+import PlaceNamesLayer from './PlaceNamesLayer';
 import CurrentVectorsLayer from './CurrentVectorsLayer';
 import MapPin from './MapPin';
 import CurrentMagnitudeLegend from './CurrentMagnitudeLegend';
@@ -379,6 +380,9 @@ export default function MapView({
           visible={activeLayer === 'mackerel'}
           opacity={1.0}
         />
+        
+        {/* PLATSNAMNLAGER - RENDERAS EFTER PARAMETERBILDER FÖR ATT VARA OVANPÅ */}
+        <PlaceNamesLayer visible={true} opacity={0.9} />
         
         {/* PILAR MÅSTE RENDERAS EFTER BILDLAGER FÖR ATT VARA OVANPÅ */}
         <CurrentVectorsLayer 
