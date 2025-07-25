@@ -361,36 +361,36 @@ export default function FiskinformationPage() {
 
         {/* Header */}
         <div className="bg-black/30 backdrop-blur-md border-b border-white/10 sticky top-0 z-50 relative">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedFish(null)}
-                  className="p-3 hover:bg-white/10 rounded-2xl transition-all duration-200 backdrop-blur-sm bg-black/20 border border-white/20"
+                  className="p-3 hover:bg-white/10 rounded-2xl transition-all duration-200 backdrop-blur-sm bg-black/20 border border-white/20 flex-shrink-0"
                 >
                   <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   {/* Fish Image in Header */}
                   <FishImage 
                     fishName={selectedFishDetails.svenskt_namn} 
-                    className="w-16 h-16" 
+                    className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0" 
                   />
-                  <div>
-                    <h1 className="text-2xl font-light text-white">{selectedFishDetails.svenskt_namn}</h1>
-                    <p className="text-white/60 italic text-sm">{selectedFishDetails.latinskt_namn}</p>
+                  <div className="min-w-0">
+                    <h1 className="text-lg sm:text-2xl font-light text-white truncate">{selectedFishDetails.svenskt_namn}</h1>
+                    <p className="text-white/60 italic text-xs sm:text-sm truncate">{selectedFishDetails.latinskt_namn}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-0">
                 {structuredFish?.metoder.slice(0, 3).map((method) => (
                   <span
                     key={method}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm text-white/90 rounded-full text-sm border border-white/20"
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm text-white/90 rounded-full text-xs sm:text-sm border border-white/20 whitespace-nowrap flex-shrink-0"
                   >
-                    <span className="text-lg">{getMethodIcon(method)}</span>
-                    {method}
+                    <span className="text-base sm:text-lg">{getMethodIcon(method)}</span>
+                    <span className="hidden sm:inline">{method}</span>
                   </span>
                 ))}
               </div>
@@ -403,28 +403,28 @@ export default function FiskinformationPage() {
           <div className="absolute inset-0 bg-black/40"></div>
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/20"></div>
           
-          <div className="relative max-w-7xl mx-auto px-6 py-16 z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-16 z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-12 items-center">
               {/* Large Fish Image */}
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 order-2 lg:order-1">
                 <FishImage 
                   fishName={selectedFishDetails.svenskt_namn} 
-                  className="w-full h-80 lg:h-96" 
+                  className="w-full h-64 sm:h-80 lg:h-96 mx-auto max-w-sm lg:max-w-none" 
                 />
               </div>
               
-              <div className="lg:col-span-2">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-sm font-medium mb-6">
+              <div className="lg:col-span-2 order-1 lg:order-2 text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-sm font-medium mb-4 sm:mb-6">
                   <Fish className="w-4 h-4" />
                   Svenska fiskar
                 </div>
-                <h1 className="text-4xl lg:text-5xl font-light text-white mb-6 leading-tight tracking-tight">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-6 leading-tight tracking-tight">
                   {selectedFishDetails.svenskt_namn}
                 </h1>
-                <p className="text-2xl text-white/70 italic font-light mb-8">
+                <p className="text-xl sm:text-2xl text-white/70 italic font-light mb-6 sm:mb-8">
                   {selectedFishDetails.latinskt_namn}
                 </p>
-                <div className="text-xl text-white/80 leading-relaxed max-w-2xl">
+                <div className="text-base sm:text-xl text-white/80 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                   {formatText(selectedFishDetails.beskrivning)}
                 </div>
               </div>
@@ -432,49 +432,49 @@ export default function FiskinformationPage() {
 
             {/* Quick Stats Row */}
             {structuredFish && (
-              <div className="mt-12">
-                <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 shadow-2xl">
-                  <h3 className="text-white/90 font-light text-lg mb-6">Viktiga data</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="mt-8 sm:mt-12">
+                <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl">
+                  <h3 className="text-white/90 font-light text-base sm:text-lg mb-4 sm:mb-6 text-center sm:text-left">Viktiga data</h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                        <Scale className="w-8 h-8 text-blue-400" />
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
+                        <Scale className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400" />
                       </div>
-                      <p className="text-white/60 text-sm mb-1">Storlek</p>
-                      <p className="text-white font-medium text-lg">
+                      <p className="text-white/60 text-xs sm:text-sm mb-1">Storlek</p>
+                      <p className="text-white font-medium text-sm sm:text-lg">
                         {structuredFish.vanlig_langd_cm.min}-{structuredFish.vanlig_langd_cm.max} cm
                       </p>
                       <p className="text-white/50 text-xs">Max: {structuredFish.max_langd_cm} cm</p>
                     </div>
                     
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-400/20 to-emerald-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                        <Droplets className="w-8 h-8 text-green-400" />
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400/20 to-emerald-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
+                        <Droplets className="w-6 h-6 sm:w-8 sm:h-8 text-green-400" />
                       </div>
-                      <p className="text-white/60 text-sm mb-1">Vikt</p>
-                      <p className="text-white font-medium text-lg">
+                      <p className="text-white/60 text-xs sm:text-sm mb-1">Vikt</p>
+                      <p className="text-white font-medium text-sm sm:text-lg">
                         {structuredFish.vanlig_vikt_kg.min}-{structuredFish.vanlig_vikt_kg.max} kg
                       </p>
                       <p className="text-white/50 text-xs">Max: {structuredFish.max_vikt_kg} kg</p>
                     </div>
                     
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                        <Thermometer className="w-8 h-8 text-orange-400" />
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
+                        <Thermometer className="w-6 h-6 sm:w-8 sm:h-8 text-orange-400" />
                       </div>
-                      <p className="text-white/60 text-sm mb-1">Temperatur</p>
-                      <p className="text-white font-medium text-lg">
+                      <p className="text-white/60 text-xs sm:text-sm mb-1">Temperatur</p>
+                      <p className="text-white font-medium text-sm sm:text-lg">
                         {structuredFish.temp_C.min}-{structuredFish.temp_C.max}°C
                       </p>
                       <p className="text-white/50 text-xs">Optimal temp</p>
                     </div>
                     
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                        <Navigation className="w-8 h-8 text-purple-400" />
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
+                        <Navigation className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
                       </div>
-                      <p className="text-white/60 text-sm mb-1">Djup</p>
-                      <p className="text-white font-medium text-lg">
+                      <p className="text-white/60 text-xs sm:text-sm mb-1">Djup</p>
+                      <p className="text-white font-medium text-sm sm:text-lg">
                         {structuredFish.djup_m.min}-{structuredFish.djup_m.max} m
                       </p>
                       <p className="text-white/50 text-xs">Vanligt djup</p>
@@ -488,22 +488,22 @@ export default function FiskinformationPage() {
 
         {/* Navigation Tabs */}
         <div className="bg-black/30 backdrop-blur-xl border-b border-white/10 sticky top-[73px] z-40 relative">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex space-x-1 overflow-x-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2 whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium transition-all duration-200 border-b-2 whitespace-nowrap flex-shrink-0 ${
                       activeTab === tab.id
                         ? 'text-blue-400 border-blue-400 bg-white/5'
                         : 'text-white/70 border-transparent hover:text-white hover:bg-white/5'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
-                    {tab.label}
+                    <span className="hidden sm:inline">{tab.label}</span>
                   </button>
                 );
               })}
@@ -512,7 +512,7 @@ export default function FiskinformationPage() {
         </div>
 
         {/* Content */}
-        <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 relative z-10">
           {activeTab === 'overview' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-8">
@@ -820,7 +820,7 @@ export default function FiskinformationPage() {
                                 className="group bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
                               >
                                 {/* Produktbild */}
-                                <div className="relative h-32 bg-gradient-to-br from-white/10 to-white/5">
+                                <div className="relative h-32 sm:h-36 bg-gradient-to-br from-white/10 to-white/5">
                                   {product.image ? (
                                     <img
                                       src={product.image}
@@ -847,7 +847,7 @@ export default function FiskinformationPage() {
                                         {[1, 2, 3, 4, 5].map((star) => (
                                           <svg
                                             key={star}
-                                            className={`w-3 h-3 ${
+                                            className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${
                                               star <= (product.effectiveness || 5) 
                                                 ? 'fill-current text-yellow-400' 
                                                 : 'fill-current text-gray-600'
@@ -871,13 +871,14 @@ export default function FiskinformationPage() {
                                         ? 'bg-green-500/20 text-green-300 border border-green-500/30'
                                         : 'bg-red-500/20 text-red-300 border border-red-500/30'
                                     }`}>
-                                      {product.inStock !== false ? '✓ I lager' : '✗ Slut'}
+                                      <span className="hidden sm:inline">{product.inStock !== false ? '✓ I lager' : '✗ Slut'}</span>
+                                      <span className="sm:hidden">{product.inStock !== false ? '✓' : '✗'}</span>
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Produktinfo */}
-                                <div className="p-4">
+                                <div className="p-3 sm:p-4">
                                   <h5 className="font-semibold text-white text-sm mb-2 line-clamp-2 group-hover:text-blue-300 transition-colors">
                                     {product.name || product.title}
                                   </h5>
@@ -891,11 +892,11 @@ export default function FiskinformationPage() {
                                   
                                   <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-lg font-bold text-green-400">
+                                      <span className="text-base sm:text-lg font-bold text-green-400">
                                         {product.price ? `${product.price} ${product.currency || 'kr'}` : 'Pris ej tillgänglig'}
                                       </span>
                                       {product.originalPrice && product.price && product.originalPrice > product.price && (
-                                        <span className="text-sm text-white/50 line-through">
+                                        <span className="text-xs sm:text-sm text-white/50 line-through">
                                           {product.originalPrice} {product.currency || 'kr'}
                                         </span>
                                       )}
@@ -903,11 +904,11 @@ export default function FiskinformationPage() {
                                   </div>
 
                                   <div className="flex items-center justify-between mb-3">
-                                    <span className="text-xs text-white/60 bg-white/10 px-2 py-1 rounded-full">
+                                    <span className="text-xs text-white/60 bg-white/10 px-2 py-1 rounded-full truncate max-w-24 sm:max-w-none">
                                       {product.retailer}
                                     </span>
                                     {product.brand && (
-                                      <span className="text-xs text-white/60">
+                                      <span className="text-xs text-white/60 truncate max-w-20 sm:max-w-none">
                                         {product.brand}
                                       </span>
                                     )}
@@ -948,7 +949,7 @@ export default function FiskinformationPage() {
                                   </div>
 
                                   <button
-                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                                     onClick={async (e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -968,8 +969,9 @@ export default function FiskinformationPage() {
                                       window.open(product.url, '_blank', 'noopener,noreferrer');
                                     }}
                                   >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Köp hos {product.retailer}
+                                    <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    <span className="hidden sm:inline">Köp hos {product.retailer}</span>
+                                    <span className="sm:hidden">Köp</span>
                                   </button>
                                 </div>
                               </div>
@@ -1062,30 +1064,30 @@ export default function FiskinformationPage() {
       
       {/* Header */}
       <div className="bg-black/30 backdrop-blur-md border-b border-white/10 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors flex-shrink-0"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />
               </Link>
-              <div>
-                <h1 className="text-3xl font-light text-white">Fiskguide</h1>
-                <p className="text-white/60 font-light">Komplett guide för svenska fiskar</p>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-light text-white truncate">Fiskguide</h1>
+                <p className="text-white/60 font-light text-sm sm:text-base">Komplett guide för svenska fiskar</p>
               </div>
             </div>
             
-            {/* Search */}
-            <div className="relative">
+            {/* Search - Responsiv */}
+            <div className="relative w-full sm:w-80 max-w-md">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
               <input
                 type="text"
                 placeholder="Sök efter fisk..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 pr-6 py-3 bg-white/10 backdrop-blur-sm text-white placeholder-white/40 rounded-2xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent w-80"
+                className="w-full pl-12 pr-6 py-3 bg-white/10 backdrop-blur-sm text-white placeholder-white/40 rounded-2xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent"
               />
             </div>
           </div>
@@ -1093,8 +1095,8 @@ export default function FiskinformationPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto p-6 pb-16 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 pb-16 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredFish.map((fish) => (
             <div
               key={fish.svenskt_namn}

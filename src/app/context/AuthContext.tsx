@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, AuthError, AuthResponse, SignInWithPasswordCredentials } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface AuthContextType {
   user: User | null
@@ -21,7 +21,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     // Get initial session
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error in getInitialSession:', error)
       } finally {
         setLoading(false)
+        setInitialLoad(false)
       }
     }
 
@@ -44,20 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔐 Auth state change:', event, !!session?.user)
+        
         setUser(session?.user ?? null)
         setLoading(false)
 
-        // Handle auth events
-        if (event === 'SIGNED_IN') {
-          router.push('/')
-        } else if (event === 'SIGNED_OUT') {
-          router.push('/')
+        // Only handle redirects for explicit user actions, not session refreshes
+        if (!initialLoad) {
+          if (event === 'SIGNED_OUT') {
+            // User explicitly signed out - redirect to home
+            console.log('🚪 User signed out, redirecting to home')
+            router.push('/')
+          } else if (event === 'SIGNED_IN' && pathname.startsWith('/auth/')) {
+            // User just signed in from auth flow - redirect to home
+            console.log('✅ User signed in from auth flow, redirecting to home')
+            router.push('/')
+          }
+          // For TOKEN_REFRESHED, PASSWORD_RECOVERY, etc. - don't redirect
         }
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [router])
+  }, [router, pathname, initialLoad])
 
   const signUp = async (email: string, password: string): Promise<AuthResponse> => {
     return await supabase.auth.signUp({
