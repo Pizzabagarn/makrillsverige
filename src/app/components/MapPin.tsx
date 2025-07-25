@@ -8,6 +8,41 @@ import { useTimeSlider } from '../context/TimeSliderContext';
 import { useManualPoints } from '../context/ManualPointsContext';
 import { getColorForValue } from '../../lib/colormap-utils';
 import PopupPreloadManager from '../../lib/popupPreloadManager';
+import { permanentPlaceNameCache } from '../../lib/permanentPlaceNameCache';
+
+// 📡 SUBTIL RADAR PULS - En gång var 2:a sekund, startar direkt vid ny pin
+const useRadarAnimation = (isActive: boolean, pinLocation: {lat: number, lon: number} | null) => {
+  const [animationPhase, setAnimationPhase] = useState(0);
+  
+  // 🚀 TRIGGER första pulsen direkt när ny pin sätts
+  useEffect(() => {
+    if (pinLocation) {
+      setAnimationPhase(0); // Starta animationen från början = omedelbar puls
+    }
+  }, [pinLocation]);
+  
+  useEffect(() => {
+    if (!isActive) return;
+    
+    const interval = setInterval(() => {
+      setAnimationPhase(prev => (prev + 0.05) % 1); // 0-1 cykel över 2 sekunder
+    }, 100); // Smooth animation
+    
+    return () => clearInterval(interval);
+  }, [isActive]);
+  
+  // Beräkna subtil puls - bara synlig 1/3 av tiden (första delen av cykeln)
+  const isInPulse = animationPhase < 0.33; // Bara första 33% av cykeln (~0.7 sekunder av 2)
+  const pulseProgress = isInPulse ? animationPhase * 3 : 0; // 0-1 inom pulsen
+  
+  const pulse = {
+    radius: isInPulse ? 8 + (pulseProgress * 35) : 8, // 8-43px under puls, annars bara 8px
+    opacity: isInPulse ? Math.max(0, 0.25 - pulseProgress * 0.25) : 0, // Fade ut under puls
+    strokeOpacity: isInPulse ? Math.max(0, 0.4 - pulseProgress * 0.4) : 0
+  };
+  
+  return { pulse };
+};
 
 // Cache för makrill-värden - FÖRBÄTTRAD CACHING
 const mackerelValuesCache = new Map<string, any>();
@@ -208,6 +243,12 @@ async function loadMackerelValues(timestamp: string): Promise<any> {
   return loadingPromise;
 }
 
+// 🗺️ ULTIMAT platsnamn-laddning med permanent cache
+async function loadPlaceName(lat: number, lon: number): Promise<string | null> {
+  const result = await permanentPlaceNameCache.getPlaceName(lat, lon);
+  return result.placeName;
+}
+
 // Preloading-funktion för makrill-data
 async function preloadMackerelData(timestamp: string): Promise<void> {
   if (mackerelPreloadingStatus.get(timestamp)) {
@@ -327,6 +368,7 @@ interface PinData {
   salinity?: number;
   current?: { u: number; v: number };
   mackerel?: number; // Makrill-sannolikhet i procent
+  placeName?: string; // Platsnamn från reverse geocoding
 }
 
 interface MapPinProps {
@@ -388,6 +430,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [popupPosition, setPopupPosition] = useState<{x: number, y: number} | null>(null);
+  
+  // 📡 Radar animation för pin
+  const radarAnimation = useRadarAnimation(showPopup && pinLocation !== null, pinLocation);
 
   // Beräkna aktuell tidsstämpel
   const targetTimestamp = useMemo(() => {
@@ -410,13 +455,13 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     return closestTimestamp;
   }, [selectedHour, baseTime, areaData?.metadata?.timestamps]);
 
-  // OPTIMERAD: Preload makrill-data med enhetsskillnader
+    // OPTIMERAD: Preload makrill-data med enhetsskillnader
   useEffect(() => {
     if (!targetTimestamp || !areaData?.metadata?.timestamps) return;
     
     const currentIndex = areaData.metadata.timestamps.indexOf(targetTimestamp);
     if (currentIndex === -1) return;
-    
+
     const preloadTimestamps: string[] = [];
     
     // Lägg till aktuell tid (högst prioritet)
@@ -451,6 +496,18 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     startPreloading();
   }, [targetTimestamp, areaData?.metadata?.timestamps]);
 
+  // 🗺️ BACKGROUND preloading av vanliga marina områden (kör en gång)
+  useEffect(() => {
+    // Kör preloading i bakgrunden efter 5 sekunder för att inte störa initial laddning
+    const timer = setTimeout(() => {
+      permanentPlaceNameCache.preloadCommonMarineAreas().catch(() => {
+        // Tyst fel - preloading är optional
+      });
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []); // Bara en gång
+
   // Hitta närmaste datapunkt och extrahera parametrar
   const findNearestDataPoint = useCallback(async (lat: number, lon: number): Promise<PinData | null> => {
     if (!areaData?.points || !targetTimestamp) return null;
@@ -476,6 +533,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     const waterMask = await loadWaterMask();
     const isInWater = isPointInWater(lat, lon, waterMask);
 
+    // Ladda platsnamn parallel med makrill-data för optimal prestanda
+    const placeNamePromise = loadPlaceName(lat, lon);
+
     // Ladda makrill-data endast om punkt är i vatten
     let mackerelValue: number | undefined = undefined;
     if (isInWater) {
@@ -490,6 +550,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       }
     }
 
+    // Vänta på platsnamn (cache gör detta snabbt)
+    const placeName = await placeNamePromise;
+
     return {
       lat: nearestPoint.lat,
       lon: nearestPoint.lon,
@@ -497,7 +560,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       temperature: timeData.temperature,
       salinity: timeData.salinity,
       current: timeData.current,
-      mackerel: mackerelValue
+      mackerel: mackerelValue,
+      placeName: placeName || undefined
     };
   }, [areaData, targetTimestamp]);
 
@@ -583,6 +647,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       return null;
     }
 
+    // Ladda platsnamn parallel med annan data för optimal prestanda
+    const placeNamePromise = loadPlaceName(lat, lon);
+
     // Ladda makrill-data och interpolera som andra parametrar
     let mackerelValue: number | undefined = undefined;
     const mackerelData = await loadMackerelValues(targetTimestamp);
@@ -603,6 +670,9 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
     // Sortera punkter efter avstånd för bättre extremvärdeshantering
     nearbyPoints.sort((a, b) => a.distance - b.distance);
     
+    // Vänta på platsnamn (cache gör detta snabbt)
+    const placeName = await placeNamePromise;
+
     // Om närmaste punkt är mycket nära (< 1km), använd den direkt för att bevara extremvärden
     if (nearbyPoints.length > 0 && nearbyPoints[0].distance < 0.01) {
       const point = nearbyPoints[0];
@@ -613,7 +683,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
         temperature: point.data.temperature,
         salinity: point.data.salinity,
         current: point.data.current,
-        mackerel: mackerelValue
+        mackerel: mackerelValue,
+        placeName: placeName || undefined
       };
     }
 
@@ -628,7 +699,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
         temperature: point.data.temperature,
         salinity: point.data.salinity,
         current: point.data.current,
-        mackerel: mackerelValue
+        mackerel: mackerelValue,
+        placeName: placeName || undefined
       };
     }
 
@@ -680,7 +752,8 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       temperature: interpolateParameter('temperature'),
       salinity: interpolateParameter('salinity'),
       current: interpolateParameter('current'),
-      mackerel: mackerelValue // Använd redan beräknat mackerelValue
+      mackerel: mackerelValue, // Använd redan beräknat mackerelValue
+      placeName: placeName || undefined
     };
   }, [areaData, targetTimestamp]);
 
@@ -818,15 +891,33 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       horizontalOffset = 0;
     }
     
-    // Uppdatera offset med horizontal justering
+        // Uppdatera offset med horizontal justering
     offset = [horizontalOffset, offset[1]];
+    
+    // 🔧 FINAL SÄKERHETSKONTROLL - Förhindra popup utanför överkant
+    if (anchor === 'bottom') {
+      // Beräkna var popupens överkant kommer hamna
+      const popupTopY = point.y - popupHeight - Math.abs(offset[1]);
+      if (popupTopY < safeMargin) {
+        // Popup skulle hamna utanför överkant - flytta till center eller top
+        if (spaceBottom >= popupHeight * 0.7) {
+          // Tillräckligt utrymme under för en rimlig popup
+          anchor = 'top';
+          offset = [horizontalOffset, baseOffset];
+        } else {
+          // Använd center som sista utväg
+          anchor = 'center';
+          offset = [horizontalOffset, 0];
+        }
+      }
+    }
     
     // Om vi fortfarande inte har tillräckligt utrymme, använd center anchor
     if (spaceTop < popupHeight && spaceBottom < popupHeight) {
       anchor = 'center';
       offset = [horizontalOffset, 0];
     }
-    
+
     return { 
       longitude: adjustedLng, 
       latitude: adjustedLat, 
@@ -864,7 +955,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       const { lngLat } = e;
       const clickedLocation = { lat: lngLat.lat, lon: lngLat.lng };
       
-      // Hitta interpolerade datapunkt (med fallback till närmaste) - ingen forceRefresh vid första klick
+      // Hitta interpolerade datapunkt (med fallback till närmaste) - inkluderar nu platsnamn
       const nearestData = await findInterpolatedDataPoint(clickedLocation.lat, clickedLocation.lon);
       
       if (nearestData) {
@@ -1007,31 +1098,17 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
       {/* Pin marker */}
       {pinGeoJSON && (
         <Source id="map-pin" type="geojson" data={pinGeoJSON}>
-          {/* Outer pulse animation */}
+          {/* 📡 SUBTIL RADAR PULS - En gång var 2:a sekund */}
           <Layer
-            id="pin-outer-pulse"
+            id="radar-pulse"
             type="circle"
             paint={{
-              'circle-radius': 25,
+              'circle-radius': radarAnimation.pulse.radius,
               'circle-color': '#3B82F6',
-              'circle-opacity': 0.15,
+              'circle-opacity': radarAnimation.pulse.opacity,
               'circle-stroke-width': 1,
-              'circle-stroke-color': '#3B82F6',
-              'circle-stroke-opacity': 0.3
-            }}
-          />
-          
-          {/* Inner pulse animation */}
-          <Layer
-            id="pin-inner-pulse"
-            type="circle"
-            paint={{
-              'circle-radius': 15,
-              'circle-color': '#3B82F6',
-              'circle-opacity': 0.25,
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#3B82F6',
-              'circle-stroke-opacity': 0.5
+              'circle-stroke-color': '#60A5FA',
+              'circle-stroke-opacity': radarAnimation.pulse.strokeOpacity
             }}
           />
           
@@ -1074,6 +1151,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
             anchor={popupPos.anchor as any}
             offset={popupPos.offset as [number, number]}
             className="marine-popup"
+            style={{ zIndex: 99999 }}
           >
           <div 
             className="
@@ -1081,29 +1159,30 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
               rounded-xl shadow-2xl 
               p-1.5 xs:p-1.5 sm:p-2 lg:p-2.5
               text-white text-xs xs:text-xs sm:text-sm lg:text-sm
+              relative z-[99999]
             "
             data-no-close="true"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Kompakt header med Apple-design */}
-            <div className="flex items-center gap-1 mb-1 xs:mb-1 sm:mb-1.5">
-              <div className="w-1.5 h-1.5 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
-              <h3 className="text-xs xs:text-xs sm:text-sm font-semibold text-white">Marina Data</h3>
+            {/* PLATSNAMN OCH KOORDINATER - VÄNSTERJUSTERAT PÅ EN RAD */}
+            <div className="mb-2">
+              <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-2">
+                <div className="text-sm font-semibold text-blue-100 flex items-center gap-2 whitespace-nowrap">
+                  <span className="truncate">{pinData.placeName || 'Okänd plats'}</span>
+                  <span className="text-blue-200/70 font-mono text-xs flex-shrink-0">
+                    ({pinData.lat.toFixed(3)}, {pinData.lon.toFixed(3)})
+                  </span>
+                </div>
+              </div>
             </div>
             
             {/* Kompakt parametrars sektion med Apple-stil */}
             <div className="space-y-1 xs:space-y-1 sm:space-y-1.5">
-              {/* Position och tid - Apple-stil */}
+              {/* Tid - Apple-stil */}
               <div className="glass-card-apple p-1 xs:p-1 sm:p-1.5 text-xs xs:text-xs sm:text-sm">
-                                  <div className="flex justify-between items-center mb-0.5 xs:mb-0.5 sm:mb-1">
-                    <span className="text-white/70 font-medium text-xs xs:text-xs sm:text-sm">Position:</span>
-                    <span className="font-mono text-white/90 font-semibold text-xs xs:text-xs sm:text-sm">
-                      {pinData.lat.toFixed(2)}, {pinData.lon.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-white/70 font-medium text-xs xs:text-xs sm:text-sm">Tid:</span>
-                    <span className="text-white/90 font-semibold text-xs xs:text-xs sm:text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/70 font-medium text-xs xs:text-xs sm:text-sm">Tid:</span>
+                  <span className="text-white/90 font-semibold text-xs xs:text-xs sm:text-sm">
                     {new Date(pinData.timestamp).toLocaleString('sv-SE', {
                       day: 'numeric',
                       month: 'numeric',
