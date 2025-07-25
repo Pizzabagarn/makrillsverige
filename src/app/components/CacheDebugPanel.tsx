@@ -178,7 +178,7 @@ export default function CacheDebugPanel({ alwaysOpen = false }: CacheDebugPanelP
       </div>
 
       <div className="mt-4 text-xs text-white/50 text-center">
-        💡 Använd "Rensa Metadata" först om bilder inte uppdateras
+        💡 Använd &quot;Rensa Metadata&quot; först om bilder inte uppdateras
       </div>
     </div>
   );
