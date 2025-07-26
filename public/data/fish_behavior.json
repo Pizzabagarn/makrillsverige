@@ -1,0 +1,2933 @@
+{
+    "enums": {
+      "time_of_day": [ "dawn", "day", "dusk", "night" ],
+      "weather": [ "clear", "sunny", "overcast", "light_rain", "rain" ],
+      "moon_phase": [ "new_moon", "waxing_crescent", "first_quarter", "waxing_gibbous", "full_moon", "waning_gibbous", "last_quarter", "waning_crescent" ],
+      "season": [ "spring", "summer", "autumn", "winter" ],
+      "habitat": [ "river", "lake", "coastal", "open_sea" ]
+    },
+    "common_activity_params": [
+      {
+        "id": "air_pressure_change",
+        "parameter": "air_pressure_change",
+        "range": { "type": "numeric", "min": -5, "max": 5, "unit": "hPa/12h" },
+        "activity_index": { "low": 0.8, "high": 1.0 },
+        "notes": "Falling barometer (inför lågtryck) utlöser ofta ökad huggaktivitet hos många fiskarter"
+      }
+    ],
+    "species": [
+      {
+        "id": "perca_fluviatilis",
+        "svenskt_namn": "Abborre",
+        "latinskt_namn": "Perca fluviatilis",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 8, "max": 20, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Optimal runt 15°C för maximal aktivitet",
+            "refs": [0]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.0, "max": 0.5, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Föredrar svag till måttlig ström; undviker stark ström"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Gryning/skymning ger högre aktivitet än mitt på dagen",
+            "refs": [1]
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast", "light_rain" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mulet/lätt regn gynnar abborren (skygg vid klar sol)"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "new_moon", "waxing_crescent" ] },
+            "activity_index": { "low": 0.6, "high": 1.0 },
+            "notes": "Bättre dagfiske efter mörka nätter (ingen fullmåne)"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 10, "unit": "‰" },
+            "activity_index": { "low": 0.0, "high": 1.0 },
+            "notes": "Tål bräckt vatten upp till ~7–8‰; högre salthalt minskar närvaro",
+            "refs": [2]
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 10, "max": 14, "unit": "°C" },
+            "diet": { "plankton": 0.8, "insects": 0.2 },
+            "notes": "Vid ~12°C utgörs födan mest av djurplankton (vårblomning)"
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.0, "max": 0.2, "unit": "m/s" },
+            "diet": { "small_fish": 0.7, "crustaceans": 0.3 },
+            "notes": "I nästintill stillastående vatten dominerar småfisk (~70%) i dieten"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Spinnfiske (jigg)",
+            "best_time": [ "dawn", "dusk" ],
+            "notes": "Jigga nära vegetation under gryning och skymning för bästa resultat"
+          },
+          {
+            "method": "Mete",
+            "best_temp": { "min": 14, "max": 18, "unit": "°C" },
+            "notes": "Bottenmete med mask är effektivt på grunt vatten när vattnet är 14–18°C"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "season",
+            "range": [ "summer" ],
+            "depth": { "min": 1, "max": 5, "unit": "m" },
+            "zone": "inshore",
+            "notes": "På sommaren står abborren ofta grunt (1–5 m) nära växtlighet, särskilt morgon och kväll"
+          },
+          {
+            "parameter": "season",
+            "range": [ "winter" ],
+            "depth": { "min": 5, "max": 20, "unit": "m" },
+            "zone": "offshore",
+            "notes": "Vintertid samlas abborren djupare (ner mot 20 m) och blir då mindre aktiv"
+          }
+        ],
+        "fishing_tactics": [
+          {
+            "parameter": "water_temperature",
+            "range": { "min": 0, "max": 10, "unit": "°C" },
+            "retrieve_speed": "slow",
+            "notes": "I kallt vatten (<10°C) är abborren trög – fiska långsamt nära botten"
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "min": 15, "max": 25, "unit": "°C" },
+            "retrieve_speed": "fast",
+            "notes": "I varmt sommarvatten (15–25°C) jagar abborren aktivt – snabbare inspinning lockar hugg"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26"
+      },
+      {
+        "id": "esox_lucius",
+        "svenskt_namn": "Gädda",
+        "latinskt_namn": "Esox lucius",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 10, "max": 28, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Optimal kring 18°C; aktiv upp till ~28°C",
+            "refs": [3]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.0, "max": 0.2, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Föredrar stilla/svagt strömmande vatten; undviker stark ström"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Särskilt aktiv gryning/skymning; mitt på dagen skygg i solsken"
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mulet väder ökar jakt på grunt vatten; klar sol kan göra gäddan trög"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "full_moon", "new_moon" ] },
+            "activity_index": { "low": 0.5, "high": 0.5 },
+            "notes": "Ingen entydig månfas-effekt dokumenterad; vattentemperatur viktigare"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 15, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Tål bräckt vatten (~15‰); förekommer kustnära i Östersjön"
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 18, "max": 28, "unit": "°C" },
+            "diet": { "fish": 0.6, "amphibians": 0.2, "crustaceans": 0.2 },
+            "notes": "I varmt sommarvatten kompletterar gäddan fiskdiet med grodor och kräftdjur",
+            "refs": [4]
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 4, "max": 12, "unit": "°C" },
+            "diet": { "fish": 0.9, "amphibians": 0.1 },
+            "notes": "I kyligt vatten (vår/höst) utgörs nästan hela dieten av fisk"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Spinnfiske (jigg)",
+            "notes": "Effektivt på våren i vassnära områden under leken; använd stora jiggar/slider i grunt vatten"
+          },
+          {
+            "method": "Ismete",
+            "notes": "Ismete med död betesfisk (t.ex. mört) är framgångsrikt vintertid för trög vintergädda"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "season",
+            "range": [ "spring" ],
+            "depth": { "min": 0, "max": 2, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Under våren söker sig gäddan till grunt vassvatten (<2 m) nära land för lek"
+          },
+          {
+            "parameter": "season",
+            "range": [ "summer" ],
+            "depth": { "min": 2, "max": 6, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Sommartid jagar gäddan grunt (2–6 m) morgon/kväll, men står djupare mitt på dagen om vattnet är varmt"
+          }
+        ],
+        "fishing_tactics": [
+          {
+            "parameter": "water_temperature",
+            "range": { "min": 0, "max": 5, "unit": "°C" },
+            "retrieve_speed": "very slow",
+            "notes": "I kallt vintervatten (<5°C) rör sig gäddan knappt – fiska extremt långsamt eller med dött agn"
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "min": 15, "max": 25, "unit": "°C" },
+            "retrieve_speed": "moderate",
+            "notes": "I varmt vatten (15–25°C) kan gäddan jagas med måttlig hastighet och pauser – den är aktiv men kan behöva tid att hugga"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26",
+        "regulations": {
+          "closed_season": [ { "start": "04-01", "end": "06-15", "area": "lekvikar (kust)" } ],
+          "notes": "Fiskeförbud i utpekade lekvikar under våren för gädda (t.ex. 47 fredningsområden 1/4–15/6 i Stockholms skärgård):contentReference[oaicite:0]{index=0}"
+        }
+      },
+      {
+        "id": "sander_lucioperca",
+        "svenskt_namn": "Gös",
+        "latinskt_namn": "Sander lucioperca",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 15, "max": 24, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Trivs bäst vid 18–22°C; aktiv även upp mot 30°C i näringsrika sjöar",
+            "refs": [5]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.0, "max": 0.3, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Föredrar svag ström eller lugnare vatten; håller sig undan starka strömmar"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "night" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Utpräglat nattaktiv – jagar i mörker; dagtid står gösen nära botten och vilar",
+            "refs": [6]
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mörka, mulna nätter gynnar gösfiske (går upp grundare då); klart väder = skyggare gös"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "new_moon" ] },
+            "activity_index": { "low": 0.6, "high": 1.0 },
+            "notes": "Mörka nymånenätter kan ge intensiv jakt; ingen tydlig fullmåneffekt dokumenterad"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 8, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Sötvattensart; klarar svagt bräckt upp till ~8–10‰ (förekommer i kustlaguner)",
+            "refs": [7]
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "day" ] },
+            "diet": { "benthic_invertebrates": 0.6, "fish": 0.4 },
+            "notes": "Dagtid (bottennära skymning) äter gösen mest bottendjur/larver; jagar lite fisk"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "night" ] },
+            "diet": { "fish": 0.9, "insects": 0.1 },
+            "notes": "Nattetid jagar gösen aktivt småfisk (~90% av diet) nära ytan i mörkret"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Spinnfiske (jigg)",
+            "best_time": [ "night" ],
+            "notes": "Jiggfiska grunt nattetid (t.ex. över grundflak) när gösen jagar aktivt"
+          },
+          {
+            "method": "Trolling",
+            "best_time": [ "dusk" ],
+            "notes": "Långsam trolling i skymningen när gösen stiger upp från djupet kan ge bra fångst"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "time_of_day",
+            "range": [ "night" ],
+            "depth": { "min": 1, "max": 5, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Nattetid söker sig gösen upp mot grundare vatten (1–5 m) nära stränder för att jaga"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": [ "day" ],
+            "depth": { "min": 5, "max": 15, "unit": "m" },
+            "zone": "offshore",
+            "notes": "Dagtid håller sig gösen nära botten på djupare vatten (5–15 m) där den vilar"
+          }
+        ],
+        "fishing_tactics": [
+          {
+            "parameter": "water_temperature",
+            "range": { "min": 0, "max": 8, "unit": "°C" },
+            "retrieve_speed": "slow",
+            "notes": "Under kalla perioder (<8°C) är gösen inaktiv – fiska långsamt nära botten, om alls"
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "min": 15, "max": 25, "unit": "°C" },
+            "retrieve_speed": "moderate",
+            "notes": "I sommarvärme (15–25°C) föredrar gösen en jämn, måttligt långsam hemtagning nära botten"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26",
+        "regulations": {
+          "closed_season": [ { "start": "04-01", "end": "06-15", "area": "lekvikar (kust)" } ],
+          "notes": "Vårfiske efter gös är begränsat i många kustvikar (fredningsområden under april–juni för att skydda lekande gös)"
+        }
+      },
+      {
+        "id": "salmo_salar",
+        "svenskt_namn": "Lax",
+        "latinskt_namn": "Salmo salar",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 4, "max": 12, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Föredrar 4–12°C för aktiva vandring/lek; >20°C stressar laxen",
+            "refs": [8]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.3, "max": 1.5, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Behöver strömmande vatten för lek; vuxna klarar stark ström under uppvandring"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "I älv mest aktiv tidig morgon/kväll, särskilt om vattnet är lågt och klart"
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mulet/regn dämpar ljuset och ökar laxens huggvilja (mindre skygg i ytvatten)"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "full_moon", "new_moon" ] },
+            "activity_index": { "low": 0.5, "high": 0.5 },
+            "notes": "Indirekt via tidvatten (full/ny = starkare strömmar); ingen direkt månfas-effekt på napp"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 35, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Anadrom – född i sötvatten men lever i havet (~35‰); kräver >11‰ för äggens utveckling"
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 5, "unit": "‰" },
+            "diet": { "none": 1.0 },
+            "notes": "Under lekvandring i sötvatten äter vuxen lax i princip inget"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 30, "max": 35, "unit": "‰" },
+            "diet": { "fish": 0.7, "crustaceans": 0.3 },
+            "notes": "I havet äter laxen främst fisk (t.ex. sill, tobis) samt kräftdjur (räkor, krill)",
+            "refs": [11]
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Flugfiske",
+            "notes": "Flugfiske i strömmande älv (t.ex. med tubfluga) är klassiskt efter lax – särskilt effektivt för nyuppstigen lax i älven"
+          },
+          {
+            "method": "Trolling (wobbler)",
+            "notes": "Trolling med wobbler längs kusten eller på öppet hav efter lax, bäst under sommaren innan de går upp i älv"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "habitat",
+            "range": [ "open_sea" ],
+            "depth": { "min": 0, "max": 20, "unit": "m" },
+            "zone": "offshore",
+            "notes": "Till havs vandrar laxen i ytnära vatten (0–20 m) långt från land"
+          },
+          {
+            "parameter": "habitat",
+            "range": [ "river" ],
+            "depth": { "min": 1, "max": 5, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Vid uppvandring i älv står laxen i djupa höljor dagtid och tar sig uppströms under svalare tider"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26",
+        "regulations": {
+          "closed_season": [ { "start": "09-15", "end": "12-31", "area": "älvar/kust" } ],
+          "notes": "Laxfiske är vanligen förbjudet under hösten (t.ex. 15 sep–31 dec i många vattendrag och kuststräckor):contentReference[oaicite:1]{index=1}"
+        }
+      },
+      {
+        "id": "salmo_trutta",
+        "svenskt_namn": "Öring",
+        "latinskt_namn": "Salmo trutta",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 0, "max": 16, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Trivs i kallt vatten (<12°C) med hög syrehalt; >18°C gör öringen inaktiv",
+            "refs": [12]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.2, "max": 1.0, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Strömlevande – står gärna i medelström bakom hinder för att spara energi"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Mycket aktiv gryning/skymning; dagtid skygg om klart väder men aktiv i skugga"
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mulet/dunkelt väder ökar öringens aktivitet vid ytan; undviker stark sol"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "full_moon", "new_moon" ] },
+            "activity_index": { "low": 0.5, "high": 0.5 },
+            "notes": "Temperatur och ljus är viktigare än månfas för öringens beteende"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 0, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Stationär (insjö) öring lever i sötvatten; anadroma stammar = havsöring"
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 0, "max": 12, "unit": "°C" },
+            "diet": { "insects": 0.8, "small_fish": 0.2 },
+            "notes": "I kallt, syrerikt vatten (t.ex. fjällbäck) äter öringen nästan bara insekter"
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 12, "max": 20, "unit": "°C" },
+            "diet": { "insects": 0.4, "small_fish": 0.6 },
+            "notes": "Vid högre vattentemperaturer jagar större öring mer småfisk utöver insekter"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Flugfiske",
+            "notes": "Flugfiske i strömmande bäckar och älvar (med torrfluga eller nymf) är effektivt för skygg bäcköring, särskilt under kläckningar"
+          },
+          {
+            "method": "Spinnfiske",
+            "notes": "Spinnfiske längs djupkanter i sjöar med skeddrag eller spinnare lockar större insjööring (fiska djupt dagtid, grundare i skymning)"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "season",
+            "range": [ "summer" ],
+            "depth": { "min": 0, "max": 5, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Sommar: öringen jagar nära ytan i gryning/skymning på grunt vatten (0–5 m), håller sig djupare dagtid"
+          },
+          {
+            "parameter": "season",
+            "range": [ "winter" ],
+            "depth": { "min": 2, "max": 10, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Vinter: öringen söker syrerikt vatten, ofta nära inlopp/utlopp; fångas under is tidigt/sent på dagen"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26"
+      },
+      {
+        "id": "salmo_trutta_trutta",
+        "svenskt_namn": "Havsöring",
+        "latinskt_namn": "Salmo trutta trutta",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 6, "max": 14, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Föredrar 6–14°C i havet; över ~18°C blir havsöringen trög och söker djupare/kallare vatten"
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.1, "max": 0.8, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Söker syresatt ström i älvmynningar och kustströmmar för föda/syre"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Aktiv dagtid (speciellt mulna dagar) i grunda vikar; extra aktiv gryning och skymning"
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast", "light_rain" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mulet och lite regn ger bra havsöringsfiske – fisken vågar jaga grunt; klart soligt väder gör den skygg"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "full_moon", "new_moon" ] },
+            "activity_index": { "low": 0.5, "high": 0.5 },
+            "notes": "Ingen tydlig månfas-effekt; temp och säsong dominerar öringens beteende"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 7, "max": 35, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Klarar bräckt kustvatten (~7–15‰ i Östersjön) och full oceanisk salthalt; leker i sötvatten"
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "habitat",
+            "range": [ "coastal" ],
+            "diet": { "small_fish": 0.7, "crustaceans": 0.3 },
+            "notes": "I havet äter havsöringen främst småfisk (sill, tobis) och även räkor/kräftdjur"
+          },
+          {
+            "parameter": "habitat",
+            "range": [ "river" ],
+            "diet": { "none": 1.0 },
+            "notes": "Under uppvandring i älv (lekperiod) intar havsöringen ingen föda"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Spinnfiske (skeddrag)",
+            "best_time": [ "dawn" ],
+            "notes": "Spinnfiske med skeddrag längs tång- och stenkanter i grunda vikar är bäst i gryning under vår och höst"
+          },
+          {
+            "method": "Flugfiske",
+            "notes": "Flugfiske med streamer eller räkimitation i älvmynningar och kustvatten kan vara mycket effektivt, särskilt vid svag vind och gryningsljus"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "season",
+            "range": [ "spring", "autumn" ],
+            "depth": { "min": 0, "max": 3, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Vår/höst: håller till nära land på grunt vatten (<3 m) för att jaga byten i det kalla ytvattnet"
+          },
+          {
+            "parameter": "season",
+            "range": [ "summer" ],
+            "depth": { "min": 3, "max": 10, "unit": "m" },
+            "zone": "offshore",
+            "notes": "Sommar: vid varmt vatten drar havsöringen ut något djupare (3–10 m) eller söker svalare områden"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26"
+      },
+      {
+        "id": "oncorhynchus_mykiss",
+        "svenskt_namn": "Regnbåge",
+        "latinskt_namn": "Oncorhynchus mykiss",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 10, "max": 16, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Optimal kring 12–15°C; >20°C ger stress och syrebrist för regnbågen",
+            "refs": [12]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.0, "max": 0.5, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Trivs i syrerika vatten; i strömmande vatten står den bakom strömlä bakom stenar likt öring"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "day", "dusk" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Aktiv i klart, kallt vatten dagtid; vid varmt väder bättre hugg morgon/kväll"
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "overcast" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Mulet väder håller ytvattnet svalare sommartid och kan förlänga regnbågens dagliga aktivitet"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "full_moon", "new_moon" ] },
+            "activity_index": { "low": 0.5, "high": 0.5 },
+            "notes": "Ej observerad; regnbågen påverkas mer av vattentemperatur och utfodringstid"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 0, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Sötvattensfisk (klarar ej salt); anadrom variant finns i Nordamerika men inte etablerad här"
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 0, "max": 10, "unit": "°C" },
+            "diet": { "insects": 0.9, "crustaceans": 0.1 },
+            "notes": "I kallt vatten (<10°C) äter regnbågen nästan enbart insekter (nattsländelarver m.m.)"
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 15, "max": 20, "unit": "°C" },
+            "diet": { "insects": 0.5, "small_fish": 0.5 },
+            "notes": "Vid varmare vatten (~18°C) börjar regnbågen jaga småfisk (t.ex. mört-/elritsyngel) utöver insekter"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Flugfiske",
+            "notes": "Flugfiske i strömmande vatten (t.ex. nymfning i strömmar) fungerar bra för regnbåge i strömsatta partier"
+          },
+          {
+            "method": "Spinnfiske/mete",
+            "notes": "I put-and-take-sjöar: spinnfiske med spinnare eller mete med Powerbait/fluga under kastdobb är effektiva metoder"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "season",
+            "range": [ "summer" ],
+            "depth": { "min": 2, "max": 6, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Sommartid håller sig regnbågen i sjöarnas språngskikt (ofta 2–6 m djup) där vattnet är svalare"
+          },
+          {
+            "parameter": "season",
+            "range": [ "winter" ],
+            "depth": { "min": 0, "max": 3, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Vintertid kan regnbåge ses strax under isen på grund av högt syre där; nappar under isfiske vid gryning/solnedgång"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26"
+      },
+      {
+        "id": "thymallus_thymallus",
+        "svenskt_namn": "Harr",
+        "latinskt_namn": "Thymallus thymallus",
+        "activity": [
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 4, "max": 10, "unit": "°C" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "notes": "Optimal 4–10°C; kräver hög syrehalt; ogillar varmt vatten >15°C",
+            "refs": [12]
+          },
+          {
+            "parameter": "current_speed",
+            "range": { "type": "numeric", "min": 0.5, "max": 1.0, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 0.9 },
+            "notes": "Kräver strömmande vatten; står i medelstark ström, gärna bakom stenar för att fånga drivande insekter"
+          },
+          {
+            "parameter": "air_pressure_change",
+            "ref": "air_pressure_change"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "day" ] },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Harr vakar dagtid när ljuset lockar insekter; mindre aktiv under natten"
+          },
+          {
+            "parameter": "weather",
+            "range": { "type": "categorical", "values": [ "sunny" ] },
+            "activity_index": { "low": 0.7, "high": 1.0 },
+            "notes": "Klart väder kan trigga insektskläckningar = bra hugg för harr; grumligt vatten försämrar sikten för dess ytjakt"
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "full_moon", "new_moon" ] },
+            "activity_index": { "low": 0.5, "high": 0.5 },
+            "notes": "Ingen månfaspåverkan känd; dagsljus/insektsförekomst styr harrens hugg"
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 0, "unit": "‰" },
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "notes": "Rent sötvatten – harr tål ej salt; finns endast i inlandsvatten"
+          }
+        ],
+        "diet_preferences": [
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "day" ] },
+            "diet": { "surface_insects": 0.7, "nymphs": 0.3 },
+            "notes": "Dagtid tar harr mycket flygande insekter vid ytan (~70%) förutom nymfer/larver"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": { "type": "categorical", "values": [ "night" ] },
+            "diet": { "insects": 0.0, "larvae": 1.0 },
+            "notes": "Nattetid ser harr dåligt och tar knappt några insekter vid ytan; kan då plocka enstaka bottenlarver"
+          }
+        ],
+        "recommended_methods": [
+          {
+            "method": "Flugfiske (torrfluga)",
+            "notes": "Flugfiske med torrfluga på strömmande vatten är klassiskt för harr – särskilt under försommardagar med kläckande dagsländor"
+          },
+          {
+            "method": "Lätt spinnfiske",
+            "notes": "Ultralätt spinnfiske med små skeddrag eller spinnare i strömkanter kan ge harr, men fluga är oftast effektivare"
+          }
+        ],
+        "spatial_distribution": [
+          {
+            "parameter": "season",
+            "range": [ "summer" ],
+            "depth": { "min": 0, "max": 2, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Sommar: harr vakar i strömmande sel och nackar på grunt vatten (0–2 m) där insekter landar"
+          },
+          {
+            "parameter": "season",
+            "range": [ "winter" ],
+            "depth": { "min": 2, "max": 5, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Vinter: harr samlas i lugnare pooler (2–5 m djup) och är då svårfångad; fredad under vårlek"
+          }
+        ],
+        "source": "FishBase 2025",
+        "confidence": "high",
+        "last_updated": "2025-07-26",
+        "regulations": {
+          "closed_season": [ { "start": "04-15", "end": "05-31", "area": "hela landet" } ],
+          "notes": "Fiske efter harr är förbjudet 15 april–31 maj (lekperiod) i stora delar av Sverige"
+        }
+      }
+      
+    ],
+    "references": [
+      { "id": 0, "title": "FishBase – Perca fluviatilis (European perch) summary", "url": "https://www.fishbase.se/summary/perca-fluviatilis.html" },
+      { "id": 1, "title": "Spinnfisketips för abborre (Fiske.se article)", "url": "https://www.fiske.se/tavling-abborre" },
+      { "id": 2, "title": "U.S. Geological Survey (2022) – Eurasian Perch (Great Lakes Fact Sheet)", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=3636" },
+      { "id": 3, "title": "U.S. Fish & Wildlife Service (2020) – Northern Pike Ecological Risk Screening Summary", "url": "https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Northern-Pike.pdf" },
+      { "id": 4, "title": "FishBase – Esox lucius (Northern pike) biology", "url": "https://www.fishbase.se/summary/esox-lucius.html" },
+      { "id": 5, "title": "U.S. Geological Survey (2025) – Zander (Sander lucioperca) species profile", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=830" },
+      { "id": 6, "title": "Fiske.se – \"Ta gösen från isen\" (tips för gösfiske)", "url": "https://www.fiske.se" },
+      { "id": 7, "title": "FishBase – Sander lucioperca (Pike-perch) summary", "url": "https://www.fishbase.se/summary/Sander-lucioperca.html" },
+      { "id": 8, "title": "U.S. Geological Survey (2025) – Atlantic Salmon (Salmo salar) profile", "url": "https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=926" },
+      { "id": 11, "title": "FishBase – Salmo salar (Atlantic salmon) summary", "url": "https://www.fishbase.se/summary/Salmo-salar.html" },
+      { "id": 12, "title": "Metsähallitus (2021) – Anvisningar till ansvarsfulla fiskare (optimala temperaturer)", "url": "https://www.eraluvat.fi/sv/fiske/fiskarens-databank/anvisningar-till-ansvarsfulla-fiskare" },
+      { "id": 26, "title": "Länsstyrelsen Jönköping (2022) – Nätprovfiske i Grumlan (braxen på grunt vatten)", "url": "https://naturvardsverket.diva-portal.org/smash/get/diva2:1831678/FULLTEXT01.pdf" },
+      { "id": 27, "title": "Länsstyrelsen Västra Götaland (2023) – Fiskeregler i havet (fredningstider & skyddade arter)", "url": "https://www.lansstyrelsen.se/download/18.2628c9a61899eaea37711526/1690811197166/fiskeregler-havet-juni2023%20tillg%C3%A4nglig.pdf" },
+      { "id": 28, "title": "FishBase – Anguilla anguilla (European eel) biology", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
+      { "id": 31, "title": "FishBase – Anguilla anguilla environment (salinity tolerance)", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" }
+    ]
+  }
+
+  {
+    "id": "salvelinus_alpinus",
+    "svenskt_namn": "Röding",
+    "latinskt_namn": "Salvelinus alpinus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 12, "unit": "°C" },
+        "activity_index": { "low": 0.1, "high": 1.0 },
+        "notes": "Rödingen är mest aktiv i kallt vatten; optimalt kring 4–8°C (föredrar ~0–10°C, varmare vatten gör den trög):contentReference[oaicite:0]{index=0}",
+        "refs": [32]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+        "activity_index": { "low": 0.6, "high": 1.0 },
+        "notes": "Gryning och skymning ger klart bättre rödingfiske än mitt på dagen – rödingen jagar helst under låg ljusintensitet"
+      },
+      {
+        "parameter": "air_pressure_change",
+        "ref": "air_pressure_change"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 6, "unit": "°C" },
+        "diet": { "plankton": 0.5, "insects": 0.3, "crustaceans": 0.2 },
+        "notes": "I kyligt vatten (vårvinter ~0–6°C) dominerar små bytesdjur – djurplankton och insektslarver – i rödingtens diet",
+        "refs": [32]
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 8, "max": 16, "unit": "°C" },
+        "diet": { "small_fish": 0.6, "crustaceans": 0.4 },
+        "notes": "Vid högre vattentemperatur (sommar) utgörs födan till stor del av småfisk (t.ex. nors, siklöja) och kräftdjur (t.ex. mysider) som finns i djupare, kallare vatten",
+        "refs": [32]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Trolling (dragrodd)",
+        "notes": "Trollingfiske med långsam fart (~1–2 knop) på 15–30 m djup är mycket effektivt sommartid i stora sjöar för röding"
+      },
+      {
+        "method": "Pimpelfiske",
+        "notes": "Vintertid kan rödingen pimplas från isen med blänke och maggot/räka; bäst resultat fås ofta under tidig morgon i isens första månader"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 15, "max": 35, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Under sommaren står rödingen mestadels djupt (15–35 m) under språngskiktet, där vattnet är kallt",
+        "refs": [37]
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 1, "max": 5, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Vintertid (vid isläggning/våris) kan rödingen komma upp grundare (1–5 m) för att jaga byten nära ytan under det svaga ljuset"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Vid vinterfiske (vatten nära 0°C) är rödingen trög; använd långsamma rörelser eller låt betet hovra fritt nära botten där fisken står"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "coregonus_maraena",
+    "svenskt_namn": "Sik",
+    "latinskt_namn": "Coregonus maraena",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 10, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Kallvattenart som är som mest aktiv vid ~7°C; högre temperaturer (>15°C) leder till minskad aktivitet:contentReference[oaicite:1]{index=1}",
+        "refs": [33]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dusk" ] },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Siken vakar gärna under kvällar (skymning) då många insekter kläcker – födosöket ökar då nära ytan"
+      },
+      {
+        "parameter": "air_pressure_change",
+        "ref": "air_pressure_change"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 10, "unit": "°C" },
+        "diet": { "plankton": 0.5, "insects": 0.5 },
+        "notes": "I kallare vatten (vår/höst) lever siken mest av djurplankton och insekter i de fria vattenmassorna",
+        "refs": [35]
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 10, "max": 20, "unit": "°C" },
+        "diet": { "mollusks": 0.4, "crustaceans": 0.3, "insects": 0.3 },
+        "notes": "Under sommaren äter siken mycket bottendjur (snäckor, musslor, kräftdjur och larver). Större sik kan även ta småfisk under rätt förhållanden:contentReference[oaicite:2]{index=2}",
+        "refs": [35]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Flugfiske (torrfluga)",
+        "best_time": [ "dusk" ],
+        "notes": "En stillaliggande torrfluga i rätt storlek en sommarkväll kan lura vakande sik som plockar dagsländor från ytan"
+      },
+      {
+        "method": "Pimpelfiske (mormyska)",
+        "notes": "Isfiske efter sik görs med liten mormyska agnad med maggot; fiska närmast botten och med försiktiga rörelser för att locka trög vinter-sik"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 10, "max": 30, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Sommartid vandrar siken ut i kallare, djupare vatten (ofta 10–30 m):contentReference[oaicite:3]{index=3}",
+        "refs": [35]
+      },
+      {
+        "parameter": "season",
+        "range": [ "autumn" ],
+        "depth": { "min": 0, "max": 5, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Leken sker på senhösten, grunt vid stränder eller i älvar (främst grus/sandbotten, 0–5 m):contentReference[oaicite:4]{index=4}",
+        "refs": [35]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Vid iskalla förhållanden (<5°C) nappar siken mycket försiktigt – använd små beten/krokar och fiska nästan helt stilla på botten"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "alburnus_alburnus",
+    "svenskt_namn": "Löja",
+    "latinskt_namn": "Alburnus alburnus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 15, "max": 30, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Löjan trivs i varma, näringsrika vatten och är som mest aktiv under högsommarens värme:contentReference[oaicite:5]{index=5}",
+        "refs": [34]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day", "dusk" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Födosöket sker främst dagtid och i skymning när insekter faller ner på vattenytan; löjan är mindre aktiv nattetid"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "diet": { "plankton": 0.7, "insects": 0.2, "crustaceans": 0.1 },
+        "notes": "På sommaren utgörs löjans föda nästan enbart av djurplankton och små insekter (samt hoppkräftor och andra små skaldjur) som snappas vid ytan:contentReference[oaicite:6]{index=6}",
+        "refs": [34]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Mete (bröd/maggot)",
+        "notes": "Löjor fångas enklast med ultralätt mete: använd mycket små krokar agnade med bröddeg eller maggot och mäska med brödsmulor för att samla stim"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 2, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommartid håller sig löjan i stora stim tätt under ytan, ofta nära stränder där det finns mycket föda:contentReference[oaicite:7]{index=7}",
+        "refs": [34]
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 5, "max": 20, "unit": "m" },
+        "zone": "offshore",
+        "notes": "När vattnet blir kallt på vintern drar löjstimmen ner på djupare vatten och fisken blir mindre aktiv:contentReference[oaicite:8]{index=8}",
+        "refs": [34]
+      }
+    ],
+    "fishing_tactics": [],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "anguilla_anguilla",
+    "svenskt_namn": "Ål",
+    "latinskt_namn": "Anguilla anguilla",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 25, "unit": "°C" },
+        "activity_index": { "low": 0.0, "high": 1.0 },
+        "notes": "Euroålen är endast aktiv i varmt vatten – optimalt runt 20–25°C; under ~5°C intar den närmast dvala i bottnarna:contentReference[oaicite:9]{index=9}",
+        "refs": [28]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.0, "high": 1.0 },
+        "notes": "Ålen är strikt nattaktiv – under dagtid gömmer den sig nedgrävd i bottensediment eller under stenar",
+        "refs": [28]
+      },
+      {
+        "parameter": "weather",
+        "range": { "type": "categorical", "values": [ "rain" ] },
+        "activity_index": { "low": 0.8, "high": 1.0 },
+        "notes": "Lätta sommarregn och åskväder kan ge ökat ålbett (mörker + syretillskott i vattnet gynnar ålens jakt)"
+      },
+      {
+        "parameter": "moon_phase",
+        "range": { "type": "categorical", "values": [ "new_moon" ] },
+        "activity_index": { "low": 1.0, "high": 1.0 },
+        "notes": "Mörka nätter utan månsken är klart bäst för ålfiske; starkt månljus gör ålen försiktigare"
+      },
+      {
+        "parameter": "air_pressure_change",
+        "ref": "air_pressure_change"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "length",
+        "range": { "type": "numeric", "min": 0, "max": 40, "unit": "cm" },
+        "diet": { "insects": 0.8, "worms": 0.2 },
+        "notes": "Mindre (gul)ålar under ~40 cm livnär sig mest på små bottendjur – insektslarver, maskar och liknande",
+        "refs": [28]
+      },
+      {
+        "parameter": "length",
+        "range": { "type": "numeric", "min": 40, "max": 150, "unit": "cm" },
+        "diet": { "fish": 0.5, "crustaceans": 0.3, "amphibians": 0.2 },
+        "notes": "Större ålar (>40 cm) tar betydligt större byten – småfisk, kräftdjur, grodor – praktiskt taget det mesta de kommer åt:contentReference[oaicite:10]{index=10}",
+        "refs": [28]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (mask/fiskbit)",
+        "best_time": [ "night" ],
+        "notes": "Ett tackel med stor krok agnad med mask eller fiskbit, fiskad på botten nära vegetationsrika kanter i skydd av mörkret, är en klassisk och effektiv metod för ål"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 5, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Under sommarnätterna jagar ålen oftast nära strandzonens bottnar på grunt vatten (0–5 m), gärna i gryningar eller skymningar med mycket betesdjur"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 5, "max": 30, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vid vattentemperaturer under 5°C gräver ålen ner sig i mjukbottnar på större djup och övervintrar orörlig till våren"
+      }
+    ],
+    "fishing_tactics": [],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26",
+    "regulations": {
+      "closed_season": [],
+      "notes": "Sedan 2007 råder generellt förbud mot allt riktat ålfiske i Sverige (endast begränsade undantag i vissa inlandsvatten ovan definitiva vandringshinder):contentReference[oaicite:11]{index=11}"
+    }
+  },
+  {
+    "id": "lota_lota",
+    "svenskt_namn": "Lake",
+    "latinskt_namn": "Lota lota",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 15, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Laken trivs i kallt vatten och är som mest aktiv under ~0–8°C; sommarvärme (>15°C) gör att den blir mycket inaktiv:contentReference[oaicite:12]{index=12}",
+        "refs": [36]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.0, "high": 1.0 },
+        "notes": "Lake är främst nattaktiv – den jagar nästan uteslutande under dygnets mörka timmar (dagtid håller den sig gömd på djupet):contentReference[oaicite:13]{index=13}",
+        "refs": [36]
+      },
+      {
+        "parameter": "air_pressure_change",
+        "ref": "air_pressure_change"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "length",
+        "range": { "type": "numeric", "min": 0, "max": 30, "unit": "cm" },
+        "diet": { "insects": 0.3, "crustaceans": 0.3, "mollusks": 0.4 },
+        "notes": "Mindre ung-lakar äter mest bottendjur – exempelvis dagsländelarver, små kräftdjur samt snäckor och musslor:contentReference[oaicite:14]{index=14}",
+        "refs": [36]
+      },
+      {
+        "parameter": "length",
+        "range": { "type": "numeric", "min": 30, "max": 100, "unit": "cm" },
+        "diet": { "fish": 0.5, "crustaceans": 0.3, "fish_roe": 0.2 },
+        "notes": "Större lakar (>30 cm) tar även fisk (t.ex. småmört), kräftor och fiskrom när tillfälle ges:contentReference[oaicite:15]{index=15}",
+        "refs": [36]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Ismete/Angeldon",
+        "notes": "Vinterfiske efter lake bedrivs nattetid med ismete eller angeldon. Använd död betesfisk (t.ex. mört) på botten – laken hugger ofta under nattens kallaste period."
+      },
+      {
+        "method": "Spinnfiske (bottenjigg)",
+        "notes": "Senhöst (vid nedkylt vatten) kan lake även tas på långsamt bottenfiskad jigg eller bottenmetad betesfisk, särskilt nära strömmande kallvattenutlopp kvällstid."
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 10, "max": 30, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Sommartid drar sig laken undan till vattnens djupare, svalare delar (ofta >10 m) och blir där relativt inaktiv:contentReference[oaicite:16]{index=16}",
+        "refs": [36]
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 1, "max": 15, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Under vintern (dec–mars) vandrar laken upp på grunt vatten (1–15 m) för att leka över sandiga/grusiga bottnar i sjöar och vattendrag:contentReference[oaicite:17]{index=17}",
+        "refs": [36]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "retrieve_speed": "very slow",
+        "notes": "Sommartid är lakfiske näst intill hopplöst – laken är inaktiv i varmt vatten. Bästa taktiken är att vänta till hösten/vintern då vattnet kallnat."
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  }
+],
+"references": [
+  { "id": 0, "title": "FishBase – Perca fluviatilis (European perch) summary", "url": "https://www.fishbase.se/summary/perca-fluviatilis.html" },
+  { "id": 1, "title": "Spinnfisketips för abborre (Fiske.se article)", "url": "https://www.fiske.se/tavling-abborre" },
+  { "id": 2, "title": "U.S. Geological Survey (2022) – Eurasian Perch (Great Lakes Fact Sheet)", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=3636" },
+  { "id": 3, "title": "U.S. Fish & Wildlife Service (2020) – Northern Pike Ecological Risk Screening Summary", "url": "https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Northern-Pike.pdf" },
+  { "id": 4, "title": "FishBase – Esox lucius (Northern pike) biology", "url": "https://www.fishbase.se/summary/esox-lucius.html" },
+  { "id": 5, "title": "U.S. Geological Survey (2025) – Zander (Sander lucioperca) species profile", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=830" },
+  { "id": 6, "title": "Fiske.se – \"Ta gösen från isen\" (tips för gösfiske)", "url": "https://www.fiske.se" },
+  { "id": 7, "title": "FishBase – Sander lucioperca (Pike-perch) summary", "url": "https://www.fishbase.se/summary/Sander-lucioperca.html" },
+  { "id": 8, "title": "U.S. Geological Survey (2025) – Atlantic Salmon (Salmo salar) profile", "url": "https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=926" },
+  { "id": 11, "title": "FishBase – Salmo salar (Atlantic salmon) summary", "url": "https://www.fishbase.se/summary/Salmo-salar.html" },
+  { "id": 12, "title": "Metsähallitus (2021) – Anvisningar till ansvarsfulla fiskare (optimala temperaturer)", "url": "https://www.eraluvat.fi/sv/fiske/fiskarens-databank/anvisningar-till-ansvarsfulla-fiskare" },
+  { "id": 26, "title": "Länsstyrelsen Jönköping (2022) – Nätprovfiske i Grumlan (braxen på grunt vatten)", "url": "https://naturvardsverket.diva-portal.org/smash/get/diva2:1831678/FULLTEXT01.pdf" },
+  { "id": 27, "title": "Länsstyrelsen Västra Götaland (2023) – Fiskeregler i havet (fredningstider & skyddade arter)", "url": "https://www.lansstyrelsen.se/download/18.2628c9a61899eaea37711526/1690811197166/fiskeregler-havet-juni2023%20tillg%C3%A4nglig.pdf" },
+  { "id": 28, "title": "FishBase – Anguilla anguilla (European eel) biology", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
+  { "id": 31, "title": "FishBase – Anguilla anguilla environment (salinity tolerance)", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
+  { "id": 32, "title": "FishBase – Salvelinus alpinus (Arctic char) summary", "url": "https://www.fishbase.se/summary/Salvelinus-alpinus.html" },
+  { "id": 33, "title": "FishBase – Coregonus maraena (Maraena whitefish) summary", "url": "https://www.fishbase.se/summary/Coregonus-maraena.html" },
+  { "id": 34, "title": "Fiskelivet – Fakta om benlöja (Alburnus alburnus)", "url": "https://fiskelivet.se/fiskarter/benloja/" },
+  { "id": 35, "title": "Havs- och vattenmyndigheten – Sik (Coregonus maraena) artfakta", "url": "https://www.havochvatten.se/arter-och-livsmiljoer/arter-och-naturtyper/sik.html" },
+  { "id": 36, "title": "Havs- och vattenmyndigheten – Lake (Lota lota) artfakta", "url": "https://www.havochvatten.se/arter-och-livsmiljoer/arter-och-naturtyper/lake.html" },
+  { "id": 37, "title": "Sportfiskarna (2023) – Ny regel för ål i Storfiskregistret (artikel)", "url": "https://www.sportfiskarna.se/Om-oss/Aktuellt/ArticleID/12828/Ny-regel-f%C3%B6r-%C3%A5l-i-Storfiskregistret" }
+]
+}```
+{
+    "id": "abramis_brama",
+    "svenskt_namn": "Braxen",
+    "latinskt_namn": "Abramis brama",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 10, "max": 24, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Tempererad art – mest aktiv i 10–24 °C (optimum kring ~20 °C):contentReference[oaicite:0]{index=0}",
+        "refs": [32]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Nattaktiv födosökare; kommer ofta upp grunt under mörker",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 10, "unit": "°C" },
+        "diet": { "plankton": 0.7, "benthic_invertebrates": 0.3 },
+        "notes": "Under vår/kyligare period dominerar djurplankton i dieten (unga braxnar filtrerar plankton):contentReference[oaicite:1]{index=1}"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 15, "max": 25, "unit": "°C" },
+        "diet": { "mollusks": 0.4, "worms": 0.4, "insects": 0.2 },
+        "notes": "I varmare vatten (sommar) ökar inslaget av bottenlevande föda (musslor, maskar) som vuxna suger upp från botten:contentReference[oaicite:2]{index=2}"
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (feedermete)",
+        "best_time": [ "night" ],
+        "notes": "Meta med bottenförankrat bete (ex. majs, mask) nattetid på grunt vatten – braxen betar gärna under mörker"
+      },
+      {
+        "method": "Flötmete",
+        "notes": "Flötmete med agn (ex. majs \"cocktail\" med mask) nära botten i skymning är effektivt:contentReference[oaicite:3]{index=3}"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "spring", "summer" ],
+        "depth": { "min": 0, "max": 3, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Lek och sommar: står grunt i vikar (<3 m) för lek och födosök:contentReference[oaicite:4]{index=4}"
+      },
+      {
+        "parameter": "season",
+        "range": [ "autumn", "winter" ],
+        "depth": { "min": 5, "max": 15, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Höst/vinter: drar sig ut något djupare (5–15 m) och bildar stim på botten under kallare perioder"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 8, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "I kallt vatten (<8°C) är braxen trög – använd minimala rörelser; låt betet vila länge"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 15, "max": 25, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I varmt vatten (15–25°C) födosöker braxen aktivt – lätt spänd lina och små ryck kan öka nappfrevens"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "rutilus_rutilus",
+    "svenskt_namn": "Mört",
+    "latinskt_namn": "Rutilus rutilus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 10, "max": 20, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Aktivitetstoppar i 10–20 °C; mörtar trivs i måttligt tempererat vatten:contentReference[oaicite:6]{index=6}",
+        "refs": [33]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Gryning och skymning kan ge ökat födosök (mindre skygghet och mer planktonaktivitet då)",
+        "refs": []
+      },
+      {
+        "parameter": "weather",
+        "range": { "type": "categorical", "values": [ "overcast", "light_rain" ] },
+        "activity_index": { "low": 0.7, "high": 1.0 },
+        "notes": "Mulet/lätt regn gynnar mörtens aktivitet ytligt (dämpar ljus och rovdjurstryck)"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 5, "max": 12, "unit": "°C" },
+        "diet": { "benthic_invertebrates": 0.6, "detritus": 0.4 },
+        "notes": "I kallare vatten (vår/höst) söker mörten föda mest på botten (smådjur i bottensediment, förna):contentReference[oaicite:7]{index=7}"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 15, "max": 22, "unit": "°C" },
+        "diet": { "plankton": 0.4, "insects": 0.3, "plants": 0.3 },
+        "notes": "Under varma sommardagar äter den allsidigt – både plankton i fria vattnet, insekter vid ytan och växtmaterial:contentReference[oaicite:8]{index=8}"
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Flötmete",
+        "best_time": [ "day" ],
+        "notes": "Klassiskt flötmete nära vass med bröd eller deg dagtid; mörten är dagaktiv och nyfiken"
+      },
+      {
+        "method": "Pimpelfiske",
+        "notes": "Isfiske (pimpel) med maggot under vintern kan ge mört i stim när isen täcker vattnet"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 4, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommartid håller sig mörten nära ytan och strandnära, kring vegetation, för att beta plankton och insekter:contentReference[oaicite:9]{index=9}"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 5, "max": 15, "unit": "m" },
+        "zone": "offshore",
+        "notes": "På vintern går mörten djupare (5–15 m) i sjöar och älvar och samlas där vattnet är varmare"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Mörten äter knappt vid vattentemp <5°C – fiska extremt stilla och med små krokar/beten"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 15, "max": 22, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I sommarvärme (15–22°C) är mörten pigg – ett långsamt hemtag eller lyft kan locka hugg, men undvik för hastiga rörelser"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "leuciscus_idus",
+    "svenskt_namn": "Id",
+    "latinskt_namn": "Leuciscus idus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 20, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Temperaturkänslig – aktiv från tidig vår (~4°C) upp till ca 20°C; hög aktivitet kring 12–16°C",
+        "refs": [34]
+      },
+      {
+        "parameter": "current_speed",
+        "range": { "type": "numeric", "min": 0.2, "max": 1.0, "unit": "m/s" },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Trivs i måttlig ström; strömsatta åpartier gynnar idens rörelse (för stark ström undviks)"
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Iden är ofta dagaktiv och söker föda i dagsljus (tack vare god syn), särskilt yngre fisk",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 8, "max": 15, "unit": "°C" },
+        "diet": { "insects": 0.4, "plant_material": 0.3, "crustaceans": 0.3 },
+        "notes": "I mellantemperaturer (vår/höst ~10–15°C) äter iden blandat – både landinsekter, växtdelar och små kräftdjur",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 16, "max": 25, "unit": "°C" },
+        "diet": { "fish": 0.6, "insects": 0.2, "crustaceans": 0.2 },
+        "notes": "Vid högre temperaturer äter större idar mer fisk (småmört, elritsa m.m.), kompletterat med insekter och kräftdjur:contentReference[oaicite:10]{index=10}",
+        "refs": [34]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Spinnfiske (wobbler/skeddrag)",
+        "notes": "Iden hugger gärna på små wobblers eller skeddrag som imiterar småfisk – fiska i strömkanter och djuphålor"
+      },
+      {
+        "method": "Mete (bröd/yta)",
+        "notes": "Ytmete med flytande brödbit en sommarkväll kan attrahera idar som plockar nedfallande föda från ytan"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "spring" ],
+        "depth": { "min": 0, "max": 2, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Lekvandrar på våren upp i grunt rinnande vatten; stannar sedan i åmynningar och grunda vikar efter lek"
+      },
+      {
+        "parameter": "season",
+        "range": [ "autumn", "winter" ],
+        "depth": { "min": 2, "max": 5, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Höst/vinter söker sig iden till lugnare, något djupare områden (hålor i åar, djupare delar av sjöar) i flock"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 8, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Under 8°C är iden seg – använd långsam hemtagning och presentera betet nära fisken"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 12, "max": 22, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I varm årstid (12–22°C) kan iden jaga mer aktivt – medelhög inspinningshastighet med pauser kan trigga hugg"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "aspius_aspius",
+    "svenskt_namn": "Asp",
+    "latinskt_namn": "Aspius aspius",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 20, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Hög aktivitet vår–höst (4–20 °C); över ~20°C avtar aspens jaktlust, under ~4°C blir den trög",
+        "refs": [35]
+      },
+      {
+        "parameter": "current_speed",
+        "range": { "type": "numeric", "min": 0.3, "max": 1.5, "unit": "m/s" },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Gynnad av strömmande vatten – står gärna nedströms forsar/broar där bytesfisk koncentreras",
+        "refs": [13]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "activity_index": { "low": 0.4, "high": 1.0 },
+        "notes": "Dagaktiv rovfisk; jagar ofta småfisk i yt- och mellanskikt på ljusa timmar",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "size_class",
+        "range": { "type": "numeric", "min": 0, "max": 40, "unit": "cm" },
+        "diet": { "insects": 0.5, "crustaceans": 0.3, "small_fish": 0.2 },
+        "notes": "Ung asp (< ~40 cm) äter mer insekter och smådjur (t.ex. märlkräftor), och tar bara mindre fisk sporadiskt",
+        "refs": []
+      },
+      {
+        "parameter": "size_class",
+        "range": { "type": "numeric", "min": 40, "max": 100, "unit": "cm" },
+        "diet": { "fish": 0.9, "birds": 0.1 },
+        "notes": "Stor asp >40 cm är nästan uteslutande piscivor (jagar löjor, strömming etc); det finns fall där asp tagit småfåglar vid vattenytan:contentReference[oaicite:11]{index=11}",
+        "refs": [35]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Spinnfiske (snabba beten)",
+        "best_time": [ "dawn", "dusk" ],
+        "notes": "Kasta skeddrag eller vobbler i strömkanten under gryning/skymning – asp hugger ofta i strömvirvlar vid skymning"
+      },
+      {
+        "method": "Flugfiske",
+        "notes": "Stor asp kan tas på streamer-flugor som imiterar löja; fiska dem snabbt i ytan nedströms strömmar"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "spring" ],
+        "depth": { "min": 0, "max": 1, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Lek i strömmande grunt vatten (forsar/grundområden) tidig vår; samlas uppströms i älvar för lek"
+      },
+      {
+        "parameter": "season",
+        "range": [ "summer", "autumn" ],
+        "depth": { "min": 1, "max": 5, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Efter lek sprider sig aspen i större vattendrag och sjöar; ses ofta jaga bytesfisk vid ytan nära utloppskanaler och strömmar"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 10, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I kallt vatten (<10°C) – fiska långsamt och djupt; aspen är trög och står djupare"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 15, "max": 20, "unit": "°C" },
+        "retrieve_speed": "fast",
+        "notes": "I sommarvarmt vatten (~15–20°C) – använd mycket snabb invevning; aspen jagar aggressivt och föredrar snabba beten"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "cyprinus_carpio",
+    "svenskt_namn": "Karp",
+    "latinskt_namn": "Cyprinus carpio",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 3, "max": 35, "unit": "°C" },
+        "activity_index": { "low": 0.1, "high": 1.0 },
+        "notes": "Mycket bred tolerans (3–35°C), men optimalt kring 15–25°C; under ~8°C upphör karpens födosök nästan:contentReference[oaicite:12]{index=12}:contentReference[oaicite:13]{index=13}",
+        "refs": [36]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dusk", "dawn" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Skymning och gryning är huvudaktiv – karpen är mest påtaglig under dessa tider (skydd av dunkelt ljus):contentReference[oaicite:14]{index=14}",
+        "refs": [36]
+      },
+      {
+        "parameter": "weather",
+        "range": { "type": "categorical", "values": [ "overcast", "rain" ] },
+        "activity_index": { "low": 0.7, "high": 1.0 },
+        "notes": "Mulet väder och lätt regn kan öka karpens aktivitet vid ytan (lägre ljus och syrerikt regnvatten)"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 5, "max": 15, "unit": "°C" },
+        "diet": { "benthic_invertebrates": 0.9, "plants": 0.1 },
+        "notes": "Vid svalare temperatur (~5–15°C) tar karpen främst lättsmälta djur som mask och snäckor; lite växtmaterial ingår",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 20, "max": 30, "unit": "°C" },
+        "diet": { "benthic_invertebrates": 0.6, "plants": 0.3, "insects": 0.1 },
+        "notes": "I varmt sommarvatten (20–30°C) äter karpen allsidigt – bottenfauna (mollusker, larver) och en hel del växtdelar på grunt vatten",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (boilies/majs)",
+        "best_time": [ "dusk", "dawn" ],
+        "notes": "Mata upp platsen och meta på botten med boilies eller majs under gryning/skymning då karpen vågar sig fram"
+      },
+      {
+        "method": "Ytmete (flytbröd)",
+        "best_time": [ "day" ],
+        "notes": "Varma sommarkvällar kan man lura karp med flytande brödbitar på ytan – effektivt i lugna vatten"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 3, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommar: karpen uppehåller sig grunt i vassvikar och uppvärmda zoner (0–3 m) och patrullerar efter föda morgon/kväll"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 4, "max": 10, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vinter: drar sig ner mot botten på djupare partier där vattnet är ~4°C och övervintrar där utan att äta"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 10, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Karpen är i princip inaktiv under 10°C – låt agnet ligga still länge och använd små beten"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 15, "max": 30, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I varmt vatten är karpen aktiv – små rörelser eller att spänna/slakna linan kan trigga försiktiga napp"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "tinca_tinca",
+    "svenskt_namn": "Sutare",
+    "latinskt_namn": "Tinca tinca",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 24, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Optimalt temperaturområde 4–24 °C; sutaren är varmvattenälskande och mycket aktiv vid ~20°C:contentReference[oaicite:15]{index=15}",
+        "refs": [37]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dawn", "dusk", "night" ] },
+        "activity_index": { "low": 0.4, "high": 1.0 },
+        "notes": "Skymning, gryning och natt är bästa tider – sutaren undviker direkt solljus och äter mest under mörker",
+        "refs": []
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "lake", "river" ],
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Trivs i vegetationsrika insjöar och åar med mjuk botten; håller sig gärna i lugna, dyiga partier med mycket växter"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 10, "unit": "°C" },
+        "diet": { "detritus": 0.5, "benthic_invertebrates": 0.5 },
+        "notes": "I kallt vatten (<10°C) äter sutaren sparsamt; det den får i sig är mest bottensediment (detritus) och några bottendjur den råkar suga i sig",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 15, "max": 24, "unit": "°C" },
+        "diet": { "molluscs": 0.5, "insects": 0.3, "plants": 0.2 },
+        "notes": "I varmt sommarvatten är sutaren aktiv och äter mycket – främst snäckor/musslor och insektslarver, men även viss växtdel (alger, blad):contentReference[oaicite:16]{index=16}",
+        "refs": [37]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Flötmete",
+        "best_time": [ "dawn", "dusk" ],
+        "notes": "Flötmete med mask eller majs vid vasskanter i gryning/skymning – sutaren kommer in grunt i skymningen"
+      },
+      {
+        "method": "Bottenmete",
+        "notes": "Mata platsen och bottenmeta med doftstarka beten (t.ex. räka, mask) nära botten i dyiga områden för att locka sutaren"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 2, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommar: står mycket grunt (0–2 m) i tät vegetation, gärna i varma bakvikar – går ofta att se sutare rulla i ytan tidiga morgnar"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 2, "max": 5, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Vinter: ligger nedgrävd eller orörlig på botten i skyddade vassruggar eller dyhål; rör sig minimalt under is"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 8, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "I vinterkyla (<8°C) – sutaren är inaktiv; låt agnet ligga still på botten, eventuellt precis ovan dyn"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 18, "max": 24, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I varmt vatten (18–24°C) – mata platsen och låt betet ligga, men gör små förflyttningar då och då för att väcka sutarnas uppmärksamhet"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "carassius_carassius",
+    "svenskt_namn": "Ruda",
+    "latinskt_namn": "Carassius carassius",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 2, "max": 22, "unit": "°C" },
+        "activity_index": { "low": 0.1, "high": 1.0 },
+        "notes": "Tål 2–22°C; högst aktivitet ~15°C. Under 4°C kan ruda överleva i dvala utan nästan någon aktivitet:contentReference[oaicite:17]{index=17}",
+        "refs": [38]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Huvudsakligen nattaktiv – rudan betar plankton och bottendjur i skydd av mörkret (och undgår predatorer):contentReference[oaicite:18]{index=18}",
+        "refs": [22]
+      },
+      {
+        "parameter": "oxygen_level",
+        "range": { "type": "numeric", "min": 0, "max": 5, "unit": "mg/L" },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Mycket tålig mot låga syrehalter – överlever i syrefattiga vatten sommar som vinter (isolerar sig och är då nästan inaktiv):contentReference[oaicite:19]{index=19}"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 10, "unit": "°C" },
+        "diet": { "benthic_invertebrates": 0.5, "detritus": 0.5 },
+        "notes": "Under 10°C: rudan äter sparsamt på botten – mest små bottendjur (larver, kräftdjur) och förmultnat material för att överleva",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 15, "max": 22, "unit": "°C" },
+        "diet": { "plankton": 0.5, "insects": 0.3, "plants": 0.2 },
+        "notes": "I varmt vatten (15–22°C) äter rudan mycket djurplankton och mygglarver, men även växtplankton och alger – allt som finns i det stillastående vattnet:contentReference[oaicite:20]{index=20}",
+        "refs": [22]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Flötmete (små beten)",
+        "best_time": [ "night" ],
+        "notes": "Mete med känsligt flötspö, små krokar och agn (deg, maggot) på kvällen/natten – rudan nappar försiktigt i mörker"
+      },
+      {
+        "method": "Pimpelfiske",
+        "notes": "Vintertid kan ruda tas på pimpel i små tjärn – rörligheten är låg så fiska direkt över botten med långsamma rörelser"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "habitat",
+        "range": [ "lake", "river" ],
+        "depth": { "min": 0, "max": 2, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Förekommer i små, grunda sjöar, dammar och lugna åpartier. Håller sig ofta i strandzoner <2 m djup med tät vegetation"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 1, "max": 3, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Övervintrar nedgrävd i bottensedimentet i grunda vattendrag – kan överleva bottenfrysning genom att gå in i dvala"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "I iskallt vatten (<5°C) äter rudan inte alls – ingen idé att fiska aktivt; eventuellt micro-beten nära fenorna om isfritt"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 15, "max": 22, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Under högsommar (15–22°C) – för en lätt rörelse på flöte/agn med jämna mellanrum; rudan kan lockas av små förflyttningar"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "scardinius_erythrophthalmus",
+    "svenskt_namn": "Sarv",
+    "latinskt_namn": "Scardinius erythrophthalmus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 10, "max": 22, "unit": "°C" },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Aktiv framförallt i varmt vatten – över 10°C blir sarven livlig, med kulmen runt 18°C (svalare vatten ger lägre aktivitet):contentReference[oaicite:21]{index=21}",
+        "refs": [39]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "activity_index": { "low": 0.6, "high": 1.0 },
+        "notes": "Sarven är dagaktiv och syns ofta i ytan under soliga eftermiddagar när den söker insekter och växtdelar vid ytan",
+        "refs": []
+      },
+      {
+        "parameter": "weather",
+        "range": { "type": "categorical", "values": [ "sunny" ] },
+        "activity_index": { "low": 0.7, "high": 1.0 },
+        "notes": "Klart, soligt väder kan gynna sarv under högsommar (den solar sig nära ytan bland vegetationen och äter fallande insekter)"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 12, "max": 18, "unit": "°C" },
+        "diet": { "insects": 0.4, "plants": 0.4, "plankton": 0.2 },
+        "notes": "I behaglig temp (~15°C) lever sarven till stor del av insekter (t.ex. flygmyror) och växtmaterial (alger, vattenväxter) vid ytan:contentReference[oaicite:22]{index=22}",
+        "refs": [29]
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 20, "max": 22, "unit": "°C" },
+        "diet": { "insects": 0.6, "plankton": 0.4 },
+        "notes": "Vid högsommarvärme (>20°C) utgörs nästan hela födan av insekter och djurplankton – sarven plockar sländor och mygg vid ytan",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Flötmete (bröd/deg vid ytan)",
+        "best_time": [ "day" ],
+        "notes": "Lägg ut en liten brödbit eller degkula vid näckrosbäddar en solig dag – sarven tar gärna ytnära beten i lugnt vatten"
+      },
+      {
+        "method": "Ultralätt spinn",
+        "notes": "Mycket små spinnare eller skeddrag kan fånga sarv som jagar i ytan, men mete är oftast effektivare"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 1, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommartid står sarven allra högst upp i vattenkolumnen, ofta bland ytlig växtlighet (<1 m) där den kan nå sin föda"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 1, "max": 4, "unit": "m" },
+        "zone": "inshore",
+        "notes": "På vintern drar sig sarven något djupare (1–4 m) i sjöar men stannar i vegetationsrika zoner – den tål viss kyla men håller sig nära botten"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 8, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Under 8°C är sarven slö – agna med små beten och låt dem sväva i vattenmassan nästan stilla"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 16, "max": 22, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I varmt vatten (~20°C) kan man sakta dra ett bete i ytan för att trigga sarv – inte för snabbt, men jämn rörelse lockar hugg"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "gymnocephalus_cernua",
+    "svenskt_namn": "Gärs",
+    "latinskt_namn": "Gymnocephalus cernua",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 10, "max": 20, "unit": "°C" },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Optimaltemperatur ~10–20°C; i detta intervall är gärsen aktiv. Utanför det minskar dess rörelseförmåga markant:contentReference[oaicite:23]{index=23}",
+        "refs": [40]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.6, "high": 1.0 },
+        "notes": "Gärsen jagar nattetid och kan lokalisera byten i mörker med sitt sidolinjeorgan – mer aktiv i mörker:contentReference[oaicite:24]{index=24}",
+        "refs": [40]
+      },
+      {
+        "parameter": "salinity",
+        "range": { "type": "numeric", "min": 0, "max": 12, "unit": "‰" },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Tål bräckt vatten upp till ~10–12‰; finns rikligt i kustmynnande brackvattensområden (t.ex. Östersjöns estuarier):contentReference[oaicite:25]{index=25}"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "habitat",
+        "range": [ "lake" ],
+        "diet": { "insects": 0.4, "worms": 0.3, "crustaceans": 0.3 },
+        "notes": "I insjöar (stillasthavande vatten) dominerar insektslarver, maskar och små kräftdjur i gärsens diet – den pickar i bottensedimentet efter dessa",
+        "refs": []
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "diet": { "zooplankton": 0.1, "insects": 0.3, "small_fish": 0.6 },
+        "notes": "I brackvatten (kustnära) kan gärsen även ta småfisk/ägg vid tillfälle; dock fortfarande är bottendjur (märlkräftor, mygglarver) basfödan",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (mask)",
+        "best_time": [ "night" ],
+        "notes": "Använd ett enkelt bottenmete med liten krok agnad med mask på kvällen/natten – gärsen nappar oftast i mörker nära botten"
+      },
+      {
+        "method": "Pimpelfiske (natt)",
+        "notes": "Vintertid kan gärs fångas nattetid genom isfiske: små blänken och maggot direkt ovan botten kan locka fram dem ur mörkret"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "depth": { "min": 10, "max": 30, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Dagtid står gärsen djupt (10–30 m) nära botten för skydd, ofta under språngskiktet där ljuset är svagt"
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "depth": { "min": 2, "max": 10, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Nattetid rör den sig upp mot grundare vatten (2–10 m) för att äta vid botten på jakt efter larver och plankton",
+        "refs": []
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Under is/tidig vår (<5°C) är gärsen trög – fiska nästan statiskt med betet liggande på botten; minimal rörelse"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 10, "max": 20, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I milt vatten (10–20°C) kan man aktivare \"darra\" betet nära botten – gärsen använder sidolinjen och kan attraheras av små skakningar"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "gadus_morhua",
+    "svenskt_namn": "Torsk",
+    "latinskt_namn": "Gadus morhua",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 15, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Tempererat kallvatten – optimal aktivitet vid 0–15°C, med mest jaktlust omkring 4–8°C:contentReference[oaicite:26]{index=26}",
+        "refs": [41]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Gryning och skymning är topp-feedertider för torsk – den sprider ut sig nattetid för att äta, efter att ha stimmat dagtid:contentReference[oaicite:27]{index=27}",
+        "refs": [41]
+      },
+      {
+        "parameter": "salinity",
+        "range": { "type": "numeric", "min": 10, "max": 35, "unit": "‰" },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Trivs bäst i marina saliniteter (>~20‰); i bräckt vatten som Östersjön (~7–12‰) är torsken mindre livskraftig och rör sig mot djupare, saltare vatten"
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "diet": { "crustaceans": 0.6, "worms": 0.2, "fish": 0.2 },
+        "notes": "Kustnära (yngre) torsk äter relativt blandad kost – räkor, krabbor, havsborstmaskar samt småfisk vid bottnen:contentReference[oaicite:28]{index=28}",
+        "refs": []
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "open_sea" ],
+        "diet": { "fish": 0.7, "cephalopods": 0.3 },
+        "notes": "Större torsk ute på öppet hav jagar mest stimfisk (sill, skarpsill etc) och i viss mån bläckfisk (små bläckfiskar):contentReference[oaicite:29]{index=29}",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Pilkfiske (tung pilk)",
+        "notes": "Använd tunga pilkar 100–300 g vid vrak, grundkanter och stenrev; låt pilken dunka i botten, torsk hugger ofta vid upplyft"
+      },
+      {
+        "method": "Bottenmete (agnfisk)",
+        "best_time": [ "dusk" ],
+        "notes": "Bottenmete med sill- eller sejbit i skymning kan vara effektivt – placera betet nära botten vid strukturer där torsken lurar"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 30, "max": 100, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Sommartid drar torsken sig djupare (30–100+ m) för att söka svalare och syrerikt vatten; håller sig mer utomskärs"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 10, "max": 50, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Vintertid vandrar torsken in mot kusten och kan stå grundare (10–50 m) då ytvatten kylts av; den följer bytesfisken in mot land"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I nära nollgradigt vatten – jaga torsken långsamt med pilken nära botten; den tar fortfarande byte men är något mindre rörlig"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 6, "max": 12, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I måttligt kallt vatten (6–12°C) är torsken pigg – en måttlig jiggrörelse med korta spinnstopp imiterar skadad bytesfisk och lockar hugg"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26",
+    "regulations": {
+      "closed_season": [
+        { "start": "01-01", "end": "03-31", "area": "innanför trålgränsen (Västkust)" }
+      ],
+      "notes": "Fiskeförbud för torsk 1/1–31/3 på Västkusten nära kusten (gäller både handredskap och nät):contentReference[oaicite:30]{index=30}"
+    }
+  },
+  {
+    "id": "melanogrammus_aeglefinus",
+    "svenskt_namn": "Kolja",
+    "latinskt_namn": "Melanogrammus aeglefinus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 10, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Mest aktiv vid 4–10°C (trivs i svalt vatten); undviker både <2°C och >13°C om möjligt:contentReference[oaicite:31]{index=31}",
+        "refs": [42]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Koljan äter främst på dagen (synlig bottenjakt på smådjur) – ingen tydlig nattaktivitet känd",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 7, "unit": "°C" },
+        "diet": { "echinoderms": 0.3, "crustaceans": 0.3, "worms": 0.4 },
+        "notes": "I kallare bottenvatten (~4–7°C) äter koljan mycket sjöstjärnor, slangstjärnor och havsborstmask (som rör sig långsamt i kyla):contentReference[oaicite:32]{index=32}",
+        "refs": [42]
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 8, "max": 12, "unit": "°C" },
+        "diet": { "mollusks": 0.4, "crustaceans": 0.3, "fish": 0.3 },
+        "notes": "I något varmare vatten (8–12°C) ökar andelen musslor/snäckor i dieten; även små bytesfisk (t.ex. tobis) ingår mer:contentReference[oaicite:33]{index=33}",
+        "refs": [42]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (räka/mask)",
+        "best_time": [ "day" ],
+        "notes": "Använd glidtackel med räka eller borstmask på sandbotten dagtid; koljan plockar agnet när det doftar på botten"
+      },
+      {
+        "method": "Pilkfiske (liten pilk)",
+        "notes": "En liten pirk med krok agnad med musselkött, fiska nära botten – speciellt effektivt kring vrak eller stenbotten där koljan äter"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 50, "max": 150, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vinter: koljan samlas på större djup (50–150 m) utomskärs för lek/spawn, ofta på sandiga bankar i Nordsjön"
+      },
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 20, "max": 80, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Sommar: kommer in något grundare (20–80 m) över sand- och grusbottnar för att äta efter leken – fler koljor fångas då på medeldjup"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 4, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Nära fryspunkten – koljan rör sig långsamt; presentera agnet med långa pauser och minimala rörelser"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 8, "max": 12, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I mildare vatten (8–12°C) – variera med små ryck och stopp; koljan hugger när betet \"sprätter\" lite på botten"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26",
+    "regulations": {
+      "closed_season": [
+        { "start": "01-01", "end": "03-31", "area": "innanför trålgränsen (Västkust)" }
+      ],
+      "notes": "Fiskeförbud för kolja 1/1–31/3 nära kusten (innanför trålgräns, även handredskap) – skydd under lekperioden:contentReference[oaicite:34]{index=34}"
+    }
+  },
+  {
+    "id": "pollachius_virens",
+    "svenskt_namn": "Sej",
+    "latinskt_namn": "Pollachius virens",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 18, "unit": "°C" },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Optimaltemperatur ca 6–14°C; blir slö <4°C och undviker >18°C (söker svalare djup om ytan blir varmare)",
+        "refs": []
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dusk", "night" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Jagar gärna i skymning/mörker – nattetid kan stora sejar gå upp mot ytan för att följa sillstim",
+        "refs": []
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "coastal", "open_sea" ],
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Stimfisk – aktiv både vid kusten (unga fiskar på grunda skär) och ute på öppet hav (större stim jagar i strömkanter)",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "diet": { "crustaceans": 0.6, "small_fish": 0.4 },
+        "notes": "Mindre/ung sej inshore äter mest hoppkräftor, räkkräftdjur och små fiskar (t.ex. tobis):contentReference[oaicite:35]{index=35}",
+        "refs": [40]
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "open_sea" ],
+        "diet": { "fish": 0.9, "cephalopods": 0.1 },
+        "notes": "Stora sejar offshore jagar nästan enbart stimfisk (sill, skarpsill) – i viss mån äter de bläckfisk eller maneter om tillfälle ges:contentReference[oaicite:36]{index=36}",
+        "refs": [40]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Spinnfiske (kastspö)",
+        "best_time": [ "dusk" ],
+        "notes": "Kasta blänkare/jiggar utmed branta kanter vid skymning – sejen hugger ofta nära ytan när betesfisken samlas"
+      },
+      {
+        "method": "Pilkfiske",
+        "notes": "Vertikaljigga med mellan­tung pirk (~100 g) i mellanskikt där ekon syns – sejen tar pilken i nedsläpp eller snabb invevning"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "spring", "summer" ],
+        "depth": { "min": 10, "max": 50, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Vår/sommar: sejen drar in mot kusterna och upp på grundtoppar (10–50 m) i jakt på sill och annat – särskilt yngre fisk",
+        "refs": [40]
+      },
+      {
+        "parameter": "season",
+        "range": [ "autumn", "winter" ],
+        "depth": { "min": 50, "max": 150, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Höst/vinter: stora stim vandrar söderut/ut till havs och stannar på större djup (50–150 m), alternativt rör sig norrut mot varmare vatten",
+        "refs": [59]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I mycket kallt vatten – sejen är seg; spinn långsamt och låt betet sjunka djupare, där vattnet är något varmare"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 12, "max": 18, "unit": "°C" },
+        "retrieve_speed": "fast",
+        "notes": "I sommarvarmt vatten (~15°C) – veva in mycket snabbt eller jerka jiggen; sejens reaktionsförmåga är hög och den jagar kvickt byte"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "scomber_scombrus",
+    "svenskt_namn": "Makrill",
+    "latinskt_namn": "Scomber scombrus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 8, "max": 18, "unit": "°C" },
+        "activity_index": { "low": 0.0, "high": 1.0 },
+        "notes": "Kommer in när vattnet nått ~11–14°C på våren – hög aktivitet i 15–18°C och lämnar igen vid <8°C (vandrar):contentReference[oaicite:37]{index=37}",
+        "refs": [43]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Dagaktiv stimfisk – makrillen jagar plankton och småfisk i dagsljus och går djupare ner i mörker (följande planktonets dygnsrytm):contentReference[oaicite:38]{index=38}",
+        "refs": [43]
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 11, "max": 14, "unit": "°C" },
+        "diet": { "zooplankton": 0.8, "small_fish": 0.2 },
+        "notes": "På försommaren (vattnet 11–14°C) äter makrillen främst djurplankton (hoppkräftor, krill) – ung årsung fisk utgör bara liten del av dieten:contentReference[oaicite:39]{index=39}",
+        "refs": [43]
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 15, "max": 20, "unit": "°C" },
+        "diet": { "zooplankton": 0.4, "small_fish": 0.6 },
+        "notes": "Vid högsommar ~15–20°C ökar inslaget av småfisk (yngel av sill, tobis) i dieten även om plankton fortfarande utgör betydande del",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Häcklafiske",
+        "best_time": [ "day" ],
+        "notes": "Trolling eller kast med makrillhäckla (flerkrokstackel med fjädrar) i ytvattnet dagtid – makrillen hugger i stim, särskilt mitt på dagen vid gott väder"
+      },
+      {
+        "method": "Spinnfiske (kast)",
+        "notes": "Kastfiska med små silvriga skedar eller jiggar – veva in i hög fart nära ytan. Effektivt från båt/pir när stim syns i ytan."
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 20, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommar: makrillen kommer in kustnära och går högt i vattnet (0–20 m) för att leka och äta – stora stim syns då i ytan"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 50, "max": 200, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vinter: övervintrar på större djup (50–200 m) längre ut till havs i vilande tillstånd och äter minimalt under kalla perioden:contentReference[oaicite:40]{index=40}",
+        "refs": [43]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 10, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Tidigt på säsongen (<10°C) – om makrillen börjat komma, fiska djupare och veva långsammare (de är tröga i kallt vatten, ofta spridda djupt)"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 15, "max": 20, "unit": "°C" },
+        "retrieve_speed": "fast",
+        "notes": "När vattnet är varmt och stimmen stora – veva mycket snabbt eller ryckigt; makrillen föredrar snabb rörelse och jagar ifatt betet"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "clupea_harengus",
+    "svenskt_namn": "Sill",
+    "latinskt_namn": "Clupea harengus",
+    "activity": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Nattaktiv: Sillen stiger upp mot ytan i mörker för att äta plankton; dagtid står den djupt i stim nära botten:contentReference[oaicite:41]{index=41}",
+        "refs": [44]
+      },
+      {
+        "parameter": "moon_phase",
+        "range": { "type": "categorical", "values": [ "new_moon" ] },
+        "activity_index": { "low": 0.6, "high": 1.0 },
+        "notes": "Mörk natt (ingen måne) gynnar sillens uppstigning mot ytan – vid fullmåne stannar den djupare (mer ljusskygg)",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 4, "max": 10, "unit": "°C" },
+        "diet": { "zooplankton": 0.9, "small_fish": 0.1 },
+        "notes": "Vår/höst (svalt vatten): främst djurplankton (hoppkräftor, märlkräftor); större sill kan äta lite fiskägg/larver",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 12, "max": 18, "unit": "°C" },
+        "diet": { "zooplankton": 0.7, "small_fish": 0.3 },
+        "notes": "Sommar (varmare vatten): stor sill kompletterar planktondiet med små bytesfiskar/larver, t.ex. spigg eller egen avkomma – dieten blir något mer blandad",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Häcklafiske (sillhäckla)",
+        "best_time": [ "night" ],
+        "notes": "Meta med sillhäckla (flera små blänkkrokar) under belysning nattetid vid bryggor eller båt – sillen lockas till ljus och nappar i stim:contentReference[oaicite:42]{index=42}"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "depth": { "min": 20, "max": 70, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Dag: sillstim ligger nära botten på ~20–70 m djup för att undvika predatorer och eftersom planktonet sjunker dagtid:contentReference[oaicite:43]{index=43}"
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "depth": { "min": 0, "max": 20, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Natt: stimmet går upp grunt (<20 m, ofta precis under ytan) för att beta plankton som stiger i mörkret – kan komma in i fjärdar och vikar då:contentReference[oaicite:44]{index=44}",
+        "refs": [44]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Under vintern (kallt vatten) – sillen är svårfångad; om fiske sker, håll häcklan nästan stilla djupt (sillen äter knappt alls)"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 10, "max": 16, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Under vår/försommar (10–16°C) – ryck försiktigt i häcklan med långa mellanrum; sillen hugger ofta när betet svävar fritt efter ett litet ryck"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "sprattus_sprattus",
+    "svenskt_namn": "Skarpsill",
+    "latinskt_namn": "Sprattus sprattus",
+    "activity": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.4, "high": 1.0 },
+        "notes": "Nattetid aktiv: skarpsillen vandrar upp mot ytan i mörker för att äta plankton, likt sillen (dagtid håller den sig djupare)",
+        "refs": [46]
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 2, "max": 6, "unit": "°C" },
+        "diet": { "zooplankton": 1.0 },
+        "notes": "Vintertid (kallt vatten): skarpsillens diet är uteslutande planktoniska kräftdjur (hoppkräftor m.m.), men födointaget är lågt",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 10, "max": 15, "unit": "°C" },
+        "diet": { "zooplankton": 0.9, "small_fish": 0.1 },
+        "notes": "Under varmare årstid äter den till ~90% djurplankton; större individer kan ta enstaka fisklarver/fiskägg om de är rikliga",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Häcklafiske (mikro-häckla)",
+        "best_time": [ "night" ],
+        "notes": "Använd en extra liten häckla (krokstorlek ~14–16) under natt med ljuskälla vid båten – skarpsillen nappar små silvriga krokar nära ytan"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day" ] },
+        "depth": { "min": 30, "max": 80, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Dag: skarpsillstimmen står djupt (30–80 m) i haloklinen i Östersjön för att undkomma dagljus och predatorer"
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "depth": { "min": 5, "max": 30, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Natt: stimmen vandrar upp mot ytskiktet (5–30 m) och även in mot kuster/ytterskärgård för att beta plankton i mörkret:contentReference[oaicite:45]{index=45}",
+        "refs": [46]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Vinter – skarpsillen är svår att fiska; isåfall fiska djupt och stilla under ljus – men oftast fångas den inte sportfiskemässigt under denna tid"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 8, "max": 15, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Vår/sommar – dra häcklan mycket långsamt eller håll den still i stimmet; skarpsillen hugger ofta när krokarna svävar fritt"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "merlangius_merlangus",
+    "svenskt_namn": "Vitling",
+    "latinskt_namn": "Merlangius merlangus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 5, "max": 15, "unit": "°C" },
+        "activity_index": { "low": 0.4, "high": 1.0 },
+        "notes": "Tempererat hav (5–15°C) – vitlingen är aktiv i denna spann, med topp kring ~10°C; undviker väldigt kallt och väldigt varmt vatten",
+        "refs": []
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dusk", "night" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Vitlingen kan öka aktivitet vid skymning/natt då den jagar små byten som kommer fram – rapporter om ökat nattfiske i vissa områden",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "diet": { "crustaceans": 0.5, "worms": 0.3, "mollusks": 0.2 },
+        "notes": "Unga vitlingar (kustnära) lever mycket av räkor, små krabbor, havsborstmask och snäckor vid sandbotten:contentReference[oaicite:46]{index=46}",
+        "refs": [50]
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "open_sea" ],
+        "diet": { "fish": 0.5, "cephalopods": 0.2, "crustaceans": 0.3 },
+        "notes": "Äldre vitling längre ut äter mer fisk (t.ex. tobis, små sill) och bläckfisk, men kräftdjur (räkor) finns kvar i dieten:contentReference[oaicite:47]{index=47}",
+        "refs": [50]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (små krokar)",
+        "notes": "Bottenmeta med paternostertackel och små krokar agnade med borstmask eller räka; vitlingen har liten mun och nappar försiktigt"
+      },
+      {
+        "method": "Pilkfiske (pirk+häckla)",
+        "notes": "Använd liten pirk med upphängarkrokar (s.k. vitlinghäckla) – locka med små ryck nära botten, vitlingen hugger ofta på upphängarna"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "depth": { "min": 10, "max": 50, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Yngre vitling står grunt (10–50 m) nära kusten, ofta över sandbottnar och i hamnområden; de söker skydd och föda i grunda havsvikar"
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "open_sea" ],
+        "depth": { "min": 50, "max": 150, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Äldre vitling återfinns längre ut (50–150 m) på kontinentalsockelns sluttningar; de migrerar ut efter första levnadsåret:contentReference[oaicite:48]{index=48}",
+        "refs": [50]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 8, "unit": "°C" },
+        "retrieve_speed": "very slow",
+        "notes": "Vid låg temperatur (<8°C) – presentera agnet stilla eller med minimala förflyttningar; vitlingen orkar inte jaga aktivt"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 10, "max": 15, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I trivseltemperatur (~10–15°C) – små ryck och pauser i inspinningen kan imitera räkor/maskar och ge fler hugg"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "pleuronectes_platessa",
+    "svenskt_namn": "Rödspätta",
+    "latinskt_namn": "Pleuronectes platessa",
+    "activity": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.6, "high": 1.0 },
+        "notes": "Nattaktiv bottenfisk – rödspättan gräver ner sig på dagen och blir aktiv vid skymning/natt för att söka föda:contentReference[oaicite:49]{index=49}",
+        "refs": [47]
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 15, "unit": "°C" },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Aktivitet är hög vid 5–10°C (kalla vatten); >15°C kan spättan bli stressad och söker djupare/kallare vatten",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "diet": { "polychaetes": 0.4, "crustaceans": 0.3, "bivalves": 0.3 },
+        "notes": "Nattetid äter rödspättan mest havsborstmaskar, märlkräftor/räkor och musslor som kommer fram – utnyttjar mörkret för att jaga dessa:contentReference[oaicite:50]{index=50}",
+        "refs": [47]
+      },
+      {
+        "parameter": "size_class",
+        "range": { "type": "numeric", "min": 0, "max": 30, "unit": "cm" },
+        "diet": { "crustaceans": 0.8, "worms": 0.2 },
+        "notes": "Små rödspättor (<30 cm) lever mycket på räkor och små kräftdjur; deras begränsade gap gör att de föredrar mindre byten",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (båt/drift)",
+        "notes": "Driftfiska med glidtackel och agnad krok (t.ex. borstmask eller sandskädda) på sandbotten – spättan plockar upp betet när det släpas långsamt"
+      },
+      {
+        "method": "Bottenmete (strand)",
+        "best_time": [ "night" ],
+        "notes": "Surfcasting från strand med tackel agnat med räka, mussla eller borstmask i mörker – rödspättan kommer in grunt för att äta nattetid"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "depth": { "min": 1, "max": 10, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Yngre spättor (<2 år) lever i grunda havsvikar/estuarium (1–10 m) med sandbotten – barnkammarmiljöer med lite rovdjur:contentReference[oaicite:51]{index=51}",
+        "refs": [47]
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "open_sea" ],
+        "depth": { "min": 10, "max": 100, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vuxna spättor vandrar ut till djupare vatten (10–100 m) – ofta på bankar och kontinentalsockeln; håller sig dock på sand/lerbotten",
+        "refs": []
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "Vid vinterkyla (<5°C) – spättan är inaktiv; om fiskad, låt tacklet ligga still långa stunder så att doften sprids (använder luktsinne i kyla)"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 8, "max": 15, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I mildare vatten (8–15°C) – en långsam släpning av betet längs botten rör upp sand som lockar spättan; undvik för hastiga rörelser"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "platichthys_flesus",
+    "svenskt_namn": "Skrubba",
+    "latinskt_namn": "Platichthys flesus",
+    "activity": [
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "night" ] },
+        "activity_index": { "low": 0.5, "high": 1.0 },
+        "notes": "Liksom rödspättan är skrubban huvudsakligen nattaktiv – ligger nedgrävd dagtid och rör sig för att äta i skydd av mörkret",
+        "refs": []
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 20, "unit": "°C" },
+        "activity_index": { "low": 0.3, "high": 1.0 },
+        "notes": "Mycket tålig – kan vara aktiv i nära 0°C (bräckvatten under is) men även i upp till 20°C; föredrar dock ~5–15°C (normala kusttemperaturer)",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "habitat",
+        "range": [ "river" ],
+        "diet": { "insects": 0.4, "worms": 0.4, "crustaceans": 0.2 },
+        "notes": "I sötvatten/bräckt estuarium äter skrubban mycket mygglarver, mask och små märlkräftor – utnyttjar att den kan leva i åmynningar",
+        "refs": []
+      },
+      {
+        "parameter": "habitat",
+        "range": [ "coastal" ],
+        "diet": { "polychaetes": 0.4, "crustaceans": 0.4, "mollusks": 0.2 },
+        "notes": "Till havs (saltare vatten) liknar dieten rödspättans: havsborstmaskar, små räkor/krabbor och musslor dominerar",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (bräckt vatten)",
+        "notes": "Meta på botten i åmynningar med mask eller räka som agn – skrubban nappar ofta i älvmynningar under sommarnätter"
+      },
+      {
+        "method": "Bottenmete (kust, natt)",
+        "notes": "Nattmete med räka/mussla vid sandstränder – skrubban kommer mycket grunt nattetid för att äta; ett lätt kastspö med glidtackel fungerar"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 0, "max": 5, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommar: går upp grunt (<5 m) även i nästan sött vatten (mynningsområden) för att äta – tål låg salthalt och utnyttjar värmen i vikar"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 10, "max": 40, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vinter: vandrar ut djupare (10–40 m) och samlas i skyddade hålor utanför kusten för övervintring; i Östersjön går den ut mot högre salthalt"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 4, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I iskallt vintervatten – skrubban ligger mest still; eventuellt kan minimal dragning av agnet längs botten trigga en reaktionshugg"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 10, "max": 18, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I varmt vatten (10–18°C) – långsam släpning av betet så det virvlar upp sediment lockar flundran, men betet ska stanna upp ofta då flundran hugger stationära beten"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26"
+  },
+  {
+    "id": "hippoglossus_hippoglossus",
+    "svenskt_namn": "Hälleflundra",
+    "latinskt_namn": "Hippoglossus hippoglossus",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 0, "max": 8, "unit": "°C" },
+        "activity_index": { "low": 0.2, "high": 1.0 },
+        "notes": "Kallvattenrovfisk – trivs bäst vid ~0–8°C (med optimum runt 3–4°C) och är som mest aktiv i dessa temperaturer:contentReference[oaicite:52]{index=52}",
+        "refs": [48]
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
+        "activity_index": { "low": 0.4, "high": 1.0 },
+        "notes": "Jagar både dag och natt på djupet, men gryning/skymning kan trigga aktivitetstoppar om den är på grundbankar (bytesfisk rör sig då)",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "depth",
+        "range": { "type": "numeric", "min": 20, "max": 100, "unit": "m" },
+        "diet": { "fish": 0.6, "crustaceans": 0.4 },
+        "notes": "Grundare vatten (20–100 m, ofta yngre hälleflundror): äter mer blåkveite, sandskädda, torsk men tar också krabbor och större räkor på bankarna",
+        "refs": []
+      },
+      {
+        "parameter": "depth",
+        "range": { "type": "numeric", "min": 100, "max": 500, "unit": "m" },
+        "diet": { "fish": 0.9, "cephalopods": 0.1 },
+        "notes": "Djupare offshore (100–500 m, stora individer): nästan enbart fisk (ex. storskata, kolja) – få byten utöver fisk, utom möjligen bläckfisk i viss mån",
+        "refs": []
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Havsfiske (jigg)",
+        "notes": "Tung jigg (~300–500 g) vertikalt över djuphålor och kanter; gunga jiggen nära botten och var beredd – huggen är tunga och plötsliga"
+      },
+      {
+        "method": "Bottenmete (död betesfisk)",
+        "notes": "Drifting med stor död agnfisk (t.ex. sejfilé) på botten; hälleflundran hittar betet med luktsinnet – effektivt på sommaren över sandbankar"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 30, "max": 100, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Sommar: hälleflundran kommer upp något grundare (30–100 m) på bankar/kontinentalsockel för att jaga under den ljusare perioden"
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 100, "max": 300, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vinter: vandrar tillbaka till större djup (100–300+ m) – vissa populationer leker på djupet under vintern, aktiviteten nära kusten minskar"
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 4, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I 0–4°C vatten (t.ex. vinterdjup) – jaga långsamt; gör långa pauser med jiggen nära botten. Hälleflundran är kallblodig men hugger fortfarande i kyla"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 5, "max": 8, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "Vid 5–8°C (sommar på grunt) – jigga i måttligt tempo med tydliga lyft och studsar i botten. Hälleflundran är då på jakt och följer gärna ett rörligt bete"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26",
+    "regulations": {
+      "closed_season": [
+        { "start": "12-20", "end": "03-31", "area": "Svenska vatten" }
+      ],
+      "notes": "Fiskeförbud på hälleflundra 20/12–31/3 nationellt för att skydda arten under lekperiod (obligatorisk återutsättning då):contentReference[oaicite:53]{index=53}"
+    }
+  },
+  {
+    "id": "squalus_acanthias",
+    "svenskt_namn": "Pigghaj",
+    "latinskt_namn": "Squalus acanthias",
+    "activity": [
+      {
+        "parameter": "water_temperature",
+        "range": { "type": "numeric", "min": 5, "max": 15, "unit": "°C" },
+        "activity_index": { "low": 0.4, "high": 1.0 },
+        "notes": "Pigghajen är mest aktiv i tempererat vatten (~5–15°C). Undviker för varmt (>18°C) och söker då djupare/vandrar, samt blir slö <4°C",
+        "refs": []
+      },
+      {
+        "parameter": "time_of_day",
+        "range": { "type": "categorical", "values": [ "day", "night" ] },
+        "activity_index": { "low": 0.5, "high": 0.5 },
+        "notes": "Inga tydliga dygnsmönster – pigghajen äter när tillfälle ges och kan vara aktiv både dag och natt, men stora stim ses ofta dagtid nära botten",
+        "refs": []
+      }
+    ],
+    "diet_preferences": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "diet": { "crustaceans": 0.6, "cephalopods": 0.2, "fish": 0.2 },
+        "notes": "Sommartid (kustnära): äter mer kräftdjur och blötdjur (ex bläckfisk) utöver små stimfisk – bytesvalet skiftar lite mot ryggradslösa djur:contentReference[oaicite:54]{index=54}",
+        "refs": [49]
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "diet": { "fish": 0.7, "cephalopods": 0.3 },
+        "notes": "Vintertid (offshore): kost huvudsakligen småfisk (sill, torskungar) och en del bläckfisk – studier visar ökad andel fisk i diet vintertid:contentReference[oaicite:55]{index=55}",
+        "refs": [49]
+      }
+    ],
+    "recommended_methods": [
+      {
+        "method": "Bottenmete (agnfisk)",
+        "notes": "Bottenmete med sillstrimla eller annan oljig fisk som bete – pigghajen lockas av doften och hugger betet som ligger på botten"
+      },
+      {
+        "method": "Pilkfiske",
+        "notes": "Pigghaj kan hugga vid traditionellt pilkfiske efter torsk – speciellt på mindre pilkar agnade med doft (t.ex. sillbit på trekroken)"
+      }
+    ],
+    "spatial_distribution": [
+      {
+        "parameter": "season",
+        "range": [ "summer" ],
+        "depth": { "min": 10, "max": 50, "unit": "m" },
+        "zone": "inshore",
+        "notes": "Sommar: pigghajen kommer närmare kusten och kan ses på 10–50 m djup i t.ex. Bohuslän, ofta i stora vandrande stim",
+        "refs": [59]
+      },
+      {
+        "parameter": "season",
+        "range": [ "winter" ],
+        "depth": { "min": 50, "max": 150, "unit": "m" },
+        "zone": "offshore",
+        "notes": "Vinter: vandrar söderut eller ut på djupare vatten (>50 m); många norra pigghajar stannar i norr men drar ut offshore på vintern för högre temperatur",
+        "refs": [59]
+      }
+    ],
+    "fishing_tactics": [
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 0, "max": 5, "unit": "°C" },
+        "retrieve_speed": "slow",
+        "notes": "I kallt vatten (<5°C) – pigghajen är långsam; låt betet ligga still längre stunder på botten och lyft det sakta då och då"
+      },
+      {
+        "parameter": "water_temperature",
+        "range": { "min": 10, "max": 15, "unit": "°C" },
+        "retrieve_speed": "moderate",
+        "notes": "I måttligt vatten (10–15°C) – använd måttlig invevning eller långsam trolling; pigghajen följer lukten av betet och hugger oftare när det rör sig lite"
+      }
+    ],
+    "source": "FishBase 2025",
+    "confidence": "high",
+    "last_updated": "2025-07-26",
+    "regulations": {
+      "closed_season": [],
+      "notes": "Tidigare fredad art. Fr.o.m. 2023 tillåts 1 pigghaj (<100 cm) behållas per fiskare/dag; alla >100 cm ska släppas:contentReference[oaicite:56]{index=56}"
+    }
+  }
+
+  
