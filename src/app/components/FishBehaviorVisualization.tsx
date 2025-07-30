@@ -157,10 +157,34 @@ function CircadianRhythmChart({ activity, sizeClass }: { activity: number; sizeC
   };
 
   const hourlyData = createActivityData();
-  const currentHour = new Date().getHours();
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const exactCurrentTime = currentHour + (currentMinutes / 60); // 11.49 för 11:49
   const width = 400;
   const height = 200;
   const padding = 40;
+
+  // Interpolera aktivitet för exakt nuvarande tid
+  const getActivityAtTime = (time: number) => {
+    // Hitta närmaste datapunkter
+    let beforePoint = hourlyData[0];
+    let afterPoint = hourlyData[hourlyData.length - 1];
+    
+    for (let i = 0; i < hourlyData.length - 1; i++) {
+      if (hourlyData[i].hour <= time && hourlyData[i + 1].hour >= time) {
+        beforePoint = hourlyData[i];
+        afterPoint = hourlyData[i + 1];
+        break;
+      }
+    }
+    
+    // Linjär interpolation
+    const ratio = (time - beforePoint.hour) / (afterPoint.hour - beforePoint.hour);
+    return beforePoint.value + (afterPoint.value - beforePoint.value) * ratio;
+  };
+
+  const currentActivity = getActivityAtTime(exactCurrentTime);
 
   // Create smooth curve path
   const createPath = (data: typeof hourlyData) => {
@@ -248,24 +272,44 @@ function CircadianRhythmChart({ activity, sizeClass }: { activity: number; sizeC
           fill="url(#activityGradient)"
         />
         
-        {/* Data points */}
+        {/* Data points - alla blåa, inga röda */}
         {hourlyData.map((d, i) => {
           const x = padding + (i * (width - 2 * padding)) / (hourlyData.length - 1);
           const y = height - padding - (d.value * (height - 2 * padding));
-          const isCurrentHour = Math.abs(d.hour - currentHour) <= 1;
           
           return (
             <circle
               key={i}
               cx={x}
               cy={y}
-              r={isCurrentHour ? 6 : 4}
-              fill={isCurrentHour ? "#EF4444" : "#60A5FA"}
-              stroke={isCurrentHour ? "#FCA5A5" : "#93C5FD"}
+              r={4}
+              fill="#60A5FA"
+              stroke="#93C5FD"
               strokeWidth="2"
             />
           );
         })}
+        
+        {/* Exakt nuvarande tid indikator - på aktivitetskurvan */}
+        <circle
+          cx={padding + ((exactCurrentTime / 24) * (width - 2 * padding))}
+          cy={height - padding - (currentActivity * (height - 2 * padding))}
+          r={8}
+          fill="#EF4444"
+          stroke="#FCA5A5"
+          strokeWidth="3"
+        />
+        
+        {/* Vertikal linje för exakt nuvarande tid */}
+        <line
+          x1={padding + ((exactCurrentTime / 24) * (width - 2 * padding))}
+          y1={padding}
+          x2={padding + ((exactCurrentTime / 24) * (width - 2 * padding))}
+          y2={height - padding}
+          stroke="#EF4444"
+          strokeWidth="2"
+          strokeDasharray="3,3"
+        />
         
         {/* Hour labels */}
         {hourlyData.map((d, i) => (
@@ -319,12 +363,12 @@ function CircadianRhythmChart({ activity, sizeClass }: { activity: number; sizeC
         
         {/* Current time label on the red dot */}
         <text
-          x={padding + ((currentHour / 24) * (width - 2 * padding))}
+          x={padding + ((exactCurrentTime / 24) * (width - 2 * padding))}
           y={padding - 20}
           textAnchor="middle"
           className="fill-red-400 text-xs font-medium"
         >
-          🔴 Nu ({currentHour.toString().padStart(2, '0')}:00)
+          🔴 Nu ({currentHour.toString().padStart(2, '0')}:{currentMinutes.toString().padStart(2, '0')})
         </text>
         
         {/* Sunrise label */}
@@ -363,7 +407,7 @@ function CircadianRhythmChart({ activity, sizeClass }: { activity: number; sizeC
          </div>
          <div className="flex items-center space-x-1">
            <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-           <span className="text-white/80">🔴 Nuvarande tid ({currentHour}:00)</span>
+           <span className="text-white/80">🔴 Nuvarande tid ({currentHour.toString().padStart(2, '0')}:{currentMinutes.toString().padStart(2, '0')})</span>
          </div>
        </div>
     </div>
