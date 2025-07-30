@@ -38,6 +38,7 @@
     "@types/maplibre-gl": "^1.13.2",
     "@types/pako": "^2.0.3",
     "animejs": "^4.0.2",
+    "apexcharts": "^5.3.1",
     "cheerio": "^1.1.2",
     "chroma-js": "^3.1.2",
     "dotenv": "^16.5.0",
@@ -48,6 +49,7 @@
     "pako": "^2.1.0",
     "rbush": "^4.0.1",
     "react": "^19.0.0",
+    "react-apexcharts": "^1.7.0",
     "react-circular-input": "^0.2.4",
     "react-dom": "^19.0.0",
     "react-map-gl": "^8.0.4"

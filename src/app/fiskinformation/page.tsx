@@ -11,6 +11,7 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import RealBaitRetailerService from '@/lib/realBaitRetailer';
+import FishBehaviorVisualization from '../components/FishBehaviorVisualization';
 
 interface FishData {
   svenskt_namn: string;
@@ -599,61 +600,7 @@ export default function FiskinformationPage() {
           )}
 
           {activeTab === 'behavior' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-8">
-                <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8">
-                  <h3 className="text-xl font-light text-white mb-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-xl flex items-center justify-center">
-                      <Activity className="w-5 h-5 text-orange-400" />
-                    </div>
-                    Miljöbeteende
-                  </h3>
-                  <div className="text-white/80 leading-relaxed">
-                    {formatText(selectedFishDetails.miljobeteende)}
-                  </div>
-                </div>
-
-                <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8">
-                  <h3 className="text-xl font-light text-white mb-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-xl flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-blue-400" />
-                    </div>
-                    Dygnsrytm
-                  </h3>
-                  <div className="text-white/80 leading-relaxed">
-                    {formatText(selectedFishDetails.dygnsrytm)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-8">
-                <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8">
-                  <h3 className="text-xl font-light text-white mb-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-400/20 to-emerald-400/20 rounded-xl flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-green-400" />
-                    </div>
-                    Årstidsvariation
-                  </h3>
-                  <div className="text-white/80 leading-relaxed">
-                    {formatText(selectedFishDetails.arstidsvariation)}
-                  </div>
-                </div>
-
-                <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8">
-                  <h3 className="text-xl font-light text-white mb-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-pink-400/20 to-rose-400/20 rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </div>
-                    Lekperiod & vandring
-                  </h3>
-                  <div className="text-white/80 leading-relaxed">
-                    {formatText(selectedFishDetails.lekperiod_vandring)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <FishBehaviorVisualization fishName={selectedFish} />
           )}
 
           {activeTab === 'environment' && (

@@ -20,110 +20,451 @@
         "id": "perca_fluviatilis",
         "svenskt_namn": "Abborre",
         "latinskt_namn": "Perca fluviatilis",
+        "size_classes": {
+          "small": { "min": 0, "max": 15, "unit": "cm", "description": "Småabborre (yngel & <15 cm)" },
+          "medium": { "min": 15, "max": 30, "unit": "cm", "description": "Medelstor abborre (15–30 cm)" },
+          "large": { "min": 30, "max": 60, "unit": "cm", "description": "Stor troféabborre (>30 cm)" }
+        },
         "activity": [
           {
             "parameter": "water_temperature",
-            "range": { "type": "numeric", "min": 8, "max": 20, "unit": "°C" },
-            "activity_index": { "low": 0.2, "high": 1.0 },
-            "notes": "Optimal runt 15°C för maximal aktivitet",
+            "range": { "type": "numeric", "min": 5, "max": 25, "unit": "°C" },
+            "activity_index": { "low": 0.1, "high": 1.0 },
+            "optimal": { "min": 15, "max": 20, "unit": "°C" },
+            "size_variations": {
+              "small": { "optimal": { "min": 18, "max": 25, "unit": "°C" }, "notes": "Små abborrar trivs i varmare strandzoner" },
+              "medium": { "optimal": { "min": 15, "max": 25, "unit": "°C" }, "notes": "Medelstora abborrar jagar intensivt i uppvärmt vatten" },
+              "large": { "optimal": { "min": 15, "max": 20, "unit": "°C" }, "notes": "Stora abborrar tål kyla bättre, stressar av hög värme" }
+            },
+            "notes": "15-25°C optimalt för aktiv jakt. Över 25°C: abborrarna går djupare för svalka. Under 10°C: metabolismen saktar ner kraftigt.",
             "refs": [0]
+          },
+          {
+            "parameter": "oxygen_level",
+            "range": { "type": "numeric", "min": 5, "max": 12, "unit": "mg/L" },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "critical_threshold": 5,
+            "notes": ">5 mg/L krävs för normal aktivitet. Stora abborrar har högre syrebehov (>5-7 mg/L). Vid syrebrist blir de apatiska och slutar jaga aktivt."
+          },
+          {
+            "parameter": "salinity",
+            "range": { "type": "numeric", "min": 0, "max": 15, "unit": "‰" },
+            "activity_index": { "low": 0.3, "high": 1.0 },
+            "optimal": { "min": 0, "max": 10, "unit": "‰" },
+            "size_variations": {
+              "small": { "max_tolerance": 6, "notes": "Yngel och småabborrar tål inte höga saltnivåer" },
+              "medium": { "max_tolerance": 10, "notes": "Trivs bra i Östersjöns kustmiljö (3-7‰)" },
+              "large": { "max_tolerance": 15, "notes": "Kan leva nära salttoleransgränsen i brackvatten" }
+            },
+            "notes": "0-10‰ optimalt. Över 10-12‰ minskar överlevnaden drastiskt. Brackvatten gynnar tillväxt tack vare rik födotillgång.",
+            "refs": [2]
+          },
+          {
+            "parameter": "air_pressure_change",
+            "range": { "type": "numeric", "min": -10, "max": 5, "unit": "hPa/12h" },
+            "activity_index": { "low": 0.1, "high": 1.0 },
+            "critical_threshold": -5,
+            "notes": "Mycket känslig för lufttrycksfall pga slutna simblåsa. Fallande tryck >5 hPa/12h gör abborrarna passiva. Stabilt/stigande tryck = hög aktivitet."
+          },
+          {
+            "parameter": "wind_speed",
+            "range": { "type": "numeric", "min": 0, "max": 15, "unit": "m/s" },
+            "activity_index": { "low": 0.3, "high": 1.0 },
+            "optimal": { "min": 2, "max": 6, "unit": "m/s" },
+            "notes": "Lätt-måttlig vind (2-6 m/s) optimalt - krusar ytan och syresätter. Hård vind >10 m/s: abborrar söker lä i skyddade områden."
           },
           {
             "parameter": "current_speed",
             "range": { "type": "numeric", "min": 0.0, "max": 0.5, "unit": "m/s" },
-            "activity_index": { "low": 0.3, "high": 0.9 },
-            "notes": "Föredrar svag till måttlig ström; undviker stark ström"
-          },
-          {
-            "parameter": "air_pressure_change",
-            "ref": "air_pressure_change"
+            "activity_index": { "low": 0.2, "high": 0.9 },
+            "notes": "0-0.3 m/s optimalt. >0.5 m/s: abborren undviker områden och söker lugnvatten bakom hinder"
           },
           {
             "parameter": "time_of_day",
             "range": { "type": "categorical", "values": [ "dawn", "dusk" ] },
-            "activity_index": { "low": 0.5, "high": 1.0 },
-            "notes": "Gryning/skymning ger högre aktivitet än mitt på dagen",
+            "activity_index": { "low": 0.3, "high": 1.0 },
+            "detailed_schedule": {
+              "dawn": { "peak_hours": "04:00-08:00", "activity": 1.0, "notes": "Tidig morgon är en av dagens bästa abborrtider" },
+              "day": { "peak_hours": "12:00-16:00", "activity": 0.4, "notes": "Solig sommardag ofta dålig - abborrarna står djupt/skugga" },
+              "dusk": { "peak_hours": "18:00-22:00", "activity": 1.0, "notes": "Sen eftermiddag/tidig kväll klassisk abborrtid" },
+              "night": { "peak_hours": "22:00-04:00", "activity": 0.1, "notes": "Nästan inaktiv - dåligt mörkerseende" }
+            },
+            "seasonal_variations": {
+              "summer": "Skarpare dygnsrytm - stora skillnader mellan dag/natt",
+              "winter": "Mitt på dagen bäst pga kort ljus dag"
+            },
+            "notes": "Gryning och skymning är abborrens naturliga huggfönster. Mitt på soliga sommardagar låg aktivitet.",
             "refs": [1]
+          },
+          {
+            "parameter": "season",
+            "range": { "type": "categorical", "values": [ "spring", "summer", "autumn", "winter" ] },
+            "activity_index": { "low": 0.2, "high": 1.0 },
+            "seasonal_details": {
+              "spring": {
+                "activity": 0.8,
+                "key_periods": ["post_spawn"],
+                "notes": "Vårfiske efter lek utmärkt - abborrarna hungriga och aktiva. Lekperiod (april-juni) mer svårflirtad."
+              },
+              "summer": {
+                "activity": 0.9,
+                "key_periods": ["early_summer", "late_evening"],
+                "notes": "Högsommar: fantastisk aktivitet morgon/kväll men trögt mitt på dagen i värme."
+              },
+              "autumn": {
+                "activity": 1.0,
+                "key_periods": ["september", "october"],
+                "notes": "Bästa tiden för stor abborre - optimal temperatur och intensiv förberedelse inför vintern."
+              },
+              "winter": {
+                "activity": 0.3,
+                "key_periods": ["ice_fishing"],
+                "notes": "Låg metabolism men pimpelfiske kan vara effektivt när man hittar vinterstim."
+              }
+            },
+            "notes": "Vår och höst anses bästa årstiderna. Hösten (aug-okt) särskilt utmärkt för storabborr."
+          },
+          {
+            "parameter": "moon_phase",
+            "range": { "type": "categorical", "values": [ "waxing_gibbous", "full_moon", "waning_gibbous" ] },
+            "activity_index": { "low": 0.6, "high": 0.9 },
+            "phase_details": {
+              "new_moon": { "activity": 0.7, "notes": "Mörka nätter kan göra dagsfisket jämnare bra" },
+              "waxing_crescent": { "activity": 0.8, "notes": "1-2 dagar före fullmåne ofta extra huggvillig" },
+              "full_moon": { "activity": 0.6, "notes": "Själva fullmånedagarna kan vara tröga" },
+              "waning_gibbous": { "activity": 0.8, "notes": "Strax efter fullmåne kan vara utmärkt" }
+            },
+            "notes": "Subtil påverkan - 1-2 dagar före fullmåne bäst enligt erfarenhet. Kan förlänga skymningsperioder något."
           },
           {
             "parameter": "weather",
             "range": { "type": "categorical", "values": [ "overcast", "light_rain" ] },
-            "activity_index": { "low": 0.7, "high": 1.0 },
-            "notes": "Mulet/lätt regn gynnar abborren (skygg vid klar sol)"
+            "activity_index": { "low": 0.5, "high": 1.0 },
+            "weather_details": {
+              "clear_sunny": { "activity": 0.5, "notes": "Strålande sol - abborrarna skyggare, håller sig djupare/skugga" },
+              "overcast": { "activity": 0.9, "notes": "Mulet väder utmärkt - mindre skygg, kan jaga hela dagen" },
+              "light_rain": { "activity": 0.8, "notes": "Lätt regn bra - syresätter och skapar drift av föda" },
+              "heavy_rain": { "activity": 0.3, "notes": "Kraftigt regn/åska - abborrarna trycker sig mot botten" },
+              "storm": { "activity": 0.2, "notes": "Hårt oväder - fisken söker skyddade bakvatten" }
+            },
+            "notes": "Mulet/lätt regn gynnar abborren. Klart solsken kan göra dem skygga, särskilt mitt på dagen."
+          }
+        ],
+        "depth_behavior": [
+          {
+            "parameter": "time_of_day",
+            "depth_patterns": {
+              "dawn": { "depth": { "min": 0, "max": 3, "unit": "m" }, "notes": "Kommer in grunt för morgenjakt" },
+              "day": { "depth": { "min": 3, "max": 8, "unit": "m" }, "notes": "Djupare under soliga dagar" },
+              "dusk": { "depth": { "min": 0, "max": 3, "unit": "m" }, "notes": "Upp grunt igen för kvällsjakt" },
+              "night": { "depth": { "min": 2, "max": 6, "unit": "m" }, "notes": "Vilar nära botten" }
+            }
           },
           {
-            "parameter": "moon_phase",
-            "range": { "type": "categorical", "values": [ "new_moon", "waxing_crescent" ] },
-            "activity_index": { "low": 0.6, "high": 1.0 },
-            "notes": "Bättre dagfiske efter mörka nätter (ingen fullmåne)"
-          },
-          {
-            "parameter": "salinity",
-            "range": { "type": "numeric", "min": 0, "max": 10, "unit": "‰" },
-            "activity_index": { "low": 0.0, "high": 1.0 },
-            "notes": "Tål bräckt vatten upp till ~7–8‰; högre salthalt minskar närvaro",
-            "refs": [2]
+            "parameter": "season",
+            "depth_patterns": {
+              "spring": { "depth": { "min": 0, "max": 3, "unit": "m" }, "notes": "Grunt för lek och post-lek feeding" },
+              "summer": { "depth": { "min": 1, "max": 6, "unit": "m" }, "notes": "Varierande - grunt morgon/kväll, djupare dag" },
+              "autumn": { "depth": { "min": 2, "max": 8, "unit": "m" }, "notes": "Följer bytesfisk, ofta mellandjup" },
+              "winter": { "depth": { "min": 5, "max": 20, "unit": "m" }, "notes": "Djuphålor där vattnet är ~4°C" }
+            }
           }
         ],
         "diet_preferences": [
           {
-            "parameter": "water_temperature",
-            "range": { "type": "numeric", "min": 10, "max": 14, "unit": "°C" },
-            "diet": { "plankton": 0.8, "insects": 0.2 },
-            "notes": "Vid ~12°C utgörs födan mest av djurplankton (vårblomning)"
+            "parameter": "size_class",
+            "range": { "type": "categorical", "values": [ "small" ] },
+            "diet": { "plankton": 0.6, "insects": 0.3, "crustaceans": 0.1 },
+            "notes": "Småabborrar (0-15cm): Djurplankton, insektslarver och märlkräftor. Jagar i stim nära skydd."
           },
           {
-            "parameter": "current_speed",
-            "range": { "type": "numeric", "min": 0.0, "max": 0.2, "unit": "m/s" },
+            "parameter": "size_class", 
+            "range": { "type": "categorical", "values": [ "medium" ] },
+            "diet": { "small_fish": 0.5, "insects": 0.2, "crustaceans": 0.2, "mollusks": 0.1 },
+            "notes": "Medelabborrar (15-30cm): Opportunistiska rovdjur - småfisk, insekter, kräftdjur beroende på tillgång."
+          },
+          {
+            "parameter": "size_class",
+            "range": { "type": "categorical", "values": [ "large" ] },
+            "diet": { "fish": 0.7, "crustaceans": 0.3 },
+            "notes": "Stora abborrar (>30cm): Toppredatorer - främst fisk (mört, löja, nors) och kräftor. Kan ta stora byten."
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 8, "max": 15, "unit": "°C" },
+            "diet": { "fish": 0.4, "crustaceans": 0.4, "insects": 0.2 },
+            "notes": "Kallare vatten (8-15°C): Balanserad diet, mindre energikrävande jakt"
+          },
+          {
+            "parameter": "water_temperature",
+            "range": { "type": "numeric", "min": 18, "max": 25, "unit": "°C" },
+            "diet": { "small_fish": 0.6, "insects": 0.3, "crustaceans": 0.1 },
+            "notes": "Varmt vatten (18-25°C): Aktiv jakt på småfisk, utnyttjar insektsfall på ytan"
+          },
+          {
+            "parameter": "season",
+            "range": { "type": "categorical", "values": [ "spring" ] },
+            "diet": { "fish_roe": 0.4, "small_fish": 0.4, "insects": 0.2 },
+            "notes": "Vår: Buffé av fiskrom och nykläckt fisk efter lekperioden"
+          },
+          {
+            "parameter": "season",
+            "range": { "type": "categorical", "values": [ "summer" ] },
+            "diet": { "small_fish": 0.5, "insects": 0.4, "crustaceans": 0.1 },
+            "notes": "Sommar: Insekter som faller i vattnet, fjärilslarver, flygande myror"
+          },
+          {
+            "parameter": "season",
+            "range": { "type": "categorical", "values": [ "autumn" ] },
+            "diet": { "small_fish": 0.8, "crustaceans": 0.2 },
+            "notes": "Höst: Intensiv jakt på årets småfisk-kull, signalkräftor aktiva"
+          },
+          {
+            "parameter": "season",
+            "range": { "type": "categorical", "values": [ "winter" ] },
             "diet": { "small_fish": 0.7, "crustaceans": 0.3 },
-            "notes": "I nästintill stillastående vatten dominerar småfisk (~70%) i dieten"
+            "notes": "Vinter: Mört-yngel i djupen, kräftdjur - men i slow-motion metabolism"
           }
         ],
         "recommended_methods": [
           {
-            "method": "Spinnfiske (jigg)",
+            "method": "Spinnfiske (spinnare)",
             "best_time": [ "dawn", "dusk" ],
-            "notes": "Jigga nära vegetation under gryning och skymning för bästa resultat"
+            "effectiveness": 0.9,
+            "conditions": "Aktiv abborre, ytjakt",
+            "notes": "Spinnare ger starka vibrationer som lockar från långt håll. Utmärkt när abborrarna jagar i stim nära ytan."
           },
           {
-            "method": "Mete",
-            "best_temp": { "min": 14, "max": 18, "unit": "°C" },
-            "notes": "Bottenmete med mask är effektivt på grunt vatten när vattnet är 14–18°C"
+            "method": "Spinnfiske (jigg)",
+            "best_time": [ "day", "dusk" ],
+            "effectiveness": 0.9,
+            "conditions": "Abborre nära botten",
+            "notes": "Mycket effektiv när abborren står 3-8m djup. Jiggen imiterar småfisk/kräftor. Kan fiskas på olika djup."
+          },
+          {
+            "method": "Spinnfiske (wobbler)",
+            "best_time": [ "dawn", "dusk" ],
+            "effectiveness": 0.8,
+            "conditions": "Aktiv jakt i mellanvatten",
+            "notes": "Imiterar småfisk effektivt. Bra i grunda vikar under vår/höst när abborrarna jagar aggressivt."
+          },
+          {
+            "method": "Spinnfiske (chatterbait)",
+            "best_time": [ "day" ],
+            "effectiveness": 0.8,
+            "conditions": "Stor abborre, varmt vatten",
+            "notes": "Vibrerande bete för stora abborrar. Särskilt effektivt i skärgårdar för grov abborre sommartid."
+          },
+          {
+            "method": "Spinnfiske (topwater)",
+            "best_time": [ "dusk" ],
+            "effectiveness": 0.7,
+            "conditions": "Abborre jagar i ytan",
+            "notes": "Poppers/stickbaits när abborrarna redan jagar ytligt. Spektakulära hugg men nischad metod."
+          },
+          {
+            "method": "Spinnfiske (dropshot)",
+            "best_time": [ "day" ],
+            "effectiveness": 0.8,
+            "conditions": "Passiv abborre, lågtryck",
+            "notes": "Finessemetod för svårflirtad abborre. Betet hänger över botten och kan vickas på stället."
+          },
+          {
+            "method": "Mete (mask)",
+            "best_time": [ "day", "dawn" ],
+            "best_temp": { "min": 5, "max": 15, "unit": "°C" },
+            "effectiveness": 0.7,
+            "conditions": "Låg aktivitet, kallt vatten",
+            "notes": "Bottenmete med mask effektivt på avvaktande abborre. Bra vid lågtryck när spinnfiske inte fungerar."
+          },
+          {
+            "method": "Mete (levande agn)",
+            "best_time": [ "dawn", "dusk" ],
+            "effectiveness": 0.8,
+            "conditions": "Stor abborre, kallt vatten",
+            "notes": "Levande mört/löja för stora abborrar. Särskilt bra i kallt vatten när reaktionsförmågan är låg."
+          },
+          {
+            "method": "Pimpelfiske",
+            "best_time": [ "day" ],
+            "best_temp": { "min": 0, "max": 5, "unit": "°C" },
+            "effectiveness": 0.7,
+            "conditions": "Vinter, is",
+            "notes": "Balanspirk eller mormyska vintertid. Effektivt när man hittat vinterstim i djuphålor."
           }
         ],
         "spatial_distribution": [
           {
             "parameter": "season",
-            "range": [ "summer" ],
-            "depth": { "min": 1, "max": 5, "unit": "m" },
+            "range": [ "spring" ],
+            "depth": { "min": 0, "max": 3, "unit": "m" },
             "zone": "inshore",
-            "notes": "På sommaren står abborren ofta grunt (1–5 m) nära växtlighet, särskilt morgon och kväll"
+            "habitat_details": "Grunda vassvikar för lek, sedan första djupbranterna efter leken",
+            "notes": "Vår: Lekvikar april-juni, sedan utanför lekvikar på 2-4m djup. Medelstor abborre i stim."
+          },
+          {
+            "parameter": "season", 
+            "range": [ "summer" ],
+            "depth": { "min": 1, "max": 8, "unit": "m" },
+            "zone": "inshore",
+            "habitat_details": "Grunt morgon/kväll, djupare branter/djuphål dagtid. Strukturer viktiga.",
+            "notes": "Sommar: Dygnsrörelser grund<->djup. Vegetation, stenrösen, bryggor. Följer småfisk-stim."
+          },
+          {
+            "parameter": "season",
+            "range": [ "autumn" ],
+            "depth": { "min": 2, "max": 10, "unit": "m" },
+            "zone": "inshore",
+            "habitat_details": "Strukturer med betesfisk - grynnor, grundtoppar, djupkanter",
+            "notes": "Höst: Kan fiska större del av dagen. Samlas vid strukturer med löjstim. Stor abborre aktivare."
           },
           {
             "parameter": "season",
             "range": [ "winter" ],
             "depth": { "min": 5, "max": 20, "unit": "m" },
-            "zone": "offshore",
-            "notes": "Vintertid samlas abborren djupare (ner mot 20 m) och blir då mindre aktiv"
+            "zone": "offshore", 
+            "habitat_details": "Djupaste hålorna, stabil 4°C temperatur, syrerika områden",
+            "notes": "Vinter: Djuphålor under is. Stora stim av små/medel, större ensamma. Pimpelfiske effektivt."
+          },
+          {
+            "parameter": "time_of_day",
+            "range": [ "dawn" ],
+            "depth": { "min": 0, "max": 3, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Tidig morgon: Kommer in grund efter småfisk som gömt sig över natten"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": [ "day" ],
+            "depth": { "min": 3, "max": 8, "unit": "m" },
+            "zone": "inshore",
+            "notes": "Dag: Djupare vid strukturer, skugga under bryggor, djupkanter vid grund"
+          },
+          {
+            "parameter": "time_of_day",
+            "range": [ "dusk" ],
+            "depth": { "min": 0, "max": 4, "unit": "m" },
+            "zone": "inshore", 
+            "notes": "Skymning: Klassisk abborrtid - jagar grunt längs vasskanter och strukturer"
+          },
+          {
+            "parameter": "habitat_type",
+            "range": [ "lake" ],
+            "depth": { "min": 1, "max": 15, "unit": "m" },
+            "zone": "inshore",
+            "habitat_details": "Vassvikar, stenrösen, undervattensstrukturer. Kan dela i littoral/pelagisk form.",
+            "notes": "Insjöar: Vegetation, steniga bottnar, strukturer. Pelagiska jagar öppet vatten efter stim."
+          },
+          {
+            "parameter": "habitat_type",
+            "range": [ "river" ],
+            "depth": { "min": 1, "max": 5, "unit": "m" },
+            "zone": "inshore",
+            "habitat_details": "Pooler, lugnvatten, bakvatten. Undviker stark ström >0.5 m/s.",
+            "notes": "Älvar: Lugnvatten vid sidan av huvudström, djupa hålor, strömskugga bakom strukturer."
+          },
+          {
+            "parameter": "habitat_type",
+            "range": [ "coastal" ],
+            "depth": { "min": 1, "max": 10, "unit": "m" },
+            "zone": "inshore",
+            "habitat_details": "Vegetationsrika vikar, brackvatten 3-7‰, tångbälten i ytterskärgård",
+            "notes": "Kust/brackvatten: Skärgårdsmiljö med stor tillväxtpotential. Kalmarsund känd för stora abborrar >2kg."
           }
         ],
         "fishing_tactics": [
           {
             "parameter": "water_temperature",
-            "range": { "min": 0, "max": 10, "unit": "°C" },
+            "range": { "min": 0, "max": 8, "unit": "°C" },
+            "retrieve_speed": "very_slow",
+            "bait_recommendations": ["mormyska + maggot", "små jiggar", "mask på mete"],
+            "notes": "Kallt vatten <8°C: Abborren trög - fiska extremt långsamt nära botten. Små beten, långsamma presentationer."
+          },
+          {
+            "parameter": "water_temperature", 
+            "range": { "min": 8, "max": 15, "unit": "°C" },
             "retrieve_speed": "slow",
-            "notes": "I kallt vatten (<10°C) är abborren trög – fiska långsamt nära botten"
+            "bait_recommendations": ["jigg med pauser", "spinnare långsamt", "dropshot"],
+            "notes": "Svalt vatten 8-15°C: Måttlig fart, pauser. Abborrarna nappar när betet kommer nära dem."
           },
           {
             "parameter": "water_temperature",
             "range": { "min": 15, "max": 25, "unit": "°C" },
-            "retrieve_speed": "fast",
-            "notes": "I varmt sommarvatten (15–25°C) jagar abborren aktivt – snabbare inspinning lockar hugg"
+            "retrieve_speed": "moderate_to_fast",
+            "bait_recommendations": ["spinnare aktiv", "wobbler", "snabb jigg"],
+            "notes": "Varmt vatten 15-25°C: Aktiv jakt - snabbare inspinning lockar hugg. Abborrarna jagar aggressivt."
+          },
+          {
+            "parameter": "air_pressure_change",
+            "range": { "min": -10, "max": -3, "unit": "hPa/12h" },
+            "retrieve_speed": "very_slow",
+            "bait_recommendations": ["dropshot", "mete med mask", "finesse jiggar"],
+            "notes": "Fallande tryck: Abborrar passiva pga simblåsa. Finesse-tekniker, långsam presentation nära botten."
+          },
+          {
+            "parameter": "air_pressure_change",
+            "range": { "min": -2, "max": 5, "unit": "hPa/12h" },
+            "retrieve_speed": "normal",
+            "bait_recommendations": ["spinnfiske normalt", "alla metoder"],
+            "notes": "Stabilt/stigande tryck: Normal aktivitet - alla tekniker fungerar. Extra bra just när tryck börjar stiga."
+          },
+          {
+            "parameter": "time_of_day",
+            "range": [ "dawn" ],
+            "retrieve_speed": "moderate",
+            "bait_recommendations": ["spinnare nära yta", "wobbler grunt", "topwater"],
+            "notes": "Gryning: Fiska grunt längs vasskanter. Abborrarna jagar småfisk som varit gömda över natten."
+          },
+          {
+            "parameter": "time_of_day", 
+            "range": [ "day" ],
+            "retrieve_speed": "slow",
+            "bait_recommendations": ["jigg nära botten", "dropshot", "djupare drag"],
+            "notes": "Dag (sol): Fiska djupare, skugga under bryggor. Finesse-tekniker när abborrarna står still."
+          },
+          {
+            "parameter": "time_of_day",
+            "range": [ "dusk" ],
+            "retrieve_speed": "moderate_to_fast",
+            "bait_recommendations": ["spinnare aktivt", "chatterbait", "wobbler"],
+            "notes": "Skymning: Klassisk abborrtid - offensivt spinnfiske längs strukturer och grund."
           }
         ],
-        "source": "FishBase 2025",
-        "confidence": "high",
-        "last_updated": "2025-07-26"
+        "behavioral_algorithms": {
+          "activity_calculation": {
+            "base_factors": {
+              "temperature_weight": 0.25,
+              "pressure_weight": 0.20,
+              "time_weight": 0.15,
+              "season_weight": 0.15,
+              "weather_weight": 0.10,
+              "oxygen_weight": 0.10,
+              "moon_weight": 0.05
+            },
+            "size_modifiers": {
+              "small": { "temperature_sensitivity": 1.2, "pressure_sensitivity": 0.8 },
+              "medium": { "temperature_sensitivity": 1.0, "pressure_sensitivity": 1.0 },
+              "large": { "temperature_sensitivity": 0.8, "pressure_sensitivity": 1.2 }
+            }
+          },
+          "feeding_intensity": {
+            "high": { "threshold": 0.8, "description": "Aggressiv jakt, stora rörelser, följer stim" },
+            "medium": { "threshold": 0.6, "description": "Måttlig aktivitet, opportunistisk" },
+            "low": { "threshold": 0.4, "description": "Avvaktande, tar lätta byten" },
+            "minimal": { "threshold": 0.2, "description": "Nästan inaktiv, endast reflexhugg" }
+          },
+          "depth_prediction": {
+            "factors": ["time_of_day", "temperature", "season", "prey_availability"],
+            "algorithms": {
+              "diel_migration": "Grund morgon/kväll, djup dag/natt (sommartid)",
+              "thermal_preference": "Djupare vid >25°C, grundare vid 15-20°C",
+              "seasonal_pattern": "Grunt vår/höst, djup vinter, variabel sommar"
+            }
+          }
+        },
+        "source": "Comprehensive Perch Behavior Analysis 2025 - Skandinavisk Sportfiske",
+        "confidence": "very_high",
+        "last_updated": "2025-01-27"
       },
       {
         "id": "esox_lucius",
@@ -811,28 +1152,8 @@
           "closed_season": [ { "start": "04-15", "end": "05-31", "area": "hela landet" } ],
           "notes": "Fiske efter harr är förbjudet 15 april–31 maj (lekperiod) i stora delar av Sverige"
         }
-      }
+      },
       
-    ],
-    "references": [
-      { "id": 0, "title": "FishBase – Perca fluviatilis (European perch) summary", "url": "https://www.fishbase.se/summary/perca-fluviatilis.html" },
-      { "id": 1, "title": "Spinnfisketips för abborre (Fiske.se article)", "url": "https://www.fiske.se/tavling-abborre" },
-      { "id": 2, "title": "U.S. Geological Survey (2022) – Eurasian Perch (Great Lakes Fact Sheet)", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=3636" },
-      { "id": 3, "title": "U.S. Fish & Wildlife Service (2020) – Northern Pike Ecological Risk Screening Summary", "url": "https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Northern-Pike.pdf" },
-      { "id": 4, "title": "FishBase – Esox lucius (Northern pike) biology", "url": "https://www.fishbase.se/summary/esox-lucius.html" },
-      { "id": 5, "title": "U.S. Geological Survey (2025) – Zander (Sander lucioperca) species profile", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=830" },
-      { "id": 6, "title": "Fiske.se – \"Ta gösen från isen\" (tips för gösfiske)", "url": "https://www.fiske.se" },
-      { "id": 7, "title": "FishBase – Sander lucioperca (Pike-perch) summary", "url": "https://www.fishbase.se/summary/Sander-lucioperca.html" },
-      { "id": 8, "title": "U.S. Geological Survey (2025) – Atlantic Salmon (Salmo salar) profile", "url": "https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=926" },
-      { "id": 11, "title": "FishBase – Salmo salar (Atlantic salmon) summary", "url": "https://www.fishbase.se/summary/Salmo-salar.html" },
-      { "id": 12, "title": "Metsähallitus (2021) – Anvisningar till ansvarsfulla fiskare (optimala temperaturer)", "url": "https://www.eraluvat.fi/sv/fiske/fiskarens-databank/anvisningar-till-ansvarsfulla-fiskare" },
-      { "id": 26, "title": "Länsstyrelsen Jönköping (2022) – Nätprovfiske i Grumlan (braxen på grunt vatten)", "url": "https://naturvardsverket.diva-portal.org/smash/get/diva2:1831678/FULLTEXT01.pdf" },
-      { "id": 27, "title": "Länsstyrelsen Västra Götaland (2023) – Fiskeregler i havet (fredningstider & skyddade arter)", "url": "https://www.lansstyrelsen.se/download/18.2628c9a61899eaea37711526/1690811197166/fiskeregler-havet-juni2023%20tillg%C3%A4nglig.pdf" },
-      { "id": 28, "title": "FishBase – Anguilla anguilla (European eel) biology", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
-      { "id": 31, "title": "FishBase – Anguilla anguilla environment (salinity tolerance)", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" }
-    ]
-  }
-
   {
     "id": "salvelinus_alpinus",
     "svenskt_namn": "Röding",
@@ -1211,32 +1532,8 @@
     "source": "FishBase 2025",
     "confidence": "high",
     "last_updated": "2025-07-26"
-  }
-],
-"references": [
-  { "id": 0, "title": "FishBase – Perca fluviatilis (European perch) summary", "url": "https://www.fishbase.se/summary/perca-fluviatilis.html" },
-  { "id": 1, "title": "Spinnfisketips för abborre (Fiske.se article)", "url": "https://www.fiske.se/tavling-abborre" },
-  { "id": 2, "title": "U.S. Geological Survey (2022) – Eurasian Perch (Great Lakes Fact Sheet)", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=3636" },
-  { "id": 3, "title": "U.S. Fish & Wildlife Service (2020) – Northern Pike Ecological Risk Screening Summary", "url": "https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Northern-Pike.pdf" },
-  { "id": 4, "title": "FishBase – Esox lucius (Northern pike) biology", "url": "https://www.fishbase.se/summary/esox-lucius.html" },
-  { "id": 5, "title": "U.S. Geological Survey (2025) – Zander (Sander lucioperca) species profile", "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=830" },
-  { "id": 6, "title": "Fiske.se – \"Ta gösen från isen\" (tips för gösfiske)", "url": "https://www.fiske.se" },
-  { "id": 7, "title": "FishBase – Sander lucioperca (Pike-perch) summary", "url": "https://www.fishbase.se/summary/Sander-lucioperca.html" },
-  { "id": 8, "title": "U.S. Geological Survey (2025) – Atlantic Salmon (Salmo salar) profile", "url": "https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=926" },
-  { "id": 11, "title": "FishBase – Salmo salar (Atlantic salmon) summary", "url": "https://www.fishbase.se/summary/Salmo-salar.html" },
-  { "id": 12, "title": "Metsähallitus (2021) – Anvisningar till ansvarsfulla fiskare (optimala temperaturer)", "url": "https://www.eraluvat.fi/sv/fiske/fiskarens-databank/anvisningar-till-ansvarsfulla-fiskare" },
-  { "id": 26, "title": "Länsstyrelsen Jönköping (2022) – Nätprovfiske i Grumlan (braxen på grunt vatten)", "url": "https://naturvardsverket.diva-portal.org/smash/get/diva2:1831678/FULLTEXT01.pdf" },
-  { "id": 27, "title": "Länsstyrelsen Västra Götaland (2023) – Fiskeregler i havet (fredningstider & skyddade arter)", "url": "https://www.lansstyrelsen.se/download/18.2628c9a61899eaea37711526/1690811197166/fiskeregler-havet-juni2023%20tillg%C3%A4nglig.pdf" },
-  { "id": 28, "title": "FishBase – Anguilla anguilla (European eel) biology", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
-  { "id": 31, "title": "FishBase – Anguilla anguilla environment (salinity tolerance)", "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
-  { "id": 32, "title": "FishBase – Salvelinus alpinus (Arctic char) summary", "url": "https://www.fishbase.se/summary/Salvelinus-alpinus.html" },
-  { "id": 33, "title": "FishBase – Coregonus maraena (Maraena whitefish) summary", "url": "https://www.fishbase.se/summary/Coregonus-maraena.html" },
-  { "id": 34, "title": "Fiskelivet – Fakta om benlöja (Alburnus alburnus)", "url": "https://fiskelivet.se/fiskarter/benloja/" },
-  { "id": 35, "title": "Havs- och vattenmyndigheten – Sik (Coregonus maraena) artfakta", "url": "https://www.havochvatten.se/arter-och-livsmiljoer/arter-och-naturtyper/sik.html" },
-  { "id": 36, "title": "Havs- och vattenmyndigheten – Lake (Lota lota) artfakta", "url": "https://www.havochvatten.se/arter-och-livsmiljoer/arter-och-naturtyper/lake.html" },
-  { "id": 37, "title": "Sportfiskarna (2023) – Ny regel för ål i Storfiskregistret (artikel)", "url": "https://www.sportfiskarna.se/Om-oss/Aktuellt/ArticleID/12828/Ny-regel-f%C3%B6r-%C3%A5l-i-Storfiskregistret" }
-]
-}```
+  },
+
 {
     "id": "abramis_brama",
     "svenskt_namn": "Braxen",
@@ -2929,5 +3226,24 @@
       "notes": "Tidigare fredad art. Fr.o.m. 2023 tillåts 1 pigghaj (<100 cm) behållas per fiskare/dag; alla >100 cm ska släppas:contentReference[oaicite:56]{index=56}"
     }
   }
+],
+"references": [
+  { "id": 0,  "title": "FishBase – Perca fluviatilis (European perch) summary",                          "url": "https://www.fishbase.se/summary/perca-fluviatilis.html" },
+  { "id": 1,  "title": "Spinnfisketips för abborre (Fiske.se article)",                             "url": "https://www.fiske.se/tavling-abborre" },
+  { "id": 2,  "title": "U.S. Geological Survey (2022) – Eurasian Perch (Great Lakes Fact Sheet)",     "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=3636" },
+  { "id": 3,  "title": "U.S. Fish & Wildlife Service (2020) – Northern Pike Ecological Risk Screening Summary", "url": "https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Northern-Pike.pdf" },
+  { "id": 4,  "title": "FishBase – Esox lucius (Northern pike) biology",                              "url": "https://www.fishbase.se/summary/esox-lucius.html" },
+  { "id": 5,  "title": "U.S. Geological Survey (2025) – Zander (Sander lucioperca) species profile",   "url": "https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=830" },
+  { "id": 6,  "title": "Fiske.se – \"Ta gösen från isen\" (tips för gösfiske)",                       "url": "https://www.fiske.se" },
+  { "id": 7,  "title": "FishBase – Sander lucioperca (Pike-perch) summary",                          "url": "https://www.fishbase.se/summary/Sander-lucioperca.html" },
+  { "id": 8,  "title": "U.S. Geological Survey (2025) – Atlantic Salmon (Salmo salar) profile",       "url": "https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=926" },
+  { "id": 11, "title": "FishBase – Salmo salar (Atlantic salmon) summary",                           "url": "https://www.fishbase.se/summary/Salmo-salar.html" },
+  { "id": 12, "title": "Metsähallitus (2021) – Anvisningar till ansvarsfulla fiskare (optimala temperaturer)", "url": "https://www.eraluvat.fi/sv/fiske/fiskarens-databank/anvisningar-till-ansvarsfulla-fiskare" },
+  { "id": 26, "title": "Länsstyrelsen Jönköping (2022) – Nätprovfiske i Grumlan (braxen på grunt vatten)", "url": "https://naturvardsverket.diva-portal.org/smash/get/diva2:1831678/FULLTEXT01.pdf" },
+  { "id": 27, "title": "Länsstyrelsen Västra Götaland (2023) – Fiskeregler i havet (fredningstider & skyddade arter)", "url": "https://www.lansstyrelsen.se/download/18.2628c9a61899eaea37711526/1690811197166/fiskeregler-havet-juni2023%20tillg%C3%A4nglig.pdf" },
+  { "id": 28, "title": "FishBase – Anguilla anguilla (European eel) biology",                         "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" },
+  { "id": 31, "title": "FishBase – Anguilla anguilla environment (salinity tolerance)",               "url": "https://www.fishbase.se/summary/Anguilla-anguilla.html" }
+]
+}
 
   
