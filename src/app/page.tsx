@@ -414,6 +414,25 @@ export default function LandingPage() {
             </span>
           </button>
 
+          {/* Väderprognos knapp */}
+          <button
+            onClick={() => {
+              setNavigating(true);
+              router.push('/weather');
+            }}
+            onMouseEnter={handleButtonHover}
+            onMouseLeave={handleButtonLeave}
+            className="group relative w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-medium rounded-2xl border border-white/20"
+            style={{ opacity: 0 }}
+          >
+            <span className="relative flex items-center justify-center gap-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 15a4.5 4.5 0 004.5 4.5H16.5A3.75 3.75 0 0020.25 12a3.75 3.75 0 00-3.75-3.75 1.5 1.5 0 00-1.5 1.5v1.5a3 3 0 00-3 3 3 3 0 01-3-3V9a4.5 4.5 0 00-4.5-4.5 4.5 4.5 0 00-4.5 4.5v.75c0 .414.336.75.75.75h.75z" />
+              </svg>
+              <span>Väderprognos</span>
+            </span>
+          </button>
+
           {/* Registrera knapp */}
           <button
             onClick={handleNavigateToSignup}

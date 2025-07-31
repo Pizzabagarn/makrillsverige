@@ -11,6 +11,7 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import RealBaitRetailerService from '@/lib/realBaitRetailer';
+import { fishSearchService } from '@/lib/fishSearchService';
 import FishBehaviorVisualization from '../components/FishBehaviorVisualization';
 
 interface FishData {
@@ -118,12 +119,10 @@ export default function FiskinformationPage() {
     loadFishData();
   }, []);
 
+  // PROFESSIONELL fisk-sökning med relevanssortering
   const filteredFish = useMemo(() => {
     if (!searchTerm) return fishData;
-    return fishData.filter(fish => 
-      fish.svenskt_namn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fish.latinskt_namn.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return fishSearchService.searchFish(fishData, searchTerm);
   }, [fishData, searchTerm]);
 
   const selectedFishDetails = useMemo(() => {
