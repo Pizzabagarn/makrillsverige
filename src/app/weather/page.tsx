@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { weatherGeocodingService, type GeoLocation } from '@/lib/weatherGeocodingService';
+import WeatherAttribution from '@/app/components/WeatherAttribution';
+import { searchWaterBodies, type WaterBody } from '@/lib/swedishWaterBodies';
 
 interface WeatherData {
   time: string;
@@ -21,6 +23,7 @@ interface WeatherData {
   pressure: number | null;
   humidity: number | null;
   dewpoint: number | null;
+  symbol: string | null;  // YR weather symbol - was missing!
 }
 
 interface DailyWeather {
@@ -33,13 +36,17 @@ interface DailyWeather {
   windDirection: number;
   cloudCover: number;
   avgPressure: number | null;
-  icon: string;
+  avgHumidity: number | null;
+  icon: string;  // Keep for backward compatibility, but we'll use YR symbols instead
+  primarySymbol: string | null;  // YR weather symbol for the day
   hourlyData: WeatherData[];
 }
 
 export default function WeatherPage() {
+  // Optimerad lösning: Använd live API direkt för snabb laddning
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
+  const [waterResults, setWaterResults] = useState<WaterBody[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<GeoLocation | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherData[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -59,30 +66,13 @@ export default function WeatherPage() {
   
   const router = useRouter();
 
-  // Ladda förberedd väderdata
-  const [preloadedWeatherData, setPreloadedWeatherData] = useState<any>(null);
-  const [isLoadingPreloadedData, setIsLoadingPreloadedData] = useState(true);
+  // Optimerad laddning: Inga stora filer behövs
+  const [isSystemReady, setIsSystemReady] = useState(false);
 
-  // Ladda förberedd väderdata vid sidstart
+  // Snabb systeminitialisering - inga stora filer att ladda
   useEffect(() => {
-    const loadPreloadedWeatherData = async () => {
-      try {
-        // Använd okomprimerad fil för att undvika pako/gzip problem
-        const response = await fetch('/data/weather_data.json');
-        if (!response.ok) throw new Error('Weather data not found');
-        
-        const data = await response.json();
-
-        
-        setPreloadedWeatherData(data);
-        setIsLoadingPreloadedData(false);
-      } catch (error) {
-        console.error('Failed to load weather data:', error);
-        setIsLoadingPreloadedData(false);
-      }
-    };
-
-    loadPreloadedWeatherData();
+    // Sätt systemet som redo omedelbart
+    setIsSystemReady(true);
   }, []);
 
   // Automatisk geolokalisering vid sidstart
@@ -132,11 +122,11 @@ export default function WeatherPage() {
       );
     };
 
-    // Vänta på att preloaded data laddas först
-    if (!isLoadingPreloadedData) {
+    // Starta geolokalisering när systemet är redo
+    if (isSystemReady) {
       getCurrentLocation();
     }
-  }, [isLoadingPreloadedData]);
+  }, [isSystemReady]);
 
   // Förbättrad click outside handler
   useEffect(() => {
@@ -199,8 +189,9 @@ export default function WeatherPage() {
 
   // Sök platser när användaren skriver (förbättrad debouncing)
   useEffect(() => {
-    if (searchTerm.length < 2) {
+      if (searchTerm.length < 2) {
       setSearchResults([]);
+      setWaterResults([]);
       setShowSuggestions(false);
       setSelectedResultIndex(-1);
       return;
@@ -210,12 +201,19 @@ export default function WeatherPage() {
       setIsSearching(true);
       setSelectedResultIndex(-1);
       try {
-        const result = await weatherGeocodingService.searchLocations(searchTerm);
-        setSearchResults(result.locations);
-        setShowSuggestions(result.locations.length > 0);
+        // Sök både platser och vattendrag parallellt
+        const [geoResult, waterBodies] = await Promise.all([
+          weatherGeocodingService.searchLocations(searchTerm),
+          Promise.resolve(searchWaterBodies(searchTerm))
+        ]);
+        
+        setSearchResults(geoResult.locations || []);
+        setWaterResults(waterBodies);
+        setShowSuggestions((geoResult.locations?.length > 0) || waterBodies.length > 0);
       } catch (error) {
         console.error('Search failed:', error);
         setSearchResults([]);
+        setWaterResults([]);
         setShowSuggestions(false);
       } finally {
         setIsSearching(false);
@@ -225,67 +223,15 @@ export default function WeatherPage() {
     return () => clearTimeout(searchTimeout);
   }, [searchTerm]);
 
-  // Hybrid väderdata-hämtning: Cache först, sedan real-time API
+  // Optimerad väderdata-hämtning: Direkt live API för snabb respons
   const fetchWeatherData = async (location: GeoLocation) => {
     setIsLoadingWeather(true);
     setSelectedDay(null);
     
-    // Deklarera utanför try för att kunna använda i catch
-    let closestPoint = null;
-    let minDistance = Infinity;
-    
     try {
-      if (!preloadedWeatherData) {
-        console.error('Weather data not loaded yet');
-        return;
-      }
+      console.log(`🌤️ Hämtar väderdata för ${location.displayName} (${location.lat}, ${location.lon})`);
       
-      // STEG 1: Försök hitta i cached data först
-      
-      for (const point of preloadedWeatherData.points) {
-        const distance = Math.sqrt(
-          Math.pow(point.lat - location.lat, 2) + 
-          Math.pow(point.lon - location.lon, 2)
-        );
-        
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestPoint = point;
-        }
-      }
-
-
-
-      // STEG 2: Om cached data är nära nog (< 0.3°), använd den
-      if (closestPoint && minDistance < 0.3) {
-        
-        
-        const forecasts = closestPoint.data.map((timeData: any) => ({
-          time: timeData.time,
-          temperature: timeData.temperature || null,
-          precipitation: timeData.precipitation || null,
-          windSpeed: timeData.windSpeed || null,
-          windDirection: timeData.windDirection || null,
-          windGust: timeData.windGust || null,
-          cloudCover: timeData.cloudCover || null,
-          pressure: timeData.pressure || null,
-          humidity: timeData.humidity || null,
-          dewpoint: timeData.dewpoint || null
-        }));
-
-        setWeatherData(forecasts);
-        setSelectedLocation({ ...location, displayName: location.displayName });
-        setSearchTerm('');
-        setShowSuggestions(false);
-        return;
-      }
-
-      // STEG 3: Om för långt bort, använd real-time API
-      
-      
-      const apiStart = Date.now();
       const response = await fetch(`/api/weather?lat=${location.lat}&lon=${location.lon}`);
-      const apiTime = Date.now() - apiStart;
       
       if (!response.ok) {
         throw new Error(`Weather API error: ${response.status}`);
@@ -293,12 +239,14 @@ export default function WeatherPage() {
       
       const apiData = await response.json();
       
-      
       if (apiData.success && apiData.data.forecasts) {
+
+        
         setWeatherData(apiData.data.forecasts);
         setSelectedLocation({ ...location, displayName: location.displayName });
         setSearchTerm('');
         setShowSuggestions(false);
+        console.log(`✅ Väderdata hämtad för ${location.displayName}`);
       } else {
         console.warn('❌ API returnerade ingen väderdata');
         setWeatherData([]);
@@ -306,31 +254,7 @@ export default function WeatherPage() {
       
     } catch (error) {
       console.error('Failed to fetch weather:', error);
-      
-      // FALLBACK: Om API misslyckas, använd cached data ändå (även om långt bort)
-      if (closestPoint && minDistance < 1.0) {
-        
-        
-        const forecasts = closestPoint.data.map((timeData: any) => ({
-          time: timeData.time,
-          temperature: timeData.temperature || null,
-          precipitation: timeData.precipitation || null,
-          windSpeed: timeData.windSpeed || null,
-          windDirection: timeData.windDirection || null,
-          windGust: timeData.windGust || null,
-          cloudCover: timeData.cloudCover || null,
-          pressure: timeData.pressure || null,
-          humidity: timeData.humidity || null,
-          dewpoint: timeData.dewpoint || null
-        }));
-
-        setWeatherData(forecasts);
-        setSelectedLocation({ ...location, displayName: location.displayName });
-        setSearchTerm('');
-        setShowSuggestions(false);
-      } else {
-        setWeatherData(null);
-      }
+      setWeatherData(null);
     } finally {
       setIsLoadingWeather(false);
     }
@@ -339,6 +263,27 @@ export default function WeatherPage() {
   // Gruppera väderdata per dag
   const dailyWeather = useMemo((): DailyWeather[] => {
     if (!weatherData || weatherData.length === 0) return [];
+
+    // KORREKT svensk datumhantering (utan timezone-jox) - MOVED TO TOP
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayKey = `${year}-${month}-${day}`;
+    
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomYear = tomorrow.getFullYear();
+    const tomMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const tomDay = String(tomorrow.getDate()).padStart(2, '0');
+    const tomorrowKey = `${tomYear}-${tomMonth}-${tomDay}`;
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yestYear = yesterday.getFullYear();
+    const yestMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const yestDay = String(yesterday.getDate()).padStart(2, '0');
+    const yesterdayKey = `${yestYear}-${yestMonth}-${yestDay}`;
 
     const dailyMap = new Map<string, WeatherData[]>();
     
@@ -377,51 +322,55 @@ export default function WeatherPage() {
          .map(h => h.pressure)
          .filter((p): p is number => p !== null);
 
-      // Bestäm väderikon baserat på genomsnittlig nederbörd och molntäcke (förbättrad logik)
-      const avgPrecipitation = precipitations.reduce((a, b) => a + b, 0) / precipitations.length;
+       const humidities = hourlyData
+         .map(h => h.humidity)
+         .filter((h): h is number => h !== null);
+
+      // Use YR weather symbols instead of hardcoded logic!
+      // CRITICAL FIX: Daglig nederbörd ska vara SUMMA, inte medelvärde!
+      // Men vi måste vara försiktiga med YR:s blandade 1h/6h/12h perioder
+      const totalPrecipitation = precipitations.length > 0 ? precipitations.reduce((a, b) => a + b, 0) : 0;
+      
+      // För medelvärden (temperatur, molntäcke)
       const avgCloudCover = cloudCovers.reduce((a, b) => a + b, 0) / cloudCovers.length;
       const avgTemp = temperatures.reduce((a, b) => a + b, 0) / temperatures.length;
       
+            // Get the most appropriate YR weather symbol for the day
+      let primarySymbol: string | null = null;
+      
+      // For "today", use current time symbol
+      if (index === 0 && dateKey === todayKey) {
+        const now = new Date();
+        const currentHour = hourlyData.find(h => {
+          const hourTime = new Date(h.time);
+          return Math.abs(hourTime.getTime() - now.getTime()) < 30 * 60 * 1000; // Within 30 minutes
+        });
+        primarySymbol = currentHour?.symbol || null;
+      }
+      
+      // Fallback: Use midday symbol or first available symbol
+      if (!primarySymbol) {
+        const middayIndex = Math.floor(hourlyData.length / 2);
+        primarySymbol = hourlyData[middayIndex]?.symbol ||
+                        hourlyData.find(h => h.symbol)?.symbol || 
+                        null;
+      }
+
+      // Fallback icon logic (kept for compatibility, but primarySymbol is preferred)
       let icon = 'sun';
-      if (avgPrecipitation > 0.1) {
+      if (totalPrecipitation > 0.1) {
         if (avgCloudCover >= 80) {
-          // Mulet med regn/snö - använd ren regn/snö-ikon utan sol/måne
           icon = avgTemp < 0 ? 'pure-snow' : 'pure-rain';
         } else {
-          // Delvis molnigt med regn/snö - använd regn/snö med sol/måne
           icon = avgTemp < 0 ? 'snow' : 'rain';
         }
       } else if (avgCloudCover >= 90) {
-        // Helt molnigt utan regn - använd overcast
         icon = 'overcast';
       } else if (avgCloudCover >= 70) {
-        // Mestadels molnigt - använd cloudy
         icon = 'cloudy';
       } else if (avgCloudCover >= 30) {
-        // Delvis molnigt
         icon = 'partly-cloudy';
       }
-
-                          // KORREKT svensk datumhantering (utan timezone-jox)
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const todayKey = `${year}-${month}-${day}`;
-        
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomYear = tomorrow.getFullYear();
-        const tomMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
-        const tomDay = String(tomorrow.getDate()).padStart(2, '0');
-        const tomorrowKey = `${tomYear}-${tomMonth}-${tomDay}`;
-        
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yestYear = yesterday.getFullYear();
-        const yestMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
-        const yestDay = String(yesterday.getDate()).padStart(2, '0');
-        const yesterdayKey = `${yestYear}-${yestMonth}-${yestDay}`;
 
         return {
         date: dateKey,
@@ -429,21 +378,216 @@ export default function WeatherPage() {
              dateKey === tomorrowKey ? 'Imorgon' : 
              dateKey === yesterdayKey ? 'Igår' :
              date.toLocaleDateString('sv-SE', { weekday: 'long' }),
-         maxTemp: Math.max(...temperatures),
-         minTemp: Math.min(...temperatures),
-         precipitation: Math.max(...precipitations),
-         windSpeed: windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length,
-         windDirection: windDirections.reduce((a, b) => a + b, 0) / windDirections.length,
-         cloudCover: avgCloudCover,
-         avgPressure: pressures.length > 0 ? pressures.reduce((a, b) => a + b, 0) / pressures.length : null,
-         icon,
-         hourlyData: hourlyData.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+                 maxTemp: Math.max(...temperatures),
+        minTemp: Math.min(...temperatures),
+        precipitation: totalPrecipitation, // FIXED: Total nederbörd för dagen
+        windSpeed: windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length,
+        windDirection: windDirections.reduce((a, b) => a + b, 0) / windDirections.length,
+        cloudCover: avgCloudCover,
+        avgPressure: pressures.length > 0 ? pressures.reduce((a, b) => a + b, 0) / pressures.length : null,
+        avgHumidity: humidities.length > 0 ? humidities.reduce((a, b) => a + b, 0) / humidities.length : null,
+        icon,  // Fallback icon (deprecated)
+        primarySymbol,  // YR weather symbol (preferred)
+        hourlyData: hourlyData.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
        };
                     }); // Visa alla tillgängliga dagar (max 10)
   }, [weatherData]);
 
-  // SVG väderikoner med dag/natt-logik
-  const getWeatherIcon = (iconType: string, size: string = 'w-8 h-8', time?: string) => {
+  // MAPPING: YR weather symbol names (new IDs) to file names (old IDs)
+  const mapYrSymbolToFile = (yrSymbol: string): string | null => {
+    const symbolMap: Record<string, string> = {
+      // Clear sky
+      'clearsky_day': '01d',
+      'clearsky_night': '01n', 
+      'clearsky_polartwilight': '01m',
+      
+      // Fair
+      'fair_day': '02d',
+      'fair_night': '02n',
+      'fair_polartwilight': '02m',
+      
+      // Partly cloudy
+      'partlycloudy_day': '03d',
+      'partlycloudy_night': '03n',
+      'partlycloudy_polartwilight': '03m',
+      
+      // Cloudy
+      'cloudy': '04',
+      
+      // Rain showers
+      'rainshowers_day': '05d',
+      'rainshowers_night': '05n',
+      'rainshowers_polartwilight': '05m',
+      
+      // Rain showers and thunder
+      'rainshowersandthunder_day': '06d',
+      'rainshowersandthunder_night': '06n',
+      'rainshowersandthunder_polartwilight': '06m',
+      
+      // Sleet showers
+      'sleetshowers_day': '07d',
+      'sleetshowers_night': '07n',
+      'sleetshowers_polartwilight': '07m',
+      
+      // Snow showers
+      'snowshowers_day': '08d',
+      'snowshowers_night': '08n',
+      'snowshowers_polartwilight': '08m',
+      
+      // Rain
+      'rain': '09',
+      
+      // Heavy rain
+      'heavyrain': '10',
+      
+      // Heavy rain and thunder
+      'heavyrainandthunder': '11',
+      
+      // Sleet
+      'sleet': '12',
+      
+      // Snow
+      'snow': '13',
+      
+      // Snow and thunder
+      'snowandthunder': '14',
+      
+      // Fog
+      'fog': '15',
+      
+      // Sleet showers and thunder
+      'sleetshowersandthunder_day': '20d',
+      'sleetshowersandthunder_night': '20n',
+      'sleetshowersandthunder_polartwilight': '20m',
+      
+      // Snow showers and thunder
+      'snowshowersandthunder_day': '21d',
+      'snowshowersandthunder_night': '21n',
+      'snowshowersandthunder_polartwilight': '21m',
+      
+      // Rain and thunder
+      'rainandthunder': '22',
+      
+      // Sleet and thunder
+      'sleetandthunder': '23',
+      
+      // Light rain showers and thunder
+      'lightrainshowersandthunder_day': '24d',
+      'lightrainshowersandthunder_night': '24n',
+      'lightrainshowersandthunder_polartwilight': '24m',
+      
+      // Heavy rain showers and thunder
+      'heavyrainshowersandthunder_day': '25d',
+      'heavyrainshowersandthunder_night': '25n',
+      'heavyrainshowersandthunder_polartwilight': '25m',
+      
+      // Light sleet showers and thunder (note: YR has typo "lightssleet")
+      'lightssleetshowersandthunder_day': '26d',
+      'lightssleetshowersandthunder_night': '26n',
+      'lightssleetshowersandthunder_polartwilight': '26m',
+      
+      // Heavy sleet showers and thunder
+      'heavysleetshowersandthunder_day': '27d',
+      'heavysleetshowersandthunder_night': '27n',
+      'heavysleetshowersandthunder_polartwilight': '27m',
+      
+      // Light snow showers and thunder (note: YR has typo "lightssnow")
+      'lightssnowshowersandthunder_day': '28d',
+      'lightssnowshowersandthunder_night': '28n',
+      'lightssnowshowersandthunder_polartwilight': '28m',
+      
+      // Heavy snow showers and thunder
+      'heavysnowshowersandthunder_day': '29d',
+      'heavysnowshowersandthunder_night': '29n',
+      'heavysnowshowersandthunder_polartwilight': '29m',
+      
+      // Light rain and thunder
+      'lightrainandthunder': '30',
+      
+      // Light sleet and thunder
+      'lightsleetandthunder': '31',
+      
+      // Heavy sleet and thunder
+      'heavysleetandthunder': '32',
+      
+      // Light snow and thunder
+      'lightsnowandthunder': '33',
+      
+      // Heavy snow and thunder
+      'heavysnowandthunder': '34',
+      
+      // Light rain showers
+      'lightrainshowers_day': '40d',
+      'lightrainshowers_night': '40n',
+      'lightrainshowers_polartwilight': '40m',
+      
+      // Heavy rain showers
+      'heavyrainshowers_day': '41d',
+      'heavyrainshowers_night': '41n',
+      'heavyrainshowers_polartwilight': '41m',
+      
+      // Light sleet showers
+      'lightsleetshowers_day': '42d',
+      'lightsleetshowers_night': '42n',
+      'lightsleetshowers_polartwilight': '42m',
+      
+      // Heavy sleet showers
+      'heavysleetshowers_day': '43d',
+      'heavysleetshowers_night': '43n',
+      'heavysleetshowers_polartwilight': '43m',
+      
+      // Light snow showers
+      'lightsnowshowers_day': '44d',
+      'lightsnowshowers_night': '44n',
+      'lightsnowshowers_polartwilight': '44m',
+      
+      // Heavy snow showers
+      'heavysnowshowers_day': '45d',
+      'heavysnowshowers_night': '45n',
+      'heavysnowshowers_polartwilight': '45m',
+      
+      // Light rain
+      'lightrain': '46',
+      
+      // Light sleet
+      'lightsleet': '47',
+      
+      // Heavy sleet
+      'heavysleet': '48',
+      
+      // Light snow
+      'lightsnow': '49',
+      
+      // Heavy snow
+      'heavysnow': '50',
+    };
+
+    return symbolMap[yrSymbol] || null;
+  };
+
+  // NEW: Use authentic YR weather symbols directly
+  const getWeatherIcon = (iconType: string, size: string = 'w-8 h-8', time?: string, yrSymbol?: string | null) => {
+    // If we have a YR symbol, map it to the authentic YR files
+    if (yrSymbol) {
+      const fileId = mapYrSymbolToFile(yrSymbol);
+      
+      if (fileId) {
+                  const iconPath = `/images/weather_symbols/shadows/svg/${fileId}.svg`;
+        return (
+          <img 
+            src={iconPath} 
+            alt={`Weather: ${yrSymbol}`} 
+            className={`${size} object-contain`}
+            onError={(e) => {
+              console.warn(`YR weather icon not found: ${fileId}.svg (${yrSymbol}), falling back`);
+              (e.target as HTMLImageElement).src = '/images/weather_symbols/shadows/svg/01d.svg';
+            }}
+          />
+        );
+      }
+    }
+
+    // FALLBACK: Old hardcoded logic (deprecated, but using authentic YR symbols)
     // Avgör om det är dag eller natt baserat på tid och soluppgång/solnedgång
     const isNight = time ? (() => {
       const date = new Date(time);
@@ -457,47 +601,45 @@ export default function WeatherPage() {
       return hour < sunTimes.sunrise || hour >= sunTimes.sunset;
     })() : false;
 
-    // Välj rätt SVG-ikon baserat på vädertyp och dag/natt
-    let iconPath = '';
+    // Map fallback types to authentic YR symbols
+    let fallbackSymbol = '';
     switch (iconType) {
       case 'pure-rain':
-        // Ren regn-ikon utan sol/måne för mulet väder
-        iconPath = '/images/weather_icons/SVG/rain.svg';
+        fallbackSymbol = '09'; // rain
         break;
       case 'pure-snow':
-        // Ren snö-ikon utan sol/måne för mulet väder
-        iconPath = '/images/weather_icons/SVG/snow.svg';
+        fallbackSymbol = '13'; // snow
         break;
       case 'rain':
-        // Regn med sol/måne för delvis molnigt väder
-        iconPath = isNight ? '/images/weather_icons/SVG/night_rain.svg' : '/images/weather_icons/SVG/day_rain.svg';
+        fallbackSymbol = isNight ? '05n' : '05d'; // rainshowers
         break;
       case 'snow':
-        // Snö med sol/måne för delvis molnigt väder
-        iconPath = isNight ? '/images/weather_icons/SVG/night_snow.svg' : '/images/weather_icons/SVG/day_snow.svg';
+        fallbackSymbol = isNight ? '08n' : '08d'; // snowshowers
         break;
       case 'cloudy':
-        iconPath = '/images/weather_icons/SVG/cloudy.svg';
+        fallbackSymbol = '04'; // cloudy
         break;
       case 'partly-cloudy':
-        iconPath = isNight ? '/images/weather_icons/SVG/night_partial_cloud.svg' : '/images/weather_icons/SVG/day_partial_cloud.svg';
+        fallbackSymbol = isNight ? '03n' : '03d'; // partlycloudy
         break;
       case 'thunder':
-        iconPath = isNight ? '/images/weather_icons/SVG/night_rain_thunder.svg' : '/images/weather_icons/SVG/day_rain_thunder.svg';
+        fallbackSymbol = isNight ? '06n' : '06d'; // rainshowersandthunder
         break;
       case 'fog':
-        iconPath = '/images/weather_icons/SVG/fog.svg';
+        fallbackSymbol = '15'; // fog
         break;
       case 'mist':
-        iconPath = '/images/weather_icons/SVG/mist.svg';
+        fallbackSymbol = '15'; // fog (use same as fog)
         break;
       case 'overcast':
-        iconPath = '/images/weather_icons/SVG/overcast.svg';
+        fallbackSymbol = '04'; // cloudy
         break;
       default: // 'sun' eller okänd
-        iconPath = isNight ? '/images/weather_icons/SVG/night_clear.svg' : '/images/weather_icons/SVG/day_clear.svg';
+        fallbackSymbol = isNight ? '01n' : '01d'; // clearsky
         break;
     }
+
+    const iconPath = `/images/weather_symbols/shadows/svg/${fallbackSymbol}.svg`;
 
     return (
       <img 
@@ -508,7 +650,7 @@ export default function WeatherPage() {
     );
   };
 
-  // Formatera tid för timprognos (FMI-data är redan i svensk tid)
+          // Formatera tid för timprognos (Yr-data konverteras till svensk tid)
   const formatHour = (isoString: string) => {
     return new Date(isoString).toLocaleTimeString('sv-SE', { 
       hour: '2-digit', 
@@ -606,7 +748,7 @@ export default function WeatherPage() {
     inputRef.current?.focus();
   };
 
-  const isLoading = isLoadingPreloadedData || isLoadingLocation || isLoadingWeather;
+  const isLoading = !isSystemReady || isLoadingLocation || isLoadingWeather;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative">
@@ -757,11 +899,16 @@ export default function WeatherPage() {
             <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8 sm:p-12 max-w-2xl mx-auto">
               <Loader2 className="w-16 h-16 text-blue-400 mx-auto mb-6 animate-spin" />
               <h2 className="text-2xl sm:text-3xl font-light text-white mb-4">
-                {isLoadingPreloadedData ? 'Laddar väderdata...' : 
+                {!isSystemReady ? 'Startar systemet...' :
                  isLoadingLocation ? 'Hämtar din position...' : 
                  'Söker väderdata...'}
               </h2>
-              <p className="text-white/70 text-lg">Vänta medan vi förbereder prognoserna</p>
+              
+              <p className="text-white/70 text-lg">
+                {!isSystemReady ? 'Snabb start utan stora filer' :
+                 isLoadingLocation ? 'Identifierar din plats automatiskt' :
+                 'Hämtar live väderdata från Yr'}
+              </p>
             </div>
           </div>
         )}
@@ -774,22 +921,60 @@ export default function WeatherPage() {
             <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-6 sm:p-8">
               <div className="flex items-center gap-4 mb-4">
                 <Navigation className="w-6 h-6 text-blue-400" />
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-light text-white">{selectedLocation.displayName}</h2>
-  
+                <div className="flex-1">
+                  <h2 className="text-2xl sm:text-3xl font-light text-white">
+                    {selectedLocation.displayName}
+                    {selectedDay !== null && selectedDay > 0 && dailyWeather[selectedDay] && (
+                      <span className="text-2xl sm:text-3xl text-white/90 ml-3 font-light">
+                        {new Date(dailyWeather[selectedDay].date).toLocaleDateString('sv-SE', { 
+                          day: 'numeric', 
+                          month: 'long'
+                        })}
+                      </span>
+                    )}
+                    {selectedDay === 0 && (
+                      <span className="text-2xl sm:text-3xl text-white/90 ml-3 font-light">idag</span>
+                    )}
+                  </h2>
+                </div>
+                {/* Current weather icon */}
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    if (!weatherData || weatherData.length === 0) return null;
+                    const now = new Date();
+                    const currentHour = weatherData.find(w => {
+                      const weatherTime = new Date(w.time);
+                      return Math.abs(weatherTime.getTime() - now.getTime()) < 30 * 60 * 1000; // Within 30 minutes
+                    }) || weatherData[0]; // Fallback to first forecast
+                    
+                    return currentHour ? getWeatherIcon('current', 'w-12 h-12', currentHour.time, currentHour.symbol) : null;
+                  })()}
                 </div>
               </div>
               
-              {/* Current Weather (dagens första prognos) */}
-              {dailyWeather[0] && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+              {/* Current Weather (för vald dag eller idag) */}
+              {dailyWeather[selectedDay || 0] && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
                       <Thermometer className="w-8 h-8 text-orange-400" />
                     </div>
                     <p className="text-white/60 text-sm mb-1">Temperatur</p>
                     <p className="text-white font-bold text-xl">
-                      {dailyWeather[0].maxTemp.toFixed(1)}°C
+                      {(() => {
+                        const displayDay = dailyWeather[selectedDay || 0];
+                        // Om det är "idag" (selectedDay = 0 eller null), visa aktuell temperatur
+                        if ((selectedDay === null || selectedDay === 0) && weatherData && weatherData.length > 0) {
+                          const now = new Date();
+                          const currentHour = weatherData.find(w => {
+                            const weatherTime = new Date(w.time);
+                            return Math.abs(weatherTime.getTime() - now.getTime()) < 30 * 60 * 1000;
+                          }) || weatherData[0];
+                          return currentHour?.temperature ? `${currentHour.temperature.toFixed(1)}°C` : `${displayDay.maxTemp.toFixed(1)}°C`;
+                        }
+                        // För andra dagar, visa dagens maxtemperatur
+                        return `${displayDay.maxTemp.toFixed(1)}°C`;
+                      })()}
                     </p>
                   </div>
                   
@@ -799,27 +984,66 @@ export default function WeatherPage() {
                     </div>
                     <p className="text-white/60 text-sm mb-1">Vindstyrka</p>
                     <p className="text-white font-bold text-xl">
-                      {dailyWeather[0].windSpeed.toFixed(1)} m/s
+                      {(() => {
+                        const displayDay = dailyWeather[selectedDay || 0];
+                        // Om det är "idag" (selectedDay = 0 eller null), visa aktuell vind
+                        if ((selectedDay === null || selectedDay === 0) && weatherData && weatherData.length > 0) {
+                          const now = new Date();
+                          const currentHour = weatherData.find(w => {
+                            const weatherTime = new Date(w.time);
+                            return Math.abs(weatherTime.getTime() - now.getTime()) < 30 * 60 * 1000;
+                          }) || weatherData[0];
+                          
+                          const windSpeed = currentHour?.windSpeed || displayDay.windSpeed;
+                          const windGust = currentHour?.windGust;
+                          
+                          let windDisplay = `${windSpeed.toFixed(1)} m/s`;
+                          if (windGust) {
+                            windDisplay += ` (byar ${windGust.toFixed(1)})`;
+                          }
+                          
+                          return windDisplay;
+                        }
+                        // För andra dagar, visa dagsmedeltal
+                        return `${displayDay.windSpeed.toFixed(1)} m/s`;
+                      })()}
                     </p>
                   </div>
                   
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                      <img src="/images/weather_icons/SVG/day_rain.svg" alt="Nederbörd" className="w-8 h-8 object-contain" />
+                      <Droplets className="w-8 h-8 text-blue-400" />
                     </div>
                     <p className="text-white/60 text-sm mb-1">Nederbörd</p>
                     <p className="text-white font-bold text-xl">
-                      {dailyWeather[0].precipitation.toFixed(1)} mm
+                      {(() => {
+                        const displayDay = dailyWeather[selectedDay || 0];
+                        // För nederbörd, visa alltid dagsumman (inte aktuell timme)
+                        return `${displayDay.precipitation.toFixed(1)} mm`;
+                      })()}
                     </p>
                   </div>
                   
                   <div className="text-center">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                      <img src="/images/weather_icons/SVG/cloudy.svg" alt="Molntäcke" className="w-8 h-8 object-contain" />
+                      <Eye className="w-8 h-8 text-purple-400" />
                     </div>
                     <p className="text-white/60 text-sm mb-1">Molntäcke</p>
                     <p className="text-white font-bold text-xl">
-                      {dailyWeather[0].cloudCover.toFixed(0)}%
+                      {(() => {
+                        const displayDay = dailyWeather[selectedDay || 0];
+                        // Om det är "idag", visa aktuellt molntäcke
+                        if ((selectedDay === null || selectedDay === 0) && weatherData && weatherData.length > 0) {
+                          const now = new Date();
+                          const currentHour = weatherData.find(w => {
+                            const weatherTime = new Date(w.time);
+                            return Math.abs(weatherTime.getTime() - now.getTime()) < 30 * 60 * 1000;
+                          }) || weatherData[0];
+                          return currentHour?.cloudCover ? `${Math.round(currentHour.cloudCover)}%` : `${displayDay.cloudCover.toFixed(0)}%`;
+                        }
+                        // För andra dagar, visa dagsmedeltal
+                        return `${displayDay.cloudCover.toFixed(0)}%`;
+                      })()}
                     </p>
                   </div>
                   
@@ -829,7 +1053,43 @@ export default function WeatherPage() {
                     </div>
                     <p className="text-white/60 text-sm mb-1">Lufttryck</p>
                     <p className="text-white font-bold text-xl">
-                      {dailyWeather[0].avgPressure ? `${Math.round(dailyWeather[0].avgPressure)} hPa` : 'N/A'}
+                      {(() => {
+                        const displayDay = dailyWeather[selectedDay || 0];
+                        // Om det är "idag", visa aktuellt lufttryck
+                        if ((selectedDay === null || selectedDay === 0) && weatherData && weatherData.length > 0) {
+                          const now = new Date();
+                          const currentHour = weatherData.find(w => {
+                            const weatherTime = new Date(w.time);
+                            return Math.abs(weatherTime.getTime() - now.getTime()) < 30 * 60 * 1000;
+                          }) || weatherData[0];
+                          return currentHour?.pressure ? `${Math.round(currentHour.pressure)} hPa` : (displayDay.avgPressure ? `${Math.round(displayDay.avgPressure)} hPa` : 'N/A');
+                        }
+                        // För andra dagar, visa dagsmedeltal
+                        return displayDay.avgPressure ? `${Math.round(displayDay.avgPressure)} hPa` : 'N/A';
+                      })()}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-cyan-400/20 to-blue-400/20 rounded-2xl flex items-center justify-center mb-3 mx-auto">
+                      <Droplets className="w-8 h-8 text-cyan-400" />
+                    </div>
+                    <p className="text-white/60 text-sm mb-1">Luftfuktighet</p>
+                    <p className="text-white font-bold text-xl">
+                      {(() => {
+                        const displayDay = dailyWeather[selectedDay || 0];
+                        // Om det är "idag", visa aktuell luftfuktighet
+                        if ((selectedDay === null || selectedDay === 0) && weatherData && weatherData.length > 0) {
+                          const now = new Date();
+                          const currentHour = weatherData.find(w => {
+                            const weatherTime = new Date(w.time);
+                            return Math.abs(weatherTime.getTime() - now.getTime()) < 30 * 60 * 1000;
+                          }) || weatherData[0];
+                          return currentHour?.humidity ? `${Math.round(currentHour.humidity)}%` : (displayDay.avgHumidity ? `${Math.round(displayDay.avgHumidity)}%` : 'N/A');
+                        }
+                        // För andra dagar, visa dagsmedeltal
+                        return displayDay.avgHumidity ? `${Math.round(displayDay.avgHumidity)}%` : 'N/A';
+                      })()}
                     </p>
                   </div>
                 </div>
@@ -851,7 +1111,18 @@ export default function WeatherPage() {
                     </p>
                     
                     <div className="mb-3">
-                      {getWeatherIcon(day.icon, 'w-12 h-12', day.hourlyData[Math.floor(day.hourlyData.length/2)]?.time)}
+                      {getWeatherIcon(day.icon, 'w-12 h-12', 
+                        index === 0 && day.day === 'Idag' ? 
+                          (() => {
+                            const now = new Date();
+                            const currentHour = day.hourlyData.find(h => {
+                              const hourTime = new Date(h.time);
+                              return Math.abs(hourTime.getTime() - now.getTime()) < 30 * 60 * 1000;
+                            });
+                            return currentHour?.time || day.hourlyData[0]?.time;
+                          })() :
+                          day.hourlyData[Math.floor(day.hourlyData.length/2)]?.time, 
+                        day.primarySymbol)}
                     </div>
                     
                     <div className="mb-3">
@@ -867,7 +1138,6 @@ export default function WeatherPage() {
                       <div className="flex items-center justify-center gap-1">
                         <Wind className="w-3 h-3" />
                         <span>{day.windSpeed.toFixed(0)} m/s</span>
-                        <span className="text-xs text-white/50">({Math.round(day.windDirection)}°)</span>
                       </div>
                     </div>
                     
@@ -922,7 +1192,7 @@ export default function WeatherPage() {
                         
                         sortedHours.forEach((hour, index) => {
                           const hourDate = new Date(hour.time);
-                          // FMI-data representerar redan svensk tid, även om tidsstämplarna har Z-suffix
+                          // Yr-data använder UTC-tid, konvertera till svensk tid för visning
                           const dateKey = hourDate.toLocaleDateString('sv-SE');
                           const hourTime = hourDate.getHours();
                           
@@ -1005,7 +1275,7 @@ export default function WeatherPage() {
                           if (item.type === 'dayHeader') {
                             return (
                               <div key={item.key} className="bg-blue-500/10 rounded-xl border-l-4 border-blue-400/50 mt-4 mb-2 p-3">
-                                <div className="grid grid-cols-7 gap-2 sm:gap-4 text-xs font-medium items-center">
+                                <div className="grid grid-cols-8 gap-2 sm:gap-4 text-xs font-medium items-center">
                                   <div className="col-span-2 text-blue-200 font-semibold text-sm uppercase tracking-wide">
                                     {item.dayName}
                                   </div>
@@ -1013,6 +1283,7 @@ export default function WeatherPage() {
                                   <div className="col-span-1 text-white/90 text-center">mm</div>
                                   <div className="col-span-1 text-white/90 text-center">m/s (by)</div>
                                   <div className="col-span-1 text-white/90 text-center">Moln</div>
+                                  <div className="col-span-1 text-white/90 text-center">Luftfuk</div>
                                   <div className="col-span-1 text-white/90 text-center">Lufttryck</div>
                                 </div>
                               </div>
@@ -1021,24 +1292,24 @@ export default function WeatherPage() {
                           
                           if (item.type === 'sunrise') {
                             return (
-                              <div key={item.key} className="grid grid-cols-7 gap-2 sm:gap-4 items-center py-2 px-2 bg-orange-500/10 rounded-xl border-l-2 border-orange-400/50">
+                              <div key={item.key} className="grid grid-cols-8 gap-2 sm:gap-4 items-center py-2 px-2 bg-orange-500/10 rounded-xl border-l-2 border-orange-400/50">
                                 <div className="col-span-1 text-orange-300 text-sm font-medium">{item.time}</div>
                                 <div className="col-span-1 flex justify-center">
                                   <Sunrise className="w-5 h-5 text-orange-400" />
                                 </div>
-                                <div className="col-span-5 text-orange-200 text-sm">Soluppgång</div>
+                                <div className="col-span-6 text-orange-200 text-sm">Soluppgång</div>
                               </div>
                             );
                           }
                           
                           if (item.type === 'sunset') {
                             return (
-                              <div key={item.key} className="grid grid-cols-7 gap-2 sm:gap-4 items-center py-2 px-2 bg-orange-600/10 rounded-xl border-l-2 border-orange-500/50">
+                              <div key={item.key} className="grid grid-cols-8 gap-2 sm:gap-4 items-center py-2 px-2 bg-orange-600/10 rounded-xl border-l-2 border-orange-500/50">
                                 <div className="col-span-1 text-orange-400 text-sm font-medium">{item.time}</div>
                                 <div className="col-span-1 flex justify-center">
                                   <Sunset className="w-5 h-5 text-orange-500" />
                                 </div>
-                                <div className="col-span-5 text-orange-300 text-sm">Solnedgång</div>
+                                <div className="col-span-6 text-orange-300 text-sm">Solnedgång</div>
                               </div>
                             );
                           }
@@ -1072,11 +1343,14 @@ export default function WeatherPage() {
                           
                           // ✅ ALLA HÅRDKODADE FUSK-BERÄKNINGAR BORTTAGNA!
                           
-                          // Vindriktningspil - FMI ger redan färdig meteorologisk vindriktning
+                          // Vindriktningspil - Yr ger meteorologisk vindriktning (från vilken riktning vinden kommer)
+                          // Pilen ska visa åt vilken riktning vinden BLÅSER (180° förskjuten)
                           const getWindArrow = (direction: number | null) => {
                             if (!direction) return '↑';
+                            // Konvertera från "kommer från" till "blåser åt" genom att lägga till 180°
+                            const windBlowsTo = (direction + 180) % 360;
                             const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
-                            return arrows[Math.round(direction / 45) % 8];
+                            return arrows[Math.round(windBlowsTo / 45) % 8];
                           };
                           
                           // Vindriktning som text för bättre förståelse
@@ -1084,11 +1358,11 @@ export default function WeatherPage() {
                             if (!direction) return 'Vindstilla';
                             const directions = ['N', 'NO', 'O', 'SO', 'S', 'SV', 'V', 'NV'];
                             const index = Math.round(direction / 45) % 8;
-                            return `${directions[index]} (${Math.round(direction)}°)`;
+                            return `${directions[index]}`;
                           };
                           
                           return (
-                            <div key={item.key} className="grid grid-cols-7 gap-2 sm:gap-4 items-center py-2 px-2 hover:bg-white/5 rounded-xl transition-colors text-sm">
+                            <div key={item.key} className="grid grid-cols-8 gap-2 sm:gap-4 items-center py-2 px-2 hover:bg-white/5 rounded-xl transition-colors text-sm">
                               {/* Tid */}
                               <div className="col-span-1 text-white/90 font-medium">
                                 {formatHour(hour.time)}
@@ -1096,7 +1370,7 @@ export default function WeatherPage() {
                               
                               {/* Väderikon */}
                               <div className="col-span-1 flex justify-center">
-                                {getWeatherIcon(hourIcon, 'w-8 h-8', hour.time)}
+                                {getWeatherIcon(hourIcon, 'w-10 h-10', hour.time, hour.symbol)}
                               </div>
                               
                               {/* Temperatur */}
@@ -1112,15 +1386,24 @@ export default function WeatherPage() {
                               {/* Vind */}
                               <div className="col-span-1 text-center text-white/80 flex items-center justify-center gap-1">
                                 <span className="text-base" title={getWindDirectionText(hour.windDirection)}>{getWindArrow(hour.windDirection)}</span>
-                                <span>{hour.windSpeed ? `${Math.round(hour.windSpeed)}` : '--'}</span>
-                                {hour.windGust && hour.windGust > (hour.windSpeed || 0) + 2 && (
-                                  <span className="text-xs text-white/60">({Math.round(hour.windGust)})</span>
-                                )}
+                                <div className="flex items-center gap-1">
+                                  <span>{hour.windSpeed ? `${Math.round(hour.windSpeed)}` : '--'}</span>
+                                  {hour.windGust && (
+                                    <span className="text-xs text-white/60">
+                                      ({Math.round(hour.windGust)})
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                       
                               {/* Molntäcke */}
                               <div className="col-span-1 text-center text-white/80">
                                 {hour.cloudCover ? `${Math.round(hour.cloudCover)}%` : '--'}
+                              </div>
+
+                              {/* Luftfuktighet - NY KOLUMN! */}
+                              <div className="col-span-1 text-center text-white/80">
+                                {hour.humidity ? `${Math.round(hour.humidity)}%` : '--'}
                               </div>
                       
                               {/* Lufttryck */}
@@ -1144,12 +1427,19 @@ export default function WeatherPage() {
         {!isLoading && !selectedLocation && (
           <div className="text-center py-16">
             <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8 sm:p-12 max-w-2xl mx-auto">
-              <img src="/images/weather_icons/SVG/day_clear.svg" alt="Väder" className="w-16 h-16 object-contain mx-auto mb-6 opacity-20" />
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                <Thermometer className="w-8 h-8 text-blue-400 opacity-60" />
+              </div>
               <h2 className="text-2xl sm:text-3xl font-light text-white mb-4">Välkommen till väderprognosen</h2>
-              <p className="text-white/70 text-lg">Sök efter en stad eller kommun för att se väderprognos från FMI HARMONIE</p>
+              <p className="text-white/70 text-lg">Sök efter städer, sjöar eller vattendrag för väderprognos från Yr (Meteorologisk institutt)</p>
             </div>
           </div>
         )}
+      </div>
+      
+      {/* Weather attribution footer */}
+      <div className="container mx-auto px-4 pb-8">
+        <WeatherAttribution variant="compact" className="text-center" />
       </div>
     </div>
   );
