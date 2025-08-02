@@ -10,7 +10,7 @@ import {
 import Link from 'next/link';
 import { weatherGeocodingService, type GeoLocation } from '@/lib/weatherGeocodingService';
 import WeatherAttribution from '@/app/components/WeatherAttribution';
-import { searchWaterBodies, type WaterBody } from '@/lib/swedishWaterBodies';
+import { searchAllWaterBodies, type WaterBody } from '@/lib/swedishWaterBodies';
 
 interface WeatherData {
   time: string;
@@ -54,6 +54,7 @@ export default function WeatherPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   
   // Ny state för keyboard navigation
   const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
@@ -87,6 +88,8 @@ export default function WeatherPage() {
         async (position) => {
           const { latitude, longitude } = position.coords;
   
+          // Spara användarens position för geosortierung
+          setUserLocation({ lat: latitude, lon: longitude });
           
           // Hitta närmaste platsnamn via geocoding
           try {
@@ -145,13 +148,14 @@ export default function WeatherPage() {
   // Keyboard navigation handler
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!showSuggestions || searchResults.length === 0) return;
+      const totalResults = waterResults.length + searchResults.length;
+      if (!showSuggestions || totalResults === 0) return;
 
       switch (event.key) {
         case 'ArrowDown':
           event.preventDefault();
           setSelectedResultIndex(prev => 
-            prev < searchResults.length - 1 ? prev + 1 : 0
+            prev < totalResults - 1 ? prev + 1 : 0
           );
           setIsDropdownFocused(true);
           break;
@@ -159,15 +163,23 @@ export default function WeatherPage() {
         case 'ArrowUp':
           event.preventDefault();
           setSelectedResultIndex(prev => 
-            prev > 0 ? prev - 1 : searchResults.length - 1
+            prev > 0 ? prev - 1 : totalResults - 1
           );
           setIsDropdownFocused(true);
           break;
           
         case 'Enter':
           event.preventDefault();
-          if (selectedResultIndex >= 0 && selectedResultIndex < searchResults.length) {
-            handleLocationSelect(searchResults[selectedResultIndex]);
+          if (selectedResultIndex >= 0 && selectedResultIndex < totalResults) {
+            // Ny ordning: Vattenområden först, sedan städer
+            if (selectedResultIndex < waterResults.length) {
+              // Vattenområdes-resultat
+              handleWaterBodySelect(waterResults[selectedResultIndex]);
+            } else {
+              // Stadresultat
+              const cityIndex = selectedResultIndex - waterResults.length;
+              handleLocationSelect(searchResults[cityIndex]);
+            }
           }
           break;
           
@@ -185,7 +197,7 @@ export default function WeatherPage() {
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [showSuggestions, searchResults, selectedResultIndex]);
+  }, [showSuggestions, waterResults, searchResults, selectedResultIndex]);
 
   // Sök platser när användaren skriver (förbättrad debouncing)
   useEffect(() => {
@@ -201,10 +213,10 @@ export default function WeatherPage() {
       setIsSearching(true);
       setSelectedResultIndex(-1);
       try {
-        // Sök både platser och vattendrag parallellt
+        // Parallell sökning - borde vara snabb igen nu!
         const [geoResult, waterBodies] = await Promise.all([
           weatherGeocodingService.searchLocations(searchTerm),
-          Promise.resolve(searchWaterBodies(searchTerm))
+          searchAllWaterBodies(searchTerm, userLocation || undefined)
         ]);
         
         setSearchResults(geoResult.locations || []);
@@ -229,8 +241,6 @@ export default function WeatherPage() {
     setSelectedDay(null);
     
     try {
-      console.log(`🌤️ Hämtar väderdata för ${location.displayName} (${location.lat}, ${location.lon})`);
-      
       const response = await fetch(`/api/weather?lat=${location.lat}&lon=${location.lon}`);
       
       if (!response.ok) {
@@ -731,6 +741,24 @@ export default function WeatherPage() {
     setIsDropdownFocused(false);
   };
 
+  // Hantera val av vattenområde
+  const handleWaterBodySelect = async (waterBody: WaterBody) => {
+    const formatWaterType = (type: string) => type.charAt(0).toUpperCase() + type.slice(1);
+    
+    // Använd land-info från sökresultat (Sverige/Norge/Danmark) för header
+    const country = waterBody.region;
+    
+    const geoLocation: GeoLocation = {
+      lat: waterBody.lat,
+      lon: waterBody.lon,
+      displayName: `${waterBody.name} (${formatWaterType(waterBody.type)} i ${country})`,
+    };
+    await fetchWeatherData(geoLocation);
+    setShowSuggestions(false);
+    setSelectedResultIndex(-1);
+    setIsDropdownFocused(false);
+  };
+
   // Hantera input focus
   const handleInputFocus = () => {
     if (searchResults.length > 0) {
@@ -829,44 +857,96 @@ export default function WeatherPage() {
                   className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl z-50 max-h-80 overflow-hidden animate-in slide-in-from-top-2 duration-200"
                 >
                   <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20">
-                    {searchResults.length > 0 ? (
+                    {(searchResults.length > 0 || waterResults.length > 0) ? (
                       <>
-                        {/* Header */}
-                        <div className="px-4 py-2 border-b border-white/10 bg-white/5">
-                          <p className="text-xs text-white/60 font-medium uppercase tracking-wide">
-                            Hittade {searchResults.length} platser
-                          </p>
-                        </div>
-                        
-                        {searchResults.map((location, index) => (
-                          <button
-                            key={`${location.lat}-${location.lon}-${index}`}
-                            onClick={() => handleLocationSelect(location)}
-                            className={`w-full px-4 py-3 text-left transition-all duration-150 border-b border-white/5 last:border-b-0 group ${
-                              selectedResultIndex === index || (isDropdownFocused && selectedResultIndex === index)
-                                ? 'bg-blue-500/20 border-blue-400/30' 
-                                : 'hover:bg-white/8'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                                selectedResultIndex === index 
-                                  ? 'bg-blue-400/30 text-blue-300' 
-                                  : 'bg-white/10 text-white/60 group-hover:bg-white/15 group-hover:text-white/80'
-                              }`}>
-                                <MapPin className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-white font-medium text-sm leading-tight">
-                                  {location.displayName}
-                                </p>
-                              </div>
-                              <ChevronRight className={`w-4 h-4 text-white/40 transition-transform group-hover:translate-x-0.5 ${
-                                selectedResultIndex === index ? 'text-blue-400' : ''
-                              }`} />
+                        {/* Vattenområden FÖRST */}
+                        {waterResults.length > 0 && (
+                          <>
+                            <div className="px-4 py-2 border-b border-white/10 bg-blue-500/10">
+                              <p className="text-xs text-blue-300/80 font-medium uppercase tracking-wide">
+                                🌊 Sjöar & Vattendrag ({waterResults.length})
+                              </p>
                             </div>
-                          </button>
-                        ))}
+                            
+                            {waterResults.map((waterBody, index) => (
+                              <button
+                                key={`water-${waterBody.lat}-${waterBody.lon}-${index}`}
+                                onClick={() => handleWaterBodySelect(waterBody)}
+                                className={`w-full px-4 py-3 text-left transition-all duration-150 border-b border-white/5 last:border-b-0 group ${
+                                  selectedResultIndex === index || (isDropdownFocused && selectedResultIndex === index)
+                                    ? 'bg-blue-500/20 border-blue-400/30' 
+                                    : 'hover:bg-blue-500/10'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                    selectedResultIndex === index
+                                      ? 'bg-blue-400/30 text-blue-300' 
+                                      : 'bg-blue-500/20 text-blue-300/80 group-hover:bg-blue-400/25 group-hover:text-blue-200'
+                                  }`}>
+                                    <Droplets className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-white font-medium text-sm leading-tight">
+                                      {waterBody.name}
+                                    </p>
+                                    <p className="text-blue-300/60 text-xs mt-0.5">
+                                      {waterBody.type.charAt(0).toUpperCase() + waterBody.type.slice(1)} • {waterBody.region}
+                                      {waterBody.description && ` • ${waterBody.description}`}
+                                    </p>
+                                  </div>
+                                  <ChevronRight className={`w-4 h-4 text-white/40 transition-transform group-hover:translate-x-0.5 ${
+                                    selectedResultIndex === index ? 'text-blue-400' : ''
+                                  }`} />
+                                </div>
+                              </button>
+                            ))}
+                          </>
+                        )}
+
+                        {/* Städer/Platser SEDAN */}
+                        {searchResults.length > 0 && (
+                          <>
+                            <div className="px-4 py-2 border-b border-white/10 bg-white/5">
+                              <p className="text-xs text-white/60 font-medium uppercase tracking-wide">
+                                🏙️ Städer & Platser ({searchResults.length})
+                              </p>
+                            </div>
+                            
+                            {searchResults.map((location, index) => {
+                              const globalIndex = waterResults.length + index;
+                              return (
+                                <button
+                                  key={`city-${location.lat}-${location.lon}-${index}`}
+                                  onClick={() => handleLocationSelect(location)}
+                                  className={`w-full px-4 py-3 text-left transition-all duration-150 border-b border-white/5 last:border-b-0 group ${
+                                    selectedResultIndex === globalIndex || (isDropdownFocused && selectedResultIndex === globalIndex)
+                                      ? 'bg-blue-500/20 border-blue-400/30' 
+                                      : 'hover:bg-white/8'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                      selectedResultIndex === globalIndex 
+                                        ? 'bg-blue-400/30 text-blue-300' 
+                                        : 'bg-white/10 text-white/60 group-hover:bg-white/15 group-hover:text-white/80'
+                                    }`}>
+                                      <MapPin className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-white font-medium text-sm leading-tight">
+                                        {location.displayName}
+                                      </p>
+                                    </div>
+                                    <ChevronRight className={`w-4 h-4 text-white/40 transition-transform group-hover:translate-x-0.5 ${
+                                      selectedResultIndex === globalIndex ? 'text-blue-400' : ''
+                                    }`} />
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </>
+                        )}
                         
                         {/* Footer med keyboard hints */}
                         <div className="px-4 py-2 border-t border-white/10 bg-white/5">
@@ -999,7 +1079,7 @@ export default function WeatherPage() {
                           
                           let windDisplay = `${windSpeed.toFixed(1)} m/s`;
                           if (windGust) {
-                            windDisplay += ` (byar ${windGust.toFixed(1)})`;
+                            windDisplay += ` (${windGust.toFixed(1)})`;
                           }
                           
                           return windDisplay;
