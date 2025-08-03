@@ -226,6 +226,24 @@ function extractCoordinatesFromGeometry(geometry: any): { lat: number, lon: numb
   }
   
   try {
+    // NYTT: Hantera GeometryCollection (flera segment av samma vattendrag)
+    if (geometry.type === 'GeometryCollection') {
+      let allCoords: Array<{ lat: number, lon: number }> = [];
+      
+      // Extrahera koordinater från alla geometrier i samlingen
+      for (const subGeometry of geometry.geometries) {
+        const coords = extractCoordinatesFromGeometry(subGeometry);
+        allCoords.push(coords);
+      }
+      
+      if (allCoords.length > 0) {
+        // Beräkna medelvärde av alla centroider
+        const avgLat = allCoords.reduce((sum, coord) => sum + coord.lat, 0) / allCoords.length;
+        const avgLon = allCoords.reduce((sum, coord) => sum + coord.lon, 0) / allCoords.length;
+        return { lat: avgLat, lon: avgLon };
+      }
+    }
+    
     // GeoJSON geometri från PostGIS
     if (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') {
       const coords = geometry.type === 'Polygon' 
@@ -242,6 +260,31 @@ function extractCoordinatesFromGeometry(geometry: any): { lat: number, lon: numb
         return {
           lon: sumLon / coords.length,
           lat: sumLat / coords.length
+        };
+      }
+    }
+    
+    // LineString och MultiLineString (för åar/floder)
+    if (geometry.type === 'LineString') {
+      const coords = geometry.coordinates;
+      if (coords && coords.length > 0) {
+        // Ta mittpunkten av linjen
+        const midIndex = Math.floor(coords.length / 2);
+        return {
+          lon: coords[midIndex][0],
+          lat: coords[midIndex][1]
+        };
+      }
+    }
+    
+    if (geometry.type === 'MultiLineString') {
+      // Ta första linjen och dess mittpunkt
+      const firstLine = geometry.coordinates[0];
+      if (firstLine && firstLine.length > 0) {
+        const midIndex = Math.floor(firstLine.length / 2);
+        return {
+          lon: firstLine[midIndex][0],
+          lat: firstLine[midIndex][1]
         };
       }
     }
@@ -474,7 +517,7 @@ export async function getWaterBodyAtCoordinates(
 
 /**
  * Hitta bästa match från multipla vattendrag-resultat
- * Hanterar flera geometrier för samma vattendrag (floder, stora sjöar etc.)
+ * FÖRBÄTTRAD: Kombinerar alla geometrier för samma vattendrag
  */
 function findBestWaterBodyMatch(results: any[], clickLat: number, clickLon: number): any {
   if (results.length === 1) return results[0];
@@ -490,19 +533,16 @@ function findBestWaterBodyMatch(results: any[], clickLat: number, clickLon: numb
     byName.get(name)!.push(result);
   }
   
-  // Om samma namn förekommer flera gånger, välj den största geometrin
+  // Skapa kandidater - kombinera geometrier för samma vattendrag
   const candidates: any[] = [];
   
   for (const [name, geometries] of byName.entries()) {
     if (geometries.length === 1) {
       candidates.push(geometries[0]);
     } else {
-      // Flera geometrier för samma vattendrag - välj största
-      const largest = geometries.reduce((largest, current) => 
-        (current.area_km2 || 0) > (largest.area_km2 || 0) ? current : largest
-      );
-      
-      candidates.push(largest);
+      // NYTT: Kombinera alla geometrier för samma vattendrag
+      const combinedWaterBody = combineMultipleGeometries(geometries);
+      candidates.push(combinedWaterBody);
     }
   }
   
@@ -527,4 +567,36 @@ function findBestWaterBodyMatch(results: any[], clickLat: number, clickLon: numb
   }
   
   return bestMatch;
+}
+
+/**
+ * Kombinera flera geometrier för samma vattendrag till en GeometryCollection
+ * Detta gör att hela ån/floden highlightas, inte bara det största segmentet
+ */
+function combineMultipleGeometries(geometries: any[]): any {
+  if (geometries.length === 1) return geometries[0];
+  
+  // Ta den största som bas (för metadata som area_km2, koordinater etc.)
+  const baseGeometry = geometries.reduce((largest, current) => 
+    (current.area_km2 || 0) > (largest.area_km2 || 0) ? current : largest
+  );
+  
+  // Samla alla geometrier
+  const allGeometries = geometries.map(g => g.geometry).filter(g => g);
+  
+  // Skapa en GeometryCollection med alla segment
+  const combinedGeometry = {
+    type: 'GeometryCollection',
+    geometries: allGeometries
+  };
+  
+  // Summera total area
+  const totalArea = geometries.reduce((sum, g) => sum + (g.area_km2 || 0), 0);
+  
+  return {
+    ...baseGeometry,
+    geometry: combinedGeometry,
+    area_km2: totalArea,
+    _multiple_segments: geometries.length // Debug info
+  };
 }

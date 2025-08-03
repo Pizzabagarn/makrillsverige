@@ -612,6 +612,60 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     }
   };
 
+  // HJÄLPFUNKTIONER för geometri-highlighting
+  const isValidGeometryForHighlighting = (geometry: any): boolean => {
+    if (!geometry) return false;
+    
+    const validTypes = ['Polygon', 'MultiPolygon', 'GeometryCollection', 'LineString', 'MultiLineString'];
+    return validTypes.includes(geometry.type);
+  };
+
+  const prepareGeometryForHighlighting = (waterBody: ScandinavianWaterBody) => {
+    const { geometry } = waterBody;
+    
+    // Om det är en GeometryCollection (flera segment), skapa FeatureCollection
+    if (geometry.type === 'GeometryCollection') {
+      return {
+        type: 'FeatureCollection',
+        features: geometry.geometries.map((geom: any, index: number) => ({
+          type: 'Feature',
+          properties: { 
+            name: waterBody.name,
+            segment: index + 1,
+            total_segments: geometry.geometries.length,
+            geometry_type: geom.type // För att avgöra highlighting-typ
+          },
+          geometry: geom
+        }))
+      };
+    }
+    
+    // Vanlig geometri
+    return {
+      type: 'Feature',
+      geometry: geometry,
+      properties: { 
+        name: waterBody.name,
+        geometry_type: geometry.type
+      }
+    };
+  };
+
+  // Avgör om geometrin borde fyllas (polygoner) eller bara ha linje (åar/floder)
+  const shouldUsePolygonFill = (geometry: any): boolean => {
+    if (!geometry) return false;
+    
+    if (geometry.type === 'GeometryCollection') {
+      // Om GeometryCollection innehåller bara LineString/MultiLineString → ingen fill
+      return geometry.geometries.some((geom: any) => 
+        geom.type === 'Polygon' || geom.type === 'MultiPolygon'
+      );
+    }
+    
+    // Bara polygoner får fill, linjer får bara outline
+    return geometry.type === 'Polygon' || geometry.type === 'MultiPolygon';
+  };
+
   const handleWaterBodyClick = async (waterBody: ScandinavianWaterBody) => {
     // Uppdatera både state och ref synkront
     selectedWaterBodyRef.current = waterBody;
@@ -656,43 +710,44 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         }
       });
 
-      // Show polygon if geometry is available
-      if (waterBody.geometry && (waterBody.geometry.type === 'Polygon' || waterBody.geometry.type === 'MultiPolygon')) {
+      // Show geometry if available - stöder nu även GeometryCollection
+      if (waterBody.geometry && isValidGeometryForHighlighting(waterBody.geometry)) {
         
-        // Add polygon source
+        // Skapa GeoJSON data för highlighting
+        const highlightData = prepareGeometryForHighlighting(waterBody);
+        
+        // Add geometry source
         map.addSource('selected-water-source', {
           type: 'geojson',
-          data: {
-            type: 'Feature',
-            geometry: waterBody.geometry,
-            properties: { name: waterBody.name }
-          }
+          data: highlightData
         });
 
-        // Add filled polygon layer - snyggare transparent
-        map.addLayer({
-          id: 'selected-water-polygon',
-          type: 'fill',
-          source: 'selected-water-source',
-          paint: {
-            'fill-color': '#0ea5e9',
-            'fill-opacity': 0.15
-          }
-        });
+        // Bara lägg till fill för polygoner (sjöar), inte för åar/floder
+        if (shouldUsePolygonFill(waterBody.geometry)) {
+          map.addLayer({
+            id: 'selected-water-polygon',
+            type: 'fill',
+            source: 'selected-water-source',
+            paint: {
+              'fill-color': '#0ea5e9',
+              'fill-opacity': 0.15
+            }
+          });
+        }
 
-        // Add polygon outline - mjukare
+        // Add outline - fungerar för alla geometrityper (både sjöar och åar)
         map.addLayer({
           id: 'selected-water-outline',
           type: 'line',
           source: 'selected-water-source',
           paint: {
             'line-color': '#0ea5e9',
-            'line-width': 2,
+            'line-width': shouldUsePolygonFill(waterBody.geometry) ? 2 : 3, // Tjockare linje för åar
             'line-opacity': 0.8
           }
         });
 
-        // Fit map to polygon bounds
+        // Fit map to geometry bounds
         try {
           const bbox = turf.bbox(waterBody.geometry);
           map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
@@ -700,7 +755,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             maxZoom: 14
           });
         } catch (e) {
-          console.warn('Could not fit bounds to polygon:', e);
+          console.warn('Could not fit bounds to geometry:', e);
         }
 
       } else {
