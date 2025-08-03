@@ -44,26 +44,42 @@ export async function searchScandinavianWaterBodies(
   if (!query || query.length < 2) return [];
   
   try {
-    let dbQuery = supabase
-      .from('water_bodies')
-      .select('id, osm_id, name, water_type, area_km2, tags, geometry')
-      .not('name', 'is', null)
-      .not('geometry', 'is', null)
-      .ilike('name', `%${query}%`)
-      .order('area_km2', { ascending: false, nullsLast: true })
-      .limit(limit);
+    let results, error;
 
     // Geografisk filtrering om centrum och avstånd angivs
     if (centerPoint && maxDistance) {
       // Använd PostGIS för att filtrera på avstånd
-      dbQuery = dbQuery.rpc('water_bodies_within_distance', {
-        center_lat: centerPoint.lat,
-        center_lon: centerPoint.lon,
-        max_distance_km: maxDistance
-      });
+      const rpcResult = await supabase
+        .rpc('water_bodies_within_distance', {
+          center_lat: centerPoint.lat,
+          center_lon: centerPoint.lon,
+          max_distance_km: maxDistance
+        })
+        .limit(limit);
+      
+      results = rpcResult.data;
+      error = rpcResult.error;
+      
+      // Filtrera på namnet efter RPC-anropet
+      if (results && !error) {
+        results = results.filter(water => 
+          water.name && water.name.toLowerCase().includes(query.toLowerCase())
+        );
+      }
+    } else {
+      // Vanlig sökning utan geografisk filtrering
+      const dbResult = await supabase
+        .from('water_bodies')
+        .select('id, osm_id, name, water_type, area_km2, tags, geometry')
+        .not('name', 'is', null)
+        .not('geometry', 'is', null)
+        .ilike('name', `%${query}%`)
+        .order('area_km2', { ascending: false, nullsLast: true })
+        .limit(limit);
+      
+      results = dbResult.data;
+      error = dbResult.error;
     }
-
-    const { data: results, error } = await dbQuery;
 
     if (error) {
       console.warn('Databasfel vid vattendrags-sökning:', error);
@@ -163,7 +179,7 @@ export async function getWaterBodyDetails(
       try {
         const fetcher = new WaterBodyDataFetcher();
         vissData = await fetcher.fetchWaterBodyData(scandinavianWaterBody.name);
-        console.log('✅ Hämtade komplett vattendata för:', scandinavianWaterBody.name);
+    
       } catch (error) {
         console.warn('❌ Kunde inte hämta VISS/SMHI-data för:', scandinavianWaterBody.name, error);
       }
@@ -319,7 +335,7 @@ export async function getPopularFishingWaters(
       .from('water_bodies')
       .select('id, osm_id, name, water_type, area_km2, tags, geometry')
       .not('name', 'is', null)
-      .gte('area_km2', 0.1) // Minst 0.1 km² för att vara intressant för fiske
+      .gte('area_km2', 0.05) // Minska minimumarea för att få fler små men viktiga sjöar
       .gte('ST_Y(ST_Centroid(geometry))', countryBounds.south)
       .lte('ST_Y(ST_Centroid(geometry))', countryBounds.north)  
       .gte('ST_X(ST_Centroid(geometry))', countryBounds.west)
@@ -359,4 +375,156 @@ export function createBoundsAroundPoint(
     east: lon + lonDelta,
     west: lon - lonDelta
   };
+}
+
+/**
+ * Hitta närmaste vattendrag vid exakta koordinater (för kartklick)
+ * FÖRBÄTTRAD: Hanterar multipla geometrier och aggregerar samma vattendrag
+ */
+export async function getWaterBodyAtCoordinates(
+  lat: number,
+  lon: number,
+  maxDistanceKm: number = 1 // Max avstånd från klick-punkt
+): Promise<ScandinavianWaterBody | null> {
+  
+  try {
+    // Använd PostGIS för att hitta närmaste vattendrag - FLERA resultat för aggregering
+    const { data: results, error } = await supabase
+      .rpc('water_bodies_within_distance', {
+        center_lat: lat,
+        center_lon: lon,
+        max_distance_km: maxDistanceKm
+      })
+      .limit(10); // Hämta flera för att hantera multipla geometrier
+
+    if (error) {
+      console.warn('⚠️ PostGIS-funktion saknas, använder fallback-sökning:', error.message);
+      
+      // Fallback: Använd water_bodies_with_centroids view om den finns
+      try {
+        const searchRadius = 0.01; // ~1km
+        const { data: fallbackResults, error: fallbackError } = await supabase
+          .from('water_bodies_with_centroids')
+          .select('id, osm_id, name, water_type, area_km2, tags, geometry, center_lat, center_lon')
+          .not('name', 'is', null)
+          .gte('center_lat', lat - searchRadius)
+          .lte('center_lat', lat + searchRadius)
+          .gte('center_lon', lon - searchRadius)
+          .lte('center_lon', lon + searchRadius)
+          .order('area_km2', { ascending: false })
+          .limit(1);
+          
+        if (!fallbackError && fallbackResults && fallbackResults.length > 0) {
+          return convertToScandinavianWaterBody(fallbackResults[0]);
+        }
+      } catch (e) {
+        console.warn('View fallback misslyckades också');
+      }
+      
+      // Sista fallback: Vanlig tabell med spatial query
+      try {
+        const searchRadius = 0.005; // Mindre area för bättre prestanda
+        const { data: finalResults, error: finalError } = await supabase
+          .from('water_bodies')
+          .select('id, osm_id, name, water_type, area_km2, tags, geometry')
+          .not('name', 'is', null)
+          .not('geometry', 'is', null)
+          .order('area_km2', { ascending: false })
+          .limit(10); // Hämta fler och filtrera i JavaScript
+          
+        if (finalError || !finalResults) {
+          return null;
+        }
+        
+        // Enkel avståndskontroll i JavaScript som fallback
+        for (const water of finalResults) {
+          const coords = extractCoordinatesFromGeometry(water.geometry);
+          if (coords) {
+            const distance = Math.sqrt(
+              Math.pow(coords.lat - lat, 2) + Math.pow(coords.lon - lon, 2)
+            );
+            // Ungefär 1km i grader
+            if (distance < 0.01) {
+              return convertToScandinavianWaterBody(water);
+            }
+          }
+        }
+        
+        return null;
+      } catch (e) {
+        console.error('Alla fallbacks misslyckades:', e);
+        return null;
+      }
+    }
+
+    if (!results || results.length === 0) {
+      return null;
+    }
+
+    // FÖRBÄTTRING: Hantera multipla geometrier för samma vattendrag
+    // Prioritera största/närmaste eller aggregera baserat på namn
+    const bestMatch = findBestWaterBodyMatch(results, lat, lon);
+    return convertToScandinavianWaterBody(bestMatch);
+    
+  } catch (error) {
+    console.error('Fel vid sökning efter vattendrag på koordinater:', error);
+    return null;
+  }
+}
+
+/**
+ * Hitta bästa match från multipla vattendrag-resultat
+ * Hanterar flera geometrier för samma vattendrag (floder, stora sjöar etc.)
+ */
+function findBestWaterBodyMatch(results: any[], clickLat: number, clickLon: number): any {
+  if (results.length === 1) return results[0];
+  
+  // Gruppera efter namn för att hantera multipla geometrier för samma vattendrag
+  const byName = new Map<string, any[]>();
+  
+  for (const result of results) {
+    const name = result.name;
+    if (!byName.has(name)) {
+      byName.set(name, []);
+    }
+    byName.get(name)!.push(result);
+  }
+  
+  // Om samma namn förekommer flera gånger, välj den största geometrin
+  const candidates: any[] = [];
+  
+  for (const [name, geometries] of byName.entries()) {
+    if (geometries.length === 1) {
+      candidates.push(geometries[0]);
+    } else {
+      // Flera geometrier för samma vattendrag - välj största
+      const largest = geometries.reduce((largest, current) => 
+        (current.area_km2 || 0) > (largest.area_km2 || 0) ? current : largest
+      );
+      
+      candidates.push(largest);
+    }
+  }
+  
+  // Om vi fortfarande har flera kandidater, välj närmaste baserat på centroid
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+  
+  let bestMatch = candidates[0];
+  let bestDistance = Infinity;
+  
+  for (const candidate of candidates) {
+    const coords = extractCoordinatesFromGeometry(candidate.geometry);
+    const distance = Math.sqrt(
+      Math.pow(clickLat - coords.lat, 2) + Math.pow(clickLon - coords.lon, 2)
+    );
+    
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestMatch = candidate;
+    }
+  }
+  
+  return bestMatch;
 }

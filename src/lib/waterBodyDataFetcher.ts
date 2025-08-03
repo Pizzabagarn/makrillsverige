@@ -117,16 +117,11 @@ export class WaterBodyDataFetcher {
    */
   async fetchWaterBodyData(waterBodyName: string): Promise<WaterBodyData | null> {
     try {
-      console.log(`🔍 Söker data för: ${waterBodyName}`);
-
       // 1. Hitta vattenförekomsten i VISS
       const basicInfo = await this.findWaterBody(waterBodyName);
       if (!basicInfo) {
-        console.log('❌ Vattenförekomst inte hittad');
         return null;
       }
-
-      console.log(`✅ Hittade: ${basicInfo.name} (${basicInfo.eu_cd})`);
 
       // 2. Hämta all data parallellt för bättre prestanda
       const [waterQuality, fishData, currentConditions] = await Promise.all([
@@ -148,7 +143,6 @@ export class WaterBodyDataFetcher {
         }
       };
 
-      console.log('🎯 Komplett data hämtad!');
       return result;
 
     } catch (error) {

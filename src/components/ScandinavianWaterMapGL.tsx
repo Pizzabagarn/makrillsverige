@@ -10,7 +10,8 @@ import {
   ScandinavianWaterBody, 
   getWaterBodiesInBounds,
   getWaterBodyDetails,
-  getPopularFishingWaters
+  getPopularFishingWaters,
+  getWaterBodyAtCoordinates
 } from '@/lib/scandinavianWaterService';
 
 interface WaterBodyInfoPanelProps {
@@ -211,6 +212,10 @@ interface Props {
 const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterBodySelect }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  
+  // REF för synkron state tracking (löser React async state problem)
+  const selectedWaterBodyRef = useRef<ScandinavianWaterBody | null>(null);
+  
   const [selectedWaterBody, setSelectedWaterBody] = useState<ScandinavianWaterBody | null>(null);
   const [waterData, setWaterData] = useState<WaterBodyData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -291,27 +296,21 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     mapRef.current = map;
 
     // Wait for map to load
-    map.on('load', () => {
-      // Ladda populära vattenområden direkt
+    map.on('load', async () => {
+      // Cache populära vattendrag i bakgrunden för snabbare lookup
       loadPopularFishingWaters();
       
-      // Ladda även vattenområden för nuvarande vy
+      // Cache vattendrag för aktuell vy också
       const bounds = map.getBounds();
       if (bounds) {
         handleMapMove();
       }
       
       // Add event listeners
-      map.on('moveend', handleMapMove);
-      map.on('click', 'water-bodies-layer', handleMapClick);
+      map.on('moveend', handleMapMove); // För preloading av detaljer
       
-      // Click anywhere else to deselect
-      map.on('click', (e) => {
-        // If click didn't hit a water body, clear selection
-        if (!e.originalEvent.defaultPrevented) {
-          clearSelection();
-        }
-      });
+      // SMART KLICK-HANTERING: Klicka ut först, sedan välj nytt
+      map.on('click', handleSmartMapClick);
     });
 
     return () => {
@@ -322,11 +321,14 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     };
   }, []);
 
+  // BORTTAGET: Glow-effekt (på användarens begäran)
+
   const loadPopularFishingWaters = async () => {
     try {
-      const popularWaters = await getPopularFishingWaters('ALL', 100);
+      // Ladda populära vattendrag för cache (inga prickar behövs längre)
+      const popularWaters = await getPopularFishingWaters('ALL', 500);
       setVisibleWaterBodies(popularWaters);
-      addWaterBodiesToMap(popularWaters);
+      // addWaterBodiesToMap(popularWaters); // BORTTAGET - vi har glow-overlay istället
     } catch (error) {
       console.error('Fel vid laddning av populära fiskevatten:', error);
     }
@@ -339,7 +341,8 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     const bounds = map.getBounds();
     const zoom = map.getZoom();
 
-    if (zoom < 7) return;
+    // Minska zoom-begränsningen kraftigt för att alla sjöar ska vara klickbara
+    if (zoom < 4) return;
 
     try {
       const waterBodies = await getWaterBodiesInBounds({
@@ -347,20 +350,22 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         south: bounds.getSouth(),
         east: bounds.getEast(),
         west: bounds.getWest()
-      }, 200);
+      }, 300); // Öka limit för fler vattendrag
 
       const newBodies = waterBodies.filter(wb => 
         !visibleWaterBodies.some(vwb => vwb.id === wb.id)
       );
       
       if (newBodies.length > 0) {
-        setVisibleWaterBodies(prev => [...prev, ...newBodies].slice(0, 500));
-        addWaterBodiesToMap(newBodies);
+        // Cache för snabbare lookup
+        setVisibleWaterBodies(prev => [...prev, ...newBodies].slice(0, 1000));
       }
     } catch (error) {
       console.error('Fel vid laddning av vattendrag:', error);
     }
   };
+
+  // BORTTAGET: updateGlowOverlay (glow-effekten togs bort)
 
   const addWaterBodiesToMap = (waterBodies: ScandinavianWaterBody[]) => {
     if (!mapRef.current || waterBodies.length === 0) return;
@@ -514,35 +519,80 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     }
   };
 
-  const handleMapClick = async (e: maplibregl.MapMouseEvent) => {
-    if (!e.features || e.features.length === 0) return;
+  // GAMMAL handleMapClick BORTTAGEN - vi använder bara handleUniversalMapClick nu
 
-    // Prevent the general map click from firing
-    e.originalEvent.preventDefault();
+  // SMART KLICK-HANTERING: Klicka ut först, sedan välj nytt
+  const handleSmartMapClick = async (e: maplibregl.MapMouseEvent) => {
+    // Om klicket redan hanterades av en specifik layer, skippa
+    if (e.originalEvent.defaultPrevented) {
+      return;
+    }
 
-    const feature = e.features[0];
-    const properties = feature.properties;
+    // VIKTIGT: Använd REF istället för state för synkron kontroll
+    if (selectedWaterBodyRef.current) {
+      e.originalEvent.preventDefault(); // Förhindra andra handlers
+      clearSelection();
+      return;
+    }
+
+    const { lng, lat } = e.lngLat;
     
-    if (!properties) return;
+    try {
+      // Förbättrad sökning med större tolerans för små geometrier
+      const waterBody = await getWaterBodyAtCoordinatesImproved(lat, lng);
+      
+      if (waterBody) {
+        // Markera att vi hanterat klicket
+        e.originalEvent.preventDefault();
+        
+        handleWaterBodyClick(waterBody);
+      }
+      
+    } catch (error) {
+      console.error('Fel vid smart map click:', error);
+    }
+  };
 
-    const waterBody: ScandinavianWaterBody = {
-      id: properties.id,
-      osm_id: 0,
-      name: properties.name,
-      water_type: properties.water_type,
-      country: properties.country,
-      coordinates: [
-        (feature.geometry as any).coordinates[1], 
-        (feature.geometry as any).coordinates[0]
-      ],
-      area_km2: properties.area_km2,
-      has_chart: properties.has_chart
-    };
+  // FÖRBÄTTRAD geometri-sökning med flera strategier
+  const getWaterBodyAtCoordinatesImproved = async (lat: number, lng: number): Promise<ScandinavianWaterBody | null> => {
+    // Strategi 1: Försök med standard sökning (1km)
+    let waterBody = await getWaterBodyAtCoordinates(lat, lng, 1);
+    if (waterBody) return waterBody;
+    
+    // Strategi 2: Öka sök-radien för små geometrier (3km)
+    waterBody = await getWaterBodyAtCoordinates(lat, lng, 3);
+    if (waterBody) return waterBody;
+    
+    // Strategi 3: Sök i cache bland synliga vattendrag för snabbhet
+    const cachedMatch = findInCachedWaterBodies(lat, lng);
+    if (cachedMatch) return cachedMatch;
+    
+    // Strategi 4: Bred databas-sökning med stora toleranser (5km)
+    waterBody = await getWaterBodyAtCoordinates(lat, lng, 5);
+    return waterBody;
+  };
 
-    handleWaterBodyClick(waterBody);
+  // Hjälpfunktion: Sök i cachade vattendrag för snabb matchning
+  const findInCachedWaterBodies = (lat: number, lng: number): ScandinavianWaterBody | null => {
+    const tolerance = 0.05; // ~5km tolerans i grader
+    
+    for (const wb of visibleWaterBodies) {
+      const [wbLat, wbLng] = wb.coordinates;
+      const distance = Math.sqrt(
+        Math.pow(lat - wbLat, 2) + Math.pow(lng - wbLng, 2)
+      );
+      
+      if (distance < tolerance) {
+        return wb;
+      }
+    }
+    
+    return null;
   };
 
   const clearSelection = () => {
+    // Uppdatera både state och ref synkront
+    selectedWaterBodyRef.current = null;
     setSelectedWaterBody(null);
     setWaterData(null);
     
@@ -563,6 +613,8 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   };
 
   const handleWaterBodyClick = async (waterBody: ScandinavianWaterBody) => {
+    // Uppdatera både state och ref synkront
+    selectedWaterBodyRef.current = waterBody;
     setSelectedWaterBody(waterBody);
     setWaterData(null);
     setLoading(true);
@@ -573,29 +625,17 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
 
     // Fetch detailed data for ALL water bodies now (including full geometry)
     try {
-      console.log('🔍 Hämtar detaljer för:', waterBody.name, waterBody.country);
       const details = await getWaterBodyDetails(waterBody.id);
       if (details) {
-        console.log('✅ Details hämtade för:', waterBody.name);
-        console.log('📊 VISS Data:', details.vissData ? 'JA' : 'NEJ');
-        if (details.vissData) {
-          console.log('🧪 WaterQuality:', details.vissData.waterQuality ? 'JA' : 'NEJ');
-          console.log('🐟 FishData:', details.vissData.fishData ? 'JA' : 'NEJ');
-          console.log('🌡️ CurrentConditions:', details.vissData.currentConditions ? 'JA' : 'NEJ');
-          console.log('📈 Quality Score:', details.vissData.metadata?.quality_assessment?.completeness_score);
-        }
-        
         setWaterData(details.vissData);
         
         // Update the water body with complete geometry data
         if (details.waterBody.geometry) {
           waterBody.geometry = details.waterBody.geometry;
         }
-      } else {
-        console.log('❌ Inga detaljer hittades för:', waterBody.name);
       }
     } catch (error) {
-      console.error('❌ Fel vid hämtning av vattendrags-detaljer:', error);
+      console.error('Fel vid hämtning av vattendrags-detaljer:', error);
     }
     
     setLoading(false);
