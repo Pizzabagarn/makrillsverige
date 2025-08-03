@@ -433,6 +433,25 @@ export default function LandingPage() {
             </span>
           </button>
 
+          {/* Skandinavisk karta knapp */}
+          <button
+            onClick={() => {
+              setNavigating(true);
+              router.push('/skandinavisk-karta');
+            }}
+            onMouseEnter={handleButtonHover}
+            onMouseLeave={handleButtonLeave}
+            className="group relative w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-medium rounded-2xl border border-white/20"
+            style={{ opacity: 0 }}
+          >
+            <span className="relative flex items-center justify-center gap-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/>
+              </svg>
+              <span>Skandinavisk karta</span>
+            </span>
+          </button>
+
           {/* Registrera knapp */}
           <button
             onClick={handleNavigateToSignup}
