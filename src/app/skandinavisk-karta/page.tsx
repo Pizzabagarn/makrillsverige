@@ -130,9 +130,9 @@ export default function ScandinavianMapPage() {
     inputRef.current?.focus();
   };
 
-  const getCountryFlag = (country: string) => {
-    const flags = { 'SE': '🇸🇪', 'NO': '🇳🇴', 'DK': '🇩🇰' };
-    return flags[country as keyof typeof flags] || '';
+  const getCountryName = (country: string) => {
+    const names = { 'SE': 'Sverige', 'NO': 'Norge', 'DK': 'Danmark' };
+    return names[country as keyof typeof names] || country;
   };
 
   const getWaterTypeLabel = (type: string) => {
@@ -208,8 +208,7 @@ export default function ScandinavianMapPage() {
                             <div>
                               <div className="text-white font-medium">{result.name}</div>
                               <div className="text-slate-400 text-sm">
-                                {getWaterTypeLabel(result.water_type)} • {getCountryFlag(result.country)}
-                                {result.area_km2 && ` • ${result.area_km2} km²`}
+                                {getWaterTypeLabel(result.water_type)} • {getCountryName(result.country)}
                               </div>
                             </div>
                           </div>

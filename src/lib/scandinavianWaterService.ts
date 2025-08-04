@@ -62,7 +62,7 @@ export async function searchScandinavianWaterBodies(
       
       // Filtrera på namnet efter RPC-anropet
       if (results && !error) {
-        results = results.filter(water => 
+        results = results.filter((water: any) => 
           water.name && water.name.toLowerCase().includes(query.toLowerCase())
         );
       }
@@ -74,7 +74,7 @@ export async function searchScandinavianWaterBodies(
         .not('name', 'is', null)
         .not('geometry', 'is', null)
         .ilike('name', `%${query}%`)
-        .order('area_km2', { ascending: false, nullsLast: true })
+        .order('area_km2', { ascending: false })
         .limit(limit);
       
       results = dbResult.data;
@@ -90,7 +90,7 @@ export async function searchScandinavianWaterBodies(
       return [];
     }
 
-    return results.map(water => convertToScandinavianWaterBody(water));
+    return results.map((water: any) => convertToScandinavianWaterBody(water));
     
   } catch (error) {
     console.error('Fel vid sökning av skandinaviska vattendrag:', error);
@@ -120,7 +120,7 @@ export async function getWaterBodiesInBounds(
       .lte('center_lat', bounds.north)
       .gte('center_lon', bounds.west)
       .lte('center_lon', bounds.east)
-      .order('area_km2', { ascending: false, nullsLast: true })
+      .order('area_km2', { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -133,7 +133,7 @@ export async function getWaterBodiesInBounds(
         .select('id, osm_id, name, water_type, area_km2, tags, geometry')
         .not('name', 'is', null)
         .not('geometry', 'is', null)
-        .order('area_km2', { ascending: false, nullsLast: true })
+        .order('area_km2', { ascending: false })
         .limit(Math.min(50, limit)); // Mindre limit för fallback
         
       if (fallbackError) {
@@ -141,10 +141,10 @@ export async function getWaterBodiesInBounds(
         return [];
       }
       
-      return (fallbackResults || []).map(water => convertToScandinavianWaterBody(water));
+      return (fallbackResults || []).map((water: any) => convertToScandinavianWaterBody(water));
     }
 
-    return (results || []).map(water => convertToScandinavianWaterBody(water));
+    return (results || []).map((water: any) => convertToScandinavianWaterBody(water));
     
   } catch (error) {
     console.error('Fel vid hämtning av vattendrag i område:', error);
@@ -391,7 +391,7 @@ export async function getPopularFishingWaters(
       return [];
     }
 
-    return (results || []).map(water => convertToScandinavianWaterBody(water));
+    return (results || []).map((water: any) => convertToScandinavianWaterBody(water));
     
   } catch (error) {
     console.error('Fel vid hämtning av populära fiskevatten:', error);
@@ -431,86 +431,57 @@ export async function getWaterBodyAtCoordinates(
 ): Promise<ScandinavianWaterBody | null> {
   
   try {
-    // Använd PostGIS för att hitta närmaste vattendrag - FLERA resultat för aggregering
+    // *** ULTRASNABB STRATEGI: Använd samma metod som väder-sidan! ***
+    // Gör en enkel bounding box-sökning istället för komplexa PostGIS-queries
+    
+    const searchRadius = maxDistanceKm * 0.009; // ~1km = 0.009 grader
+    
     const { data: results, error } = await supabase
-      .rpc('water_bodies_within_distance', {
-        center_lat: lat,
-        center_lon: lon,
-        max_distance_km: maxDistanceKm
-      })
-      .limit(10); // Hämta flera för att hantera multipla geometrier
+      .from('water_bodies')
+      .select('id, osm_id, name, water_type, area_km2, tags, geometry')
+      // SNABB bounding box-filter (använder vanliga numeriska index)
+      .gte('lat', lat - searchRadius)
+      .lte('lat', lat + searchRadius) 
+      .gte('lon', lon - searchRadius)
+      .lte('lon', lon + searchRadius)
+      .not('name', 'is', null)
+      .not('geometry', 'is', null)
+      .order('area_km2', { ascending: false })
+      .limit(20); // Hämta flera kandidater för JavaScript-filtrering
 
     if (error) {
-      console.warn('⚠️ PostGIS-funktion saknas, använder fallback-sökning:', error.message);
-      
-      // Fallback: Använd water_bodies_with_centroids view om den finns
-      try {
-        const searchRadius = 0.01; // ~1km
-        const { data: fallbackResults, error: fallbackError } = await supabase
-          .from('water_bodies_with_centroids')
-          .select('id, osm_id, name, water_type, area_km2, tags, geometry, center_lat, center_lon')
-          .not('name', 'is', null)
-          .gte('center_lat', lat - searchRadius)
-          .lte('center_lat', lat + searchRadius)
-          .gte('center_lon', lon - searchRadius)
-          .lte('center_lon', lon + searchRadius)
-          .order('area_km2', { ascending: false })
-          .limit(1);
-          
-        if (!fallbackError && fallbackResults && fallbackResults.length > 0) {
-          return convertToScandinavianWaterBody(fallbackResults[0]);
-        }
-      } catch (e) {
-        console.warn('View fallback misslyckades också');
-      }
-      
-      // Sista fallback: Vanlig tabell med spatial query
-      try {
-        const searchRadius = 0.005; // Mindre area för bättre prestanda
-        const { data: finalResults, error: finalError } = await supabase
-          .from('water_bodies')
-          .select('id, osm_id, name, water_type, area_km2, tags, geometry')
-          .not('name', 'is', null)
-          .not('geometry', 'is', null)
-          .order('area_km2', { ascending: false })
-          .limit(10); // Hämta fler och filtrera i JavaScript
-          
-        if (finalError || !finalResults) {
-          return null;
-        }
-        
-        // Enkel avståndskontroll i JavaScript som fallback
-        for (const water of finalResults) {
-          const coords = extractCoordinatesFromGeometry(water.geometry);
-          if (coords) {
-            const distance = Math.sqrt(
-              Math.pow(coords.lat - lat, 2) + Math.pow(coords.lon - lon, 2)
-            );
-            // Ungefär 1km i grader
-            if (distance < 0.01) {
-              return convertToScandinavianWaterBody(water);
-            }
-          }
-        }
-        
-        return null;
-      } catch (e) {
-        console.error('Alla fallbacks misslyckades:', e);
-        return null;
-      }
+      console.warn('⚠️ Snabb bounding box-sökning misslyckades:', error);
+      return null;
     }
 
     if (!results || results.length === 0) {
       return null;
     }
 
-    // FÖRBÄTTRING: Hantera multipla geometrier för samma vattendrag
-    // Prioritera största/närmaste eller aggregera baserat på namn
-    const bestMatch = findBestWaterBodyMatch(results, lat, lon);
-    return convertToScandinavianWaterBody(bestMatch);
+    // JavaScript-filtrering för exakt avstånd (mycket snabbare än PostGIS för små datasets)
+    let bestMatch: any = null;
+    let shortestDistance = Infinity;
+
+    for (const water of results) {
+      const coords = extractCoordinatesFromGeometry(water.geometry);
+      if (!coords) continue;
+
+      // Enkel euklidisk distans (snabb)
+      const distance = Math.sqrt(
+        Math.pow(coords.lat - lat, 2) + Math.pow(coords.lon - lon, 2)
+      );
+
+      // Acceptera vattendrag inom maxDistanceKm (i grader ~= km * 0.009)
+      if (distance <= maxDistanceKm * 0.009 && distance < shortestDistance) {
+        shortestDistance = distance;
+        bestMatch = water;
+      }
+    }
+
+    return bestMatch ? convertToScandinavianWaterBody(bestMatch) : null;
     
   } catch (error) {
-    console.error('Fel vid sökning efter vattendrag på koordinater:', error);
+    console.error('Fel vid snabb vattendrags-sökning:', error);
     return null;
   }
 }

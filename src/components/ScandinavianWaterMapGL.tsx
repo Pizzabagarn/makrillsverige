@@ -24,10 +24,10 @@ interface WaterBodyInfoPanelProps {
 function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBodyInfoPanelProps) {
   if (!waterBody) return null;
 
-  const countryFlags = {
-    'SE': '🇸🇪 Sverige',
-    'NO': '🇳🇴 Norge', 
-    'DK': '🇩🇰 Danmark'
+  const countryNames = {
+    'SE': 'Sverige',
+    'NO': 'Norge', 
+    'DK': 'Danmark'
   };
 
   const typeLabels = {
@@ -45,7 +45,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
         <div>
           <h3 className="text-xl font-bold text-white mb-1">{waterBody.name}</h3>
           <p className="text-sm text-slate-300 font-medium">
-            {typeLabels[waterBody.water_type]} • {countryFlags[waterBody.country]}
+            {typeLabels[waterBody.water_type]} • {countryNames[waterBody.country]}
           </p>
         </div>
         <button
@@ -58,26 +58,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
       {/* Content */}
       <div className="p-6 space-y-6">
-        {/* Basic Info */}
-        <div>
-          <h4 className="font-semibold text-white mb-4 flex items-center text-lg">
-            📊 Grundläggande information
-          </h4>
-          <div className="grid grid-cols-2 gap-4">
-            {waterBody.area_km2 && (
-              <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-4">
-                <div className="text-blue-300 text-sm font-medium mb-1">Yta</div>
-                <div className="text-white font-bold text-lg">{waterBody.area_km2} km²</div>
-              </div>
-            )}
-            <div className="bg-gradient-to-br from-slate-700/30 to-slate-600/20 border border-slate-600/30 rounded-xl p-4">
-              <div className="text-slate-300 text-sm font-medium mb-1">Koordinater</div>
-              <div className="text-white font-mono text-sm">
-                {waterBody.coordinates[0].toFixed(4)}, {waterBody.coordinates[1].toFixed(4)}
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         {/* Loading State */}
         {loading && (
@@ -677,119 +658,133 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       onWaterBodySelect(waterBody);
     }
 
-    // Fetch detailed data for ALL water bodies now (including full geometry)
-    try {
-      const details = await getWaterBodyDetails(waterBody.id);
-      if (details) {
-        setWaterData(details.vissData);
-        
-        // Update the water body with complete geometry data
-        if (details.waterBody.geometry) {
-          waterBody.geometry = details.waterBody.geometry;
-        }
-      }
-    } catch (error) {
-      console.error('Fel vid hämtning av vattendrags-detaljer:', error);
-    }
+    // *** SNABB HIGHLIGHTING FÖRST - ingen väntan! ***
+    showImmediateHighlight(waterBody);
+
+    // *** Data-hämtning i bakgrunden - blocking UI ***
+    fetchWaterBodyDataInBackground(waterBody);
+  };
+
+  // Visa highlighting omedelbart utan att vänta på data
+  const showImmediateHighlight = (waterBody: ScandinavianWaterBody) => {
+    if (!mapRef.current) return;
     
-    setLoading(false);
+    const map = mapRef.current;
+    
+    // Remove existing highlight layers
+    ['selected-water-polygon', 'selected-water-outline', 'highlight-circle'].forEach(layerId => {
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    });
+    ['selected-water-source', 'highlight-source'].forEach(sourceId => {
+      if (map.getSource(sourceId)) {
+        map.removeSource(sourceId);
+      }
+    });
 
-    // Add polygon highlight (if geometry available) or circle fallback
-    if (mapRef.current) {
-      const map = mapRef.current;
+    // Show geometry if available - stöder nu även GeometryCollection
+    if (waterBody.geometry && isValidGeometryForHighlighting(waterBody.geometry)) {
       
-      // Remove existing highlight layers
-      ['selected-water-polygon', 'selected-water-outline', 'highlight-circle'].forEach(layerId => {
-        if (map.getLayer(layerId)) {
-          map.removeLayer(layerId);
-        }
-      });
-      ['selected-water-source', 'highlight-source'].forEach(sourceId => {
-        if (map.getSource(sourceId)) {
-          map.removeSource(sourceId);
-        }
-      });
-
-      // Show geometry if available - stöder nu även GeometryCollection
-      if (waterBody.geometry && isValidGeometryForHighlighting(waterBody.geometry)) {
-        
-        // Skapa GeoJSON data för highlighting
-        const highlightData = prepareGeometryForHighlighting(waterBody);
-        
-        // Add geometry source
-        map.addSource('selected-water-source', {
+      // Skapa GeoJSON data för highlighting
+      const highlightData = prepareGeometryForHighlighting(waterBody);
+      
+      // Add geometry source
+              map.addSource('selected-water-source', {
           type: 'geojson',
-          data: highlightData
+          data: highlightData as any
         });
 
-        // Bara lägg till fill för polygoner (sjöar), inte för åar/floder
-        if (shouldUsePolygonFill(waterBody.geometry)) {
-          map.addLayer({
-            id: 'selected-water-polygon',
-            type: 'fill',
-            source: 'selected-water-source',
-            paint: {
-              'fill-color': '#0ea5e9',
-              'fill-opacity': 0.15
-            }
-          });
-        }
-
-        // Add outline - fungerar för alla geometrityper (både sjöar och åar)
+      // Bara lägg till fill för polygoner (sjöar), inte för åar/floder
+      if (shouldUsePolygonFill(waterBody.geometry)) {
         map.addLayer({
-          id: 'selected-water-outline',
-          type: 'line',
+          id: 'selected-water-polygon',
+          type: 'fill',
           source: 'selected-water-source',
           paint: {
-            'line-color': '#0ea5e9',
-            'line-width': shouldUsePolygonFill(waterBody.geometry) ? 2 : 3, // Tjockare linje för åar
-            'line-opacity': 0.8
+            'fill-color': '#0ea5e9',
+            'fill-opacity': 0.15
           }
         });
+      }
 
-        // Fit map to geometry bounds
-        try {
-          const bbox = turf.bbox(waterBody.geometry);
-          map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
-            padding: 50,
-            maxZoom: 14
-          });
-        } catch (e) {
-          console.warn('Could not fit bounds to geometry:', e);
+      // Add outline - fungerar för alla geometrityper (både sjöar och åar)
+      map.addLayer({
+        id: 'selected-water-outline',
+        type: 'line',
+        source: 'selected-water-source',
+        paint: {
+          'line-color': '#0ea5e9',
+          'line-width': shouldUsePolygonFill(waterBody.geometry) ? 2 : 3, // Tjockare linje för åar
+          'line-opacity': 0.8
         }
+      });
 
-      } else {
-        // Fallback to circle highlight
-        const center = [waterBody.coordinates[1], waterBody.coordinates[0]];
-        const radius = Math.max(100, (waterBody.area_km2 || 1) * 100);
-        
-        map.addSource('highlight-source', {
+      // Fit map to geometry bounds
+      try {
+        const bbox = turf.bbox(waterBody.geometry);
+        map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
+          padding: 50,
+          maxZoom: 14
+        });
+      } catch (e) {
+        console.warn('Could not fit bounds to geometry:', e);
+      }
+
+    } else {
+      // Fallback to circle highlight
+      const center = [waterBody.coordinates[1], waterBody.coordinates[0]];
+      const radius = Math.max(100, (waterBody.area_km2 || 1) * 100);
+      
+              map.addSource('highlight-source', {
           type: 'geojson',
           data: {
             type: 'Feature',
             geometry: {
               type: 'Point',
               coordinates: center
-            }
+            },
+            properties: {}
           }
         });
 
-        map.addLayer({
-          id: 'highlight-circle',
-          type: 'circle',
-          source: 'highlight-source',
-          paint: {
-            'circle-radius': radius / (Math.pow(2, map.getZoom() - 10)),
-            'circle-color': '#0ea5e9',
-            'circle-opacity': 0.1,
-            'circle-stroke-color': '#0ea5e9',
-            'circle-stroke-width': 2,
-            'circle-stroke-opacity': 0.8
-          }
-        });
+      map.addLayer({
+        id: 'highlight-circle',
+        type: 'circle',
+        source: 'highlight-source',
+        paint: {
+          'circle-radius': radius / (Math.pow(2, map.getZoom() - 10)),
+          'circle-color': '#0ea5e9',
+          'circle-opacity': 0.1,
+          'circle-stroke-color': '#0ea5e9',
+          'circle-stroke-width': 2,
+          'circle-stroke-opacity': 0.8
+        }
+      });
+    }
+  };
+
+  // Hämta data i bakgrunden och uppdatera geometri om behövs
+  const fetchWaterBodyDataInBackground = async (waterBody: ScandinavianWaterBody) => {
+    try {
+      // Fetch detailed data for ALL water bodies now (including full geometry)
+      const details = await getWaterBodyDetails(waterBody.id);
+      
+      if (details) {
+        // Uppdatera med VISS-data
+        setWaterData(details.vissData || null);
+        
+        // Om vi fick bättre geometri, uppdatera highlighting
+        if (details.waterBody.geometry && !waterBody.geometry) {
+          waterBody.geometry = details.waterBody.geometry;
+          // Visa förbättrad highlighting med fullständig geometri
+          showImmediateHighlight(waterBody);
+        }
       }
-
-      // Highlight stannar kvar tills användaren klickar någon annanstans
+    } catch (error) {
+      console.error('Fel vid hämtning av vattendrags-detaljer:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
