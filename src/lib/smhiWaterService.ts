@@ -1,6 +1,9 @@
 /**
- * SMHI Water Service - Using smart clustered SMHI data instead of OSM
- * Same API as scandinavianWaterService but with much better geometries!
+ * Hybrid Water Service - SMHI + OSM Integration
+ * Uses water_bodies_integrated for best of both worlds:
+ * - SMHI lakes (unified segments, depth/volume data)
+ * - OSM rivers/streams (complete coverage, fishing data)
+ * - Smart geographic prioritization
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -14,15 +17,28 @@ export interface SMHIWaterBody {
   id: string;
   name: string;
   water_type: 'lake' | 'river' | 'stream' | 'reservoir' | 'canal';
-  country: 'SE' | 'NO' | 'DK';
+  country: 'SE' | 'NO' | 'DK' | 'FI';
   coordinates: [number, number];
   bounds?: [[number, number], [number, number]];
   area_km2?: number;
+  
+  // SMHI-specific data (lakes)
   depth_mean?: number;
   depth_max?: number;
   volume_m3?: number;
   ecological_status?: string;
   segment_count: number;
+  unification_method?: string;
+  
+  // OSM-specific data (rivers/streams)
+  fishing_regulations?: any;
+  water_quality_status?: string;
+  water_district?: string;
+  
+  // Source metadata
+  data_source: 'SMHI' | 'OSM';
+  source_priority: number;
+  
   has_chart?: boolean;
   geometry?: any;
 }
@@ -34,8 +50,8 @@ export interface SMHIWaterBodySearchResult {
 }
 
 /**
- * Sök SMHI-vattendrag från optimerade tabellen
- * ULTRASNABB: Använder lat/lon index precis som OSM-versionen
+ * Sök hybrid vattendrag (SMHI + OSM) från integrerade tabellen
+ * SMART PRIORITERING: SMHI lakes först, sedan OSM fallback
  */
 export async function searchSMHIWaterBodies(
   query: string,
@@ -54,8 +70,11 @@ export async function searchSMHIWaterBodies(
       const searchRadius = maxDistance * 0.009; // ~1km = 0.009 grader
       
       const dbResult = await supabase
-        .from('smhi_water_bodies_lake_unified')
-        .select('id, name, water_type, geometry, lat, lon, area_km2, depth_mean, depth_max, volume_m3, ecological_status, cluster_size, cluster_method')
+        .from('water_bodies_integrated')
+        .select(`id, name, water_type, geometry, lat, lon, area_km2,
+          data_source, source_priority,
+          depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
+          fishing_regulations, water_quality_status, water_district`)
         // SNABB bounding box-filter (använder index)
         .gte('lat', centerPoint.lat - searchRadius)
         .lte('lat', centerPoint.lat + searchRadius) 
@@ -64,6 +83,7 @@ export async function searchSMHIWaterBodies(
         .not('name', 'is', null)
         .not('geometry', 'is', null)
         .ilike('name', `%${query}%`)
+        .order('data_source', { ascending: true }) // SMHI först (SMHI < OSM alfabetiskt)
         .order('area_km2', { ascending: false })
         .limit(limit);
       
@@ -72,11 +92,15 @@ export async function searchSMHIWaterBodies(
     } else {
       // Vanlig sökning utan geografisk filtrering
       const dbResult = await supabase
-        .from('smhi_water_bodies_lake_unified')
-        .select('id, name, water_type, geometry, lat, lon, area_km2, depth_mean, depth_max, volume_m3, ecological_status, cluster_size, cluster_method')
+        .from('water_bodies_integrated')
+        .select(`id, name, water_type, geometry, lat, lon, area_km2,
+          data_source, source_priority,
+          depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
+          fishing_regulations, water_quality_status, water_district`)
         .not('name', 'is', null)
         .not('geometry', 'is', null)
         .ilike('name', `%${query}%`)
+        .order('data_source', { ascending: true }) // SMHI först (SMHI < OSM alfabetiskt)
         .order('area_km2', { ascending: false })
         .limit(limit);
       
@@ -117,8 +141,11 @@ export async function getSMHIWaterBodiesInBounds(
   
   try {
     const { data: results, error } = await supabase
-      .from('smhi_water_bodies_lake_unified')
-      .select('id, name, water_type, geometry, lat, lon, area_km2, depth_mean, depth_max, volume_m3, ecological_status, cluster_size, cluster_method')
+      .from('water_bodies_integrated')
+      .select(`id, name, water_type, geometry, lat, lon, area_km2,
+          data_source, source_priority,
+          depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
+          fishing_regulations, water_quality_status, water_district`)
       .gte('lat', bounds.south)
       .lte('lat', bounds.north)
       .gte('lon', bounds.west)
@@ -184,26 +211,12 @@ async function getSMHIWaterBodyByGeometryContains(
     const baseRadius = maxDistanceKm * 0.02;
     const largeRadius = maxDistanceKm * 0.05; // Större radius för stora sjöar
     
-    // FÖRST: Testa med ST_DWithin för stora sjöar (mer tolerant än ST_Contains)
-    const { data: nearbyLakes, error: nearbyError } = await supabase
-      .rpc('find_large_lakes_near_point', {
+    // HYBRID ST_Contains för både SMHI och OSM data
+    const { data: results, error } = await supabase
+      .rpc('find_hybrid_water_body_containing_point', {
         click_lat: lat,
         click_lon: lon,
         search_radius_deg: largeRadius
-      });
-
-    if (!nearbyError && nearbyLakes && nearbyLakes.length > 0) {
-      // Prioritera största sjön inom rimligt avstånd
-      const bestLake = nearbyLakes[0]; // Redan sorterad efter area i PostGIS-funktionen
-      return convertToSMHIWaterBody(bestLake);
-    }
-
-    // SEDAN: Traditionell ST_Contains för mindre vattenområden
-    const { data: results, error } = await supabase
-      .rpc('find_water_body_containing_point', {
-        click_lat: lat,
-        click_lon: lon,
-        search_radius_deg: baseRadius
       });
 
     if (error) {
@@ -212,9 +225,14 @@ async function getSMHIWaterBodyByGeometryContains(
     }
 
     if (results && results.length > 0) {
-      // Prioritera sjöar över bäckar
-      const lakes = results.filter((r: any) => r.water_type === 'lake');
-      const bestMatch = lakes.length > 0 ? lakes[0] : results[0];
+      // Hybrid prioritering: SMHI lakes > OSM lakes > rivers > streams
+      const smhiLakes = results.filter((r: any) => r.data_source === 'SMHI' && r.water_type === 'lake');
+      const osmLakes = results.filter((r: any) => r.data_source === 'OSM' && r.water_type === 'lake');
+      const rivers = results.filter((r: any) => r.water_type === 'river');
+      
+      const bestMatch = smhiLakes.length > 0 ? smhiLakes[0] : 
+                       osmLakes.length > 0 ? osmLakes[0] :
+                       rivers.length > 0 ? rivers[0] : results[0];
       
       return convertToSMHIWaterBody(bestMatch);
     }
@@ -242,8 +260,11 @@ async function getSMHIWaterBodyBySmartProximity(
     const expandedRadius = maxDistanceKm * 0.02; // ~2km för stora sjöar
     
     const { data: results, error } = await supabase
-      .from('smhi_water_bodies_lake_unified')
-      .select('id, name, water_type, geometry, lat, lon, area_km2, depth_mean, depth_max, volume_m3, ecological_status, cluster_size, cluster_method')
+      .from('water_bodies_integrated')
+      .select(`id, name, water_type, geometry, lat, lon, area_km2,
+          data_source, source_priority,
+          depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
+          fishing_regulations, water_quality_status, water_district`)
       // UTÖKAD bounding box för att hitta stora sjöar (mer tolerant)
       .gte('lat', lat - expandedRadius)
       .lte('lat', lat + expandedRadius) 
@@ -286,30 +307,39 @@ async function getSMHIWaterBodyBySmartProximity(
       
       if (distance <= distanceThreshold) {
         
-        // SMART POÄNG-SYSTEM: Extra bonus för stora sjöar!
+        // HYBRID SMART POÄNG-SYSTEM: SMHI prioriterat!
         let score = 0;
         
-        // 1. VATTENTYP-PRIORITERING (lakes före streams!)
+        // 1. DATA-KÄLLA PRIORITERING (SMHI först!)
+        if (water.data_source === 'SMHI') {
+          score += 2000; // SMHI får högst prioritet
+        } else if (water.data_source === 'OSM') {
+          score += 500;  // OSM som fallback
+        }
+        
+        // 2. VATTENTYP-PRIORITERING 
         if (water.water_type === 'lake') {
           score += 1000; // Sjöar har högsta prioritet
           
-          // EXTRA BONUS för stora sjöar (de som är svåra att klicka)
+          // EXTRA BONUS för stora sjöar
           if (water.area_km2 > 1000) {
-            score += 2000; // Stor bonus för sjöar >1000 km²
+            score += 3000; // Stor bonus för sjöar >1000 km²
           } else if (water.area_km2 > 500) {
-            score += 1000; // Medium bonus för sjöar >500 km²
+            score += 1500; // Medium bonus för sjöar >500 km²
           }
         } else if (water.water_type === 'river') {
-          score += 500;  // Åar/floder näst högst
+          score += 500;  // Åar/floder
         } else if (water.water_type === 'stream') {
           score += 100;  // Bäckar lägst prioritet
         } else {
           score += 300;  // Övriga vattentyper
         }
         
-        // 2. CLUSTER-STORLEK BONUS (större kluster = viktigare vattenområde)
-        const clusterSize = water.cluster_size || 1;
-        score += clusterSize * 50;
+        // 3. SEGMENT-STORLEK BONUS (unified segments = bättre)
+        const segmentCount = water.segment_count || 1;
+        if (segmentCount > 1) {
+          score += segmentCount * 30; // Bonus för unified lakes
+        }
         
         // 3. NÄRHET-BONUS (närmare = bättre, men inte dominerande)
         const proximityBonus = (1 / (distance + 0.001)) * 100;
@@ -347,7 +377,7 @@ export async function getSMHIWaterBodyDetails(
   
   try {
     const { data: waterBody, error } = await supabase
-      .from('smhi_water_bodies_lake_unified')
+      .from('water_bodies_integrated')
       .select('*')
       .eq('id', waterBodyId)
       .single();
@@ -383,7 +413,7 @@ export async function getSMHIWaterBodyDetails(
 }
 
 /**
- * Konvertera databaspost till SMHIWaterBody
+ * Konvertera hybrid databaspost (SMHI + OSM) till SMHIWaterBody
  */
 function convertToSMHIWaterBody(water: any): SMHIWaterBody {
   const lat = water.lat || 60.0;
@@ -397,20 +427,38 @@ function convertToSMHIWaterBody(water: any): SMHIWaterBody {
     country,
     coordinates: [lat, lon],
     area_km2: water.area_km2,
+    
+    // SMHI-specific data (for lakes)
     depth_mean: water.depth_mean,
     depth_max: water.depth_max,
     volume_m3: water.volume_m3,
     ecological_status: water.ecological_status,
-    segment_count: water.cluster_size || 1, // Smart clustered segments
+    segment_count: water.segment_count || 1,
+    unification_method: water.unification_method,
+    
+    // OSM-specific data (for rivers/streams)
+    fishing_regulations: water.fishing_regulations,
+    water_quality_status: water.water_quality_status,
+    water_district: water.water_district,
+    
+    // Source metadata
+    data_source: water.data_source,
+    source_priority: water.source_priority,
+    
     has_chart: country === 'SE' && water.area_km2 > 0.5, // Svenska sjöar > 0.5 km² har ofta sjökartor
     geometry: water.geometry
   };
 }
 
 /**
- * Bestämma land baserat på koordinater (korrekt indelning)
+ * Bestämma land baserat på koordinater (inkluderar Finland)
  */
-function getCountryFromCoordinates(lat: number, lon: number): 'SE' | 'NO' | 'DK' {
+function getCountryFromCoordinates(lat: number, lon: number): 'SE' | 'NO' | 'DK' | 'FI' {
+  // FINLAND - östliga koordinater
+  if (lon >= 20.0 && lon <= 32.0 && lat >= 59.5 && lat <= 70.5) {
+    return 'FI';
+  }
+  
   // NORGE - latitud-beroende gränser (smalare i söder, bredare i norr)
   if (lat >= 65.0 && lon >= 4.5 && lon <= 15.0) {
     return 'NO';
