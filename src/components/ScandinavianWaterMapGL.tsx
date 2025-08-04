@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
-import { X, ExternalLink, Download, Thermometer } from 'lucide-react';
+import { X, ExternalLink, Thermometer } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
 import { 
   SMHIWaterBody, 
@@ -26,7 +26,8 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
   const countryNames = {
     'SE': 'Sverige',
     'NO': 'Norge', 
-    'DK': 'Danmark'
+    'DK': 'Danmark',
+    'FI': 'Finland'
   };
 
   const typeLabels = {
@@ -67,13 +68,6 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
             </h4>
             
             <div className="grid grid-cols-2 gap-4">
-              {/* Area */}
-              {waterBody.area_km2 && waterBody.area_km2 > 0 && (
-                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-4">
-                  <div className="text-blue-300 text-sm font-medium mb-1">Yta</div>
-                                     <div className="text-white font-bold text-lg">{waterBody.area_km2.toFixed(1)}</div>
-                </div>
-              )}
 
               {/* Depth Mean */}
               {waterBody.depth_mean && waterBody.depth_mean > 0 && (
@@ -220,15 +214,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
           </div>
         )}
 
-        {/* Actions */}
-        {waterBody.has_chart && (
-          <div className="border-t border-slate-600/50 pt-6">
-            <button className="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white px-6 py-4 rounded-xl transition-all duration-200 text-sm font-semibold flex items-center justify-center shadow-lg">
-              <Download className="w-4 h-4 mr-2" />
-              Ladda ner sjökarta
-            </button>
-          </div>
-        )}
+
 
 
       </div>
