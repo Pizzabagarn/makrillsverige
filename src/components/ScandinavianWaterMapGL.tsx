@@ -7,15 +7,14 @@ import * as turf from '@turf/turf';
 import { X, ExternalLink, Download, Thermometer } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
 import { 
-  ScandinavianWaterBody, 
-  getWaterBodiesInBounds,
-  getWaterBodyDetails,
-  getPopularFishingWaters,
-  getWaterBodyAtCoordinates
-} from '@/lib/scandinavianWaterService';
+  SMHIWaterBody, 
+  getSMHIWaterBodiesInBounds,
+  getSMHIWaterBodyDetails,
+  getSMHIWaterBodyAtCoordinates
+} from '@/lib/smhiWaterService';
 
 interface WaterBodyInfoPanelProps {
-  waterBody: ScandinavianWaterBody | null;
+  waterBody: SMHIWaterBody | null;
   waterData: WaterBodyData | null;
   loading: boolean;
   onClose: () => void;
@@ -47,6 +46,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
           <p className="text-sm text-slate-300 font-medium">
             {typeLabels[waterBody.water_type]} • {countryNames[waterBody.country]}
           </p>
+
         </div>
         <button
           onClick={onClose}
@@ -59,6 +59,61 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
       {/* Content */}
       <div className="p-6 space-y-6">
 
+        {/* SMHI Data Section */}
+        {(waterBody.area_km2 || waterBody.depth_mean || waterBody.depth_max || waterBody.volume_m3 || waterBody.ecological_status) && (
+          <div>
+            <h4 className="font-semibold text-white mb-4 flex items-center text-lg">
+              🇸🇪 SMHI-data
+            </h4>
+            
+            <div className="grid grid-cols-2 gap-4">
+              {/* Area */}
+              {waterBody.area_km2 && waterBody.area_km2 > 0 && (
+                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-4">
+                  <div className="text-blue-300 text-sm font-medium mb-1">Yta</div>
+                                     <div className="text-white font-bold text-lg">{waterBody.area_km2.toFixed(1)}</div>
+                </div>
+              )}
+
+              {/* Depth Mean */}
+              {waterBody.depth_mean && waterBody.depth_mean > 0 && (
+                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded-xl p-4">
+                  <div className="text-cyan-300 text-sm font-medium mb-1">Medeldjup</div>
+                                     <div className="text-white font-bold text-lg">{waterBody.depth_mean.toFixed(1)}</div>
+                </div>
+              )}
+
+              {/* Depth Max */}
+              {waterBody.depth_max && waterBody.depth_max > 0 && (
+                <div className="bg-gradient-to-br from-indigo-900/30 to-indigo-800/20 border border-indigo-700/30 rounded-xl p-4">
+                  <div className="text-indigo-300 text-sm font-medium mb-1">Maxdjup</div>
+                                     <div className="text-white font-bold text-lg">{waterBody.depth_max.toFixed(1)}</div>
+                </div>
+              )}
+
+              {/* Volume */}
+              {waterBody.volume_m3 && waterBody.volume_m3 > 0 && (
+                <div className="bg-gradient-to-br from-teal-900/30 to-teal-800/20 border border-teal-700/30 rounded-xl p-4">
+                  <div className="text-teal-300 text-sm font-medium mb-1">Volym</div>
+                                     <div className="text-white font-bold text-lg">
+                     {waterBody.volume_m3 > 1000000 
+                       ? `${(waterBody.volume_m3 / 1000000).toFixed(1)}`
+                       : `${(waterBody.volume_m3 / 1000).toFixed(0)}`
+                     }
+                   </div>
+                </div>
+              )}
+
+              {/* Ecological Status */}
+              {waterBody.ecological_status && (
+                <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded-xl p-4 col-span-2">
+                  <div className="text-green-300 text-sm font-medium mb-1">Ekologisk status</div>
+                  <div className="text-white font-bold text-lg">{waterBody.ecological_status}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -182,12 +237,12 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 }
 
 interface MapRef {
-  focusOnWaterBody: (waterBody: ScandinavianWaterBody) => void;
+  focusOnWaterBody: (waterBody: SMHIWaterBody) => void;
 }
 
 interface Props {
   searchTerm?: string;
-  onWaterBodySelect?: (waterBody: ScandinavianWaterBody) => void;
+  onWaterBodySelect?: (waterBody: SMHIWaterBody) => void;
 }
 
 const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterBodySelect }, ref) => {
@@ -195,15 +250,15 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const mapRef = useRef<maplibregl.Map | null>(null);
   
   // REF för synkron state tracking (löser React async state problem)
-  const selectedWaterBodyRef = useRef<ScandinavianWaterBody | null>(null);
+  const selectedWaterBodyRef = useRef<SMHIWaterBody | null>(null);
   
-  const [selectedWaterBody, setSelectedWaterBody] = useState<ScandinavianWaterBody | null>(null);
+  const [selectedWaterBody, setSelectedWaterBody] = useState<SMHIWaterBody | null>(null);
   const [waterData, setWaterData] = useState<WaterBodyData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [visibleWaterBodies, setVisibleWaterBodies] = useState<ScandinavianWaterBody[]>([]);
+  const [visibleWaterBodies, setVisibleWaterBodies] = useState<SMHIWaterBody[]>([]);
 
   useImperativeHandle(ref, () => ({
-    focusOnWaterBody: (waterBody: ScandinavianWaterBody) => {
+    focusOnWaterBody: (waterBody: SMHIWaterBody) => {
       if (mapRef.current) {
         mapRef.current.flyTo({
           center: [waterBody.coordinates[1], waterBody.coordinates[0]],
@@ -306,10 +361,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
 
   const loadPopularFishingWaters = async () => {
     try {
-      // Ladda populära vattendrag för cache (inga prickar behövs längre)
-      const popularWaters = await getPopularFishingWaters('ALL', 500);
-      setVisibleWaterBodies(popularWaters);
-      // addWaterBodiesToMap(popularWaters); // BORTTAGET - vi har glow-overlay istället
+      // TEMPORÄRT INAKTIVERAD - implementera SMHI-version senare om behövs
+      console.log('Popular fishing waters loading temporarily disabled for SMHI');
+      setVisibleWaterBodies([]);
     } catch (error) {
       console.error('Fel vid laddning av populära fiskevatten:', error);
     }
@@ -326,7 +380,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     if (zoom < 4) return;
 
     try {
-      const waterBodies = await getWaterBodiesInBounds({
+      const waterBodies = await getSMHIWaterBodiesInBounds({
         north: bounds.getNorth(),
         south: bounds.getSouth(),
         east: bounds.getEast(),
@@ -348,7 +402,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
 
   // BORTTAGET: updateGlowOverlay (glow-effekten togs bort)
 
-  const addWaterBodiesToMap = (waterBodies: ScandinavianWaterBody[]) => {
+  const addWaterBodiesToMap = (waterBodies: SMHIWaterBody[]) => {
     if (!mapRef.current || waterBodies.length === 0) return;
 
     const map = mapRef.current;
@@ -520,7 +574,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     
     try {
       // Förbättrad sökning med större tolerans för små geometrier
-      const waterBody = await getWaterBodyAtCoordinatesImproved(lat, lng);
+      const waterBody = await getSMHIWaterBodyAtCoordinatesImproved(lat, lng);
       
       if (waterBody) {
         // Markera att vi hanterat klicket
@@ -534,27 +588,23 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     }
   };
 
-  // FÖRBÄTTRAD geometri-sökning med flera strategier
-  const getWaterBodyAtCoordinatesImproved = async (lat: number, lng: number): Promise<ScandinavianWaterBody | null> => {
-    // Strategi 1: Försök med standard sökning (1km)
-    let waterBody = await getWaterBodyAtCoordinates(lat, lng, 1);
+  // FÖRBÄTTRAD geometri-sökning med större tolerans för stora sjöar
+  const getSMHIWaterBodyAtCoordinatesImproved = async (lat: number, lng: number): Promise<SMHIWaterBody | null> => {
+    // SMART STRATEGI: Börja med större tolerans för stora sjöar
+    let waterBody = await getSMHIWaterBodyAtCoordinates(lat, lng, 5); // Direkt med stor tolerans
     if (waterBody) return waterBody;
     
-    // Strategi 2: Öka sök-radien för små geometrier (3km)
-    waterBody = await getWaterBodyAtCoordinates(lat, lng, 3);
-    if (waterBody) return waterBody;
-    
-    // Strategi 3: Sök i cache bland synliga vattendrag för snabbhet
+    // Fallback: Sök i cache bland synliga vattendrag
     const cachedMatch = findInCachedWaterBodies(lat, lng);
     if (cachedMatch) return cachedMatch;
     
-    // Strategi 4: Bred databas-sökning med stora toleranser (5km)
-    waterBody = await getWaterBodyAtCoordinates(lat, lng, 5);
+    // Sista försök med maximal tolerans (10km för mycket stora sjöar)
+    waterBody = await getSMHIWaterBodyAtCoordinates(lat, lng, 10);
     return waterBody;
   };
 
   // Hjälpfunktion: Sök i cachade vattendrag för snabb matchning
-  const findInCachedWaterBodies = (lat: number, lng: number): ScandinavianWaterBody | null => {
+  const findInCachedWaterBodies = (lat: number, lng: number): SMHIWaterBody | null => {
     const tolerance = 0.05; // ~5km tolerans i grader
     
     for (const wb of visibleWaterBodies) {
@@ -601,7 +651,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     return validTypes.includes(geometry.type);
   };
 
-  const prepareGeometryForHighlighting = (waterBody: ScandinavianWaterBody) => {
+  const prepareGeometryForHighlighting = (waterBody: SMHIWaterBody) => {
     const { geometry } = waterBody;
     
     // Om det är en GeometryCollection (flera segment), skapa FeatureCollection
@@ -647,7 +697,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     return geometry.type === 'Polygon' || geometry.type === 'MultiPolygon';
   };
 
-  const handleWaterBodyClick = async (waterBody: ScandinavianWaterBody) => {
+  const handleWaterBodyClick = async (waterBody: SMHIWaterBody) => {
     // Uppdatera både state och ref synkront
     selectedWaterBodyRef.current = waterBody;
     setSelectedWaterBody(waterBody);
@@ -666,7 +716,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   };
 
   // Visa highlighting omedelbart utan att vänta på data
-  const showImmediateHighlight = (waterBody: ScandinavianWaterBody) => {
+  const showImmediateHighlight = (waterBody: SMHIWaterBody) => {
     if (!mapRef.current) return;
     
     const map = mapRef.current;
@@ -765,10 +815,10 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   };
 
   // Hämta data i bakgrunden och uppdatera geometri om behövs
-  const fetchWaterBodyDataInBackground = async (waterBody: ScandinavianWaterBody) => {
+  const fetchWaterBodyDataInBackground = async (waterBody: SMHIWaterBody) => {
     try {
       // Fetch detailed data for ALL water bodies now (including full geometry)
-      const details = await getWaterBodyDetails(waterBody.id);
+      const details = await getSMHIWaterBodyDetails(waterBody.id);
       
       if (details) {
         // Uppdatera med VISS-data

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft, MapPin, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { searchScandinavianWaterBodies, ScandinavianWaterBody } from '@/lib/scandinavianWaterService';
+import { searchSMHIWaterBodies, SMHIWaterBody } from '@/lib/smhiWaterService';
 
 // Dynamically import MapLibre GL map to avoid SSR issues
 const ScandinavianWaterMapGL = dynamic(() => import('@/components/ScandinavianWaterMapGL'), {
@@ -22,7 +22,7 @@ const ScandinavianWaterMapGL = dynamic(() => import('@/components/ScandinavianWa
 
 export default function ScandinavianMapPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<ScandinavianWaterBody[]>([]);
+  const [searchResults, setSearchResults] = useState<SMHIWaterBody[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
@@ -50,7 +50,7 @@ export default function ScandinavianMapPage() {
 
       setIsSearching(true);
       try {
-        const results = await searchScandinavianWaterBodies(searchTerm, 8);
+        const results = await searchSMHIWaterBodies(searchTerm, 8);
         setSearchResults(results);
         setShowSuggestions(results.length > 0);
         setSelectedResultIndex(-1);
@@ -110,7 +110,7 @@ export default function ScandinavianMapPage() {
     }
   };
 
-  const selectWaterBody = (waterBody: ScandinavianWaterBody) => {
+  const selectWaterBody = (waterBody: SMHIWaterBody) => {
     // När användaren väljer från dropdown, förhindra inte nästa search
     setSearchTerm(waterBody.name);
     setShowSuggestions(false);
