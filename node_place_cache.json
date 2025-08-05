@@ -1,0 +1,752 @@
+{
+  "59.181,12.062": {
+    "name": "Moarna, Bengtsfors kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754360862690,
+    "accuracy": "medium"
+  },
+  "59.323,11.925": {
+    "name": "Berget, Årjängs kommun, Värmlands län, Sverige",
+    "timestamp": 1754360863662,
+    "accuracy": "medium"
+  },
+  "58.986,14.279": {
+    "name": "Södra Råda distrikt, Gullspångs kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754360864657,
+    "accuracy": "medium"
+  },
+  "58.951,14.181": {
+    "name": "Hemmingstorp, Amnehärads distrikt, Gullspångs kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754360865673,
+    "accuracy": "medium"
+  },
+  "57.185,13.132": {
+    "name": "Yttre Sånabo, Svenljunga kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754360866663,
+    "accuracy": "medium"
+  },
+  "57.116,13.043": {
+    "name": "Svedjehuset, Falkenbergs kommun, Hallands län, Sverige",
+    "timestamp": 1754360867655,
+    "accuracy": "medium"
+  },
+  "64.242,13.737": {
+    "name": "Sørstrand, Lierne, Trøndelag, Norge",
+    "timestamp": 1754360868675,
+    "accuracy": "medium"
+  },
+  "64.288,13.649": {
+    "name": "Botnvik, Lierne, Trøndelag, Norge",
+    "timestamp": 1754360869686,
+    "accuracy": "medium"
+  },
+  "63.985,15.407": {
+    "name": "Lillsvedviken, Strömsunds kommun, Jämtlands län, Sverige",
+    "timestamp": 1754360870659,
+    "accuracy": "medium"
+  },
+  "64.25,15.187": {
+    "name": "Strömsunds kommun, Jämtlands län, Sverige",
+    "timestamp": 1754360871666,
+    "accuracy": "medium"
+  },
+  "56.657,13.609": {
+    "name": "Bägaryd, Ljungby kommun, Kronobergs län, Sverige",
+    "timestamp": 1754360872661,
+    "accuracy": "medium"
+  },
+  "56.451,13.892": {
+    "name": "Grimmatorpet, Osby kommun, Skåne län, Sverige",
+    "timestamp": 1754360873672,
+    "accuracy": "medium"
+  },
+  "62.008,15.033": {
+    "name": "Ängersjö distrikt, Härjedalens kommun, Jämtlands län, Sverige",
+    "timestamp": 1754360874651,
+    "accuracy": "medium"
+  },
+  "63.711,20.284": {
+    "name": "Mölle, Umeå kommun, Västerbottens län, 905 81, Sverige",
+    "timestamp": 1754360875673,
+    "accuracy": "medium"
+  },
+  "64.133,12.901": {
+    "name": "Snåsa, Trøndelag, 7760, Norge",
+    "timestamp": 1754360876654,
+    "accuracy": "medium"
+  },
+  "64.303,12.486": {
+    "name": "Larsrønningen, Snåsa, Trøndelag, Norge",
+    "timestamp": 1754360877693,
+    "accuracy": "medium"
+  },
+  "69.168,17.244": {
+    "name": "Senja, Troms, Norge",
+    "timestamp": 1754360878669,
+    "accuracy": "medium"
+  },
+  "68.899,15.694": {
+    "name": "Andøy, Nordland fylke, Norge",
+    "timestamp": 1754360879661,
+    "accuracy": "medium"
+  },
+  "64.627,12.174": {
+    "name": "Vollasetran, Høylandet, Trøndelag, Norge",
+    "timestamp": 1754360880672,
+    "accuracy": "medium"
+  },
+  "69.232,17.573": {
+    "name": "Myrvang, Senja, Troms, Norge",
+    "timestamp": 1754360881650,
+    "accuracy": "medium"
+  },
+  "68.621,15.682": {
+    "name": "Langvassdalen, Kvæfjord, Troms, Norge",
+    "timestamp": 1754360882661,
+    "accuracy": "medium"
+  },
+  "59.917,11.966": {
+    "name": "Langvassbråtan, Eidskog, Innlandet, 2233, Norge",
+    "timestamp": 1754360883658,
+    "accuracy": "medium"
+  },
+  "62.932,10.051": {
+    "name": "Bergsvollan, Midtre Gauldal, Trøndelag, Norge",
+    "timestamp": 1754360884703,
+    "accuracy": "medium"
+  },
+  "62.19,7.552": {
+    "name": "Fjord, Møre og Romsdal, Norge",
+    "timestamp": 1754360885671,
+    "accuracy": "medium"
+  },
+  "69.27,17.215": {
+    "name": "Senja, Troms, Norge",
+    "timestamp": 1754360886664,
+    "accuracy": "medium"
+  },
+  "66.428,23.001": {
+    "name": "Nordanberget, Överkalix kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360887664,
+    "accuracy": "medium"
+  },
+  "60.061,14.982": {
+    "name": "Ivarrännan, Ludvika kommun, Dalarnas län, 772 90, Sverige",
+    "timestamp": 1754360888658,
+    "accuracy": "medium"
+  },
+  "68.748,22.028": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360889682,
+    "accuracy": "medium"
+  },
+  "68.714,22.11": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360890652,
+    "accuracy": "medium"
+  },
+  "57.113,15.314": {
+    "name": "Kronofur, Uppvidinge kommun, Kronobergs län, Sverige",
+    "timestamp": 1754360891660,
+    "accuracy": "medium"
+  },
+  "57.215,14.611": {
+    "name": "Båreskalla, Sävsjö kommun, Sverige",
+    "timestamp": 1754360892662,
+    "accuracy": "medium"
+  },
+  "57.058,16": {
+    "name": "Pinnudden, Högsby kommun, Kalmar län, Sverige",
+    "timestamp": 1754360893660,
+    "accuracy": "medium"
+  },
+  "57.852,14.575": {
+    "name": "Bergshult, Jönköpings kommun, Sverige",
+    "timestamp": 1754360894658,
+    "accuracy": "medium"
+  },
+  "57.972,15.849": {
+    "name": "Kvarnudden, Kinda kommun, Östergötlands län, Sverige",
+    "timestamp": 1754360895660,
+    "accuracy": "medium"
+  },
+  "57.732,13.412": {
+    "name": "Kärrabo, Marbäcks distrikt, Ulricehamns kommun, Västra Götalands län, 523 93, Sverige",
+    "timestamp": 1754360896661,
+    "accuracy": "medium"
+  },
+  "68.564,22.835": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360897654,
+    "accuracy": "medium"
+  },
+  "68.543,22.265": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360898655,
+    "accuracy": "medium"
+  },
+  "68.476,22.463": {
+    "name": "Kaaresuvanto, Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, 99470, Finland",
+    "timestamp": 1754360899653,
+    "accuracy": "medium"
+  },
+  "68.584,23.404": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360900663,
+    "accuracy": "medium"
+  },
+  "68.524,23.477": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360901656,
+    "accuracy": "medium"
+  },
+  "67.664,17.578": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360902657,
+    "accuracy": "medium"
+  },
+  "67.816,17.079": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360903660,
+    "accuracy": "medium"
+  },
+  "67.516,18.176": {
+    "name": "Jokkmokks kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360904652,
+    "accuracy": "medium"
+  },
+  "66.072,19.159": {
+    "name": "Myråsen, Arvidsjaurs kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360905651,
+    "accuracy": "medium"
+  },
+  "60.398,14.561": {
+    "name": "Vansbro kommun, Dalarnas län, Sverige",
+    "timestamp": 1754360906662,
+    "accuracy": "medium"
+  },
+  "60.51,14.693": {
+    "name": "Täcksbergets fäbod, Gagnefs kommun, Dalarnas län, 780 45, Sverige",
+    "timestamp": 1754360907654,
+    "accuracy": "medium"
+  },
+  "60.288,14.402": {
+    "name": "Bångstugan, Vansbro kommun, Dalarnas län, Sverige",
+    "timestamp": 1754360908655,
+    "accuracy": "medium"
+  },
+  "67.77,23.031": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360909660,
+    "accuracy": "medium"
+  },
+  "67.62,23.765": {
+    "name": "Muonio, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754360910657,
+    "accuracy": "medium"
+  },
+  "58.309,14.034": {
+    "name": "Vasängen, Hjo kommun, Västra Götalands län, 541 78, Sverige",
+    "timestamp": 1754360911684,
+    "accuracy": "medium"
+  },
+  "56.74,15.158": {
+    "name": "Näsgården, Lessebo kommun, Kronobergs län, 360 51, Sverige",
+    "timestamp": 1754360912660,
+    "accuracy": "medium"
+  },
+  "59.925,12.923": {
+    "name": "Råbäcken, Sunne kommun, Värmlands län, 686 98, Sverige",
+    "timestamp": 1754360913658,
+    "accuracy": "medium"
+  },
+  "57.016,15.129": {
+    "name": "Kvarnafällan, Dädesjö, Växjö kommun, Kronobergs län, Sverige",
+    "timestamp": 1754360914664,
+    "accuracy": "medium"
+  },
+  "56.788,14.587": {
+    "name": "Nyatorp, Alvesta kommun, Kronobergs län, Sverige",
+    "timestamp": 1754360915658,
+    "accuracy": "medium"
+  },
+  "68.03,21.481": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360916668,
+    "accuracy": "medium"
+  },
+  "68.197,22.227": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360917651,
+    "accuracy": "medium"
+  },
+  "67.862,20.734": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754360918655,
+    "accuracy": "medium"
+  },
+  "59.006,14.239": {
+    "name": "Södra Råda distrikt, Gullspångs kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754360919670,
+    "accuracy": "medium"
+  },
+  "57.882,12.879": {
+    "name": "Fridhem, Tämta distrikt, Borås kommun, Västra Götalands län, 504 96, Sverige",
+    "timestamp": 1754360920655,
+    "accuracy": "medium"
+  },
+  "58.019,15.158": {
+    "name": "Arnäs, Boxholms kommun, Östergötlands län, Sverige",
+    "timestamp": 1754360921880,
+    "accuracy": "medium"
+  },
+  "57.938,15.391": {
+    "name": "Måla, Ydre kommun, Östergötlands län, Sverige",
+    "timestamp": 1754361432961,
+    "accuracy": "medium"
+  },
+  "64.258,17.814": {
+    "name": "Åsele kommun, Västerbottens län, Sverige",
+    "timestamp": 1754361433961,
+    "accuracy": "medium"
+  },
+  "64.559,16.956": {
+    "name": "Vilhelmina kommun, Västerbottens län, Sverige",
+    "timestamp": 1754361434953,
+    "accuracy": "medium"
+  },
+  "59.372,11.867": {
+    "name": "Årjängs kommun, Värmlands län, Sverige",
+    "timestamp": 1754361435956,
+    "accuracy": "medium"
+  },
+  "58.896,12.244": {
+    "name": "Gustavsberg, Bengtsfors kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754361436956,
+    "accuracy": "medium"
+  },
+  "59.641,11.95": {
+    "name": "Lillerud, Årjängs kommun, Värmlands län, Sverige",
+    "timestamp": 1754361437968,
+    "accuracy": "medium"
+  },
+  "65.961,17.733": {
+    "name": "Arjeplogs kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361438971,
+    "accuracy": "medium"
+  },
+  "65.833,17.808": {
+    "name": "Arjeplogs kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361439977,
+    "accuracy": "medium"
+  },
+  "60.256,16.039": {
+    "name": "Grådö, Hedemora kommun, Dalarnas län, 776 92, Sverige",
+    "timestamp": 1754361440955,
+    "accuracy": "medium"
+  },
+  "59.451,15.397": {
+    "name": "Hagaberg, Lindesbergs kommun, Örebro län, 718 92, Sverige",
+    "timestamp": 1754361441960,
+    "accuracy": "medium"
+  },
+  "64.118,15.786": {
+    "name": "Strömsunds kommun, Jämtlands län, Sverige",
+    "timestamp": 1754361442958,
+    "accuracy": "medium"
+  },
+  "60.551,14.241": {
+    "name": "Vansbro, Vansbro kommun, Dalarnas län, 786 33, Sverige",
+    "timestamp": 1754361443954,
+    "accuracy": "medium"
+  },
+  "60.098,14.017": {
+    "name": "Filipstads kommun, Värmlands län, Sverige",
+    "timestamp": 1754361444959,
+    "accuracy": "medium"
+  },
+  "62.787,13.62": {
+    "name": "Bergs kommun, Jämtlands län, Sverige",
+    "timestamp": 1754361446011,
+    "accuracy": "medium"
+  },
+  "65.965,21.835": {
+    "name": "Edet, Bodens kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361446957,
+    "accuracy": "medium"
+  },
+  "59.279,18.667": {
+    "name": "Stavsnäs-Höl, Värmdö kommun, Stockholms län, 139 71, Sverige",
+    "timestamp": 1754361447959,
+    "accuracy": "medium"
+  },
+  "67.276,24.196": {
+    "name": "Venejärvi, Kolari, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361448958,
+    "accuracy": "medium"
+  },
+  "67.534,21.934": {
+    "name": "Merasjärvi, Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361449960,
+    "accuracy": "medium"
+  },
+  "68.153,22.506": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361450965,
+    "accuracy": "medium"
+  },
+  "66.932,22.083": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361451988,
+    "accuracy": "medium"
+  },
+  "69.161,21.394": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361452952,
+    "accuracy": "medium"
+  },
+  "67.413,21.397": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361453953,
+    "accuracy": "medium"
+  },
+  "58.189,16.412": {
+    "name": "Gölhemmet, Åtvidabergs kommun, Östergötlands län, Sverige",
+    "timestamp": 1754361454958,
+    "accuracy": "medium"
+  },
+  "57.626,16.287": {
+    "name": "Mörtgölsnäs, Hjorted, Västerviks kommun, Kalmar län, 590 91, Sverige",
+    "timestamp": 1754361455954,
+    "accuracy": "medium"
+  },
+  "57.757,16.11": {
+    "name": "Björnäng, Vimmerby kommun, Kalmar län, Sverige",
+    "timestamp": 1754361456955,
+    "accuracy": "medium"
+  },
+  "57.797,15.884": {
+    "name": "Kvarntorpet, Vimmerby kommun, Kalmar län, 598 72, Sverige",
+    "timestamp": 1754361457967,
+    "accuracy": "medium"
+  },
+  "57.323,16.05": {
+    "name": "Sjönäs, Oskarshamns kommun, Kalmar län, Sverige",
+    "timestamp": 1754361458957,
+    "accuracy": "medium"
+  },
+  "57.884,16.094": {
+    "name": "Sund, Västerviks kommun, Kalmar län, Sverige",
+    "timestamp": 1754361459955,
+    "accuracy": "medium"
+  },
+  "57.57,16.351": {
+    "name": "Östantorp, Västerviks kommun, Kalmar län, Sverige",
+    "timestamp": 1754361460957,
+    "accuracy": "medium"
+  },
+  "57.689,16.282": {
+    "name": "Marielund, Västerviks kommun, Kalmar län, Sverige",
+    "timestamp": 1754361461971,
+    "accuracy": "medium"
+  },
+  "57.793,16.244": {
+    "name": "Smedserum, Västerviks kommun, Kalmar län, Sverige",
+    "timestamp": 1754361462962,
+    "accuracy": "medium"
+  },
+  "67.975,23.858": {
+    "name": "Muonio, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361463956,
+    "accuracy": "medium"
+  },
+  "67.346,20.742": {
+    "name": "Tjautjas, Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361464955,
+    "accuracy": "medium"
+  },
+  "66.793,21.994": {
+    "name": "Torasjärvi, Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361465966,
+    "accuracy": "medium"
+  },
+  "66.523,24.205": {
+    "name": "Övertorneå, Tornedalens ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361466959,
+    "accuracy": "medium"
+  },
+  "60.548,12.582": {
+    "name": "Sjøheim, Åsnes, Innlandet, Norge",
+    "timestamp": 1754361467957,
+    "accuracy": "medium"
+  },
+  "60.318,16.577": {
+    "name": "Falltorpet, Sandvikens kommun, Gävleborgs län, Sverige",
+    "timestamp": 1754361469006,
+    "accuracy": "medium"
+  },
+  "58.187,16.053": {
+    "name": "Näset, Åtvidabergs kommun, Östergötlands län, 597 43, Sverige",
+    "timestamp": 1754361469966,
+    "accuracy": "medium"
+  },
+  "58.041,16.256": {
+    "name": "Ramsnäs, Västerviks kommun, Kalmar län, Sverige",
+    "timestamp": 1754361470966,
+    "accuracy": "medium"
+  },
+  "60.288,16.355": {
+    "name": "Bagghyttan, Avesta kommun, Dalarnas län, Sverige",
+    "timestamp": 1754361471954,
+    "accuracy": "medium"
+  },
+  "67.998,23.789": {
+    "name": "Muonio, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361472959,
+    "accuracy": "medium"
+  },
+  "67.444,21.667": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361473959,
+    "accuracy": "medium"
+  },
+  "67.333,23.418": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361474959,
+    "accuracy": "medium"
+  },
+  "66.847,23.087": {
+    "name": "Korpilombolo, Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361475957,
+    "accuracy": "medium"
+  },
+  "69.075,20.747": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361476963,
+    "accuracy": "medium"
+  },
+  "68.014,21.77": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361477978,
+    "accuracy": "medium"
+  },
+  "68.281,22.169": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361478959,
+    "accuracy": "medium"
+  },
+  "66.928,24.287": {
+    "name": "Pello, Tornedalens ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361479982,
+    "accuracy": "medium"
+  },
+  "67.572,23.635": {
+    "name": "Tapojärvi, Muonio, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361480952,
+    "accuracy": "medium"
+  },
+  "67.379,21.959": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361481956,
+    "accuracy": "medium"
+  },
+  "68.114,23.67": {
+    "name": "Muonio, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361482969,
+    "accuracy": "medium"
+  },
+  "66.598,24.902": {
+    "name": "Övertorneå, Tornedalens ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361483955,
+    "accuracy": "medium"
+  },
+  "66.765,23.044": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361484964,
+    "accuracy": "medium"
+  },
+  "67.919,20.671": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361485954,
+    "accuracy": "medium"
+  },
+  "67.849,23.958": {
+    "name": "Muonio, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361486956,
+    "accuracy": "medium"
+  },
+  "60.034,18.327": {
+    "name": "Ljusmon, Uppsala kommun, Uppsala län, Sverige",
+    "timestamp": 1754361487973,
+    "accuracy": "medium"
+  },
+  "59.982,12.391": {
+    "name": "Skogslund, Eda kommun, Värmlands län, Sverige",
+    "timestamp": 1754361489001,
+    "accuracy": "medium"
+  },
+  "68.747,21.367": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361489958,
+    "accuracy": "medium"
+  },
+  "68.685,21.468": {
+    "name": "Enontekis, Fjäll-Lapplands ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361490957,
+    "accuracy": "medium"
+  },
+  "60.72,16.857": {
+    "name": "Gävle kommun, Gävleborgs län, Sverige",
+    "timestamp": 1754361491956,
+    "accuracy": "medium"
+  },
+  "57.072,14.855": {
+    "name": "Östrahage, Växjö kommun, Kronobergs län, 360 40, Sverige",
+    "timestamp": 1754361492974,
+    "accuracy": "medium"
+  },
+  "58.136,15.203": {
+    "name": "Bockudden, Boxholms kommun, Östergötlands län, Sverige",
+    "timestamp": 1754361493957,
+    "accuracy": "medium"
+  },
+  "63.756,19.13": {
+    "name": "Nordmalings distrikt, Nordmalings kommun, Västerbottens län, Sverige",
+    "timestamp": 1754361494955,
+    "accuracy": "medium"
+  },
+  "64.959,17.052": {
+    "name": "Storumans kommun, Västerbottens län, Sverige",
+    "timestamp": 1754361495955,
+    "accuracy": "medium"
+  },
+  "64.69,17.879": {
+    "name": "Lycksele kommun, Västerbottens län, Sverige",
+    "timestamp": 1754361496954,
+    "accuracy": "medium"
+  },
+  "64.225,18.772": {
+    "name": "Lycksele kommun, Västerbottens län, Sverige",
+    "timestamp": 1754361497954,
+    "accuracy": "medium"
+  },
+  "63.418,17.6": {
+    "name": "Skorpeds distrikt, Örnsköldsviks kommun, Västernorrlands län, 895 97, Sverige",
+    "timestamp": 1754361498961,
+    "accuracy": "medium"
+  },
+  "57.631,12.666": {
+    "name": "Källeberg, Borås kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754361499959,
+    "accuracy": "medium"
+  },
+  "57.821,12.731": {
+    "name": "Gantarås, Bollebygds kommun, Västra Götalands län, Sverige",
+    "timestamp": 1754361500958,
+    "accuracy": "medium"
+  },
+  "66.286,24.452": {
+    "name": "Mellakoski, Övertorneå, Tornedalens ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361501954,
+    "accuracy": "medium"
+  },
+  "66.895,21.425": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361502954,
+    "accuracy": "medium"
+  },
+  "68.189,22.481": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361503970,
+    "accuracy": "medium"
+  },
+  "68.269,22.646": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361504954,
+    "accuracy": "medium"
+  },
+  "68.182,21.805": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361505960,
+    "accuracy": "medium"
+  },
+  "68.027,21.968": {
+    "name": "Lannavaara, Kiruna kommun, Norrbottens län, 980 13, Sverige",
+    "timestamp": 1754361506957,
+    "accuracy": "medium"
+  },
+  "67.815,21.588": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361507955,
+    "accuracy": "medium"
+  },
+  "67.588,21.518": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361508970,
+    "accuracy": "medium"
+  },
+  "67.336,22.348": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361509954,
+    "accuracy": "medium"
+  },
+  "67.294,21.877": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361510959,
+    "accuracy": "medium"
+  },
+  "67.113,23.155": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361511953,
+    "accuracy": "medium"
+  },
+  "67.211,19.787": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361512956,
+    "accuracy": "medium"
+  },
+  "66.741,23.175": {
+    "name": "Kivijärvi, Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361513957,
+    "accuracy": "medium"
+  },
+  "66.651,23.508": {
+    "name": "Penttäjä, Övertorneå kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361514960,
+    "accuracy": "medium"
+  },
+  "66.149,23.315": {
+    "name": "Övertorneå kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361515958,
+    "accuracy": "medium"
+  },
+  "67.357,22.197": {
+    "name": "Pajala kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361516952,
+    "accuracy": "medium"
+  },
+  "66.813,24.061": {
+    "name": "Pello, Tornedalens ekonomiska region, Lappland, Fasta Finland, Finland",
+    "timestamp": 1754361517959,
+    "accuracy": "medium"
+  },
+  "67.38,21.046": {
+    "name": "Gällivare kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361518956,
+    "accuracy": "medium"
+  },
+  "67.731,22.396": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361519952,
+    "accuracy": "medium"
+  },
+  "67.828,20.892": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361520958,
+    "accuracy": "medium"
+  },
+  "67.752,21.281": {
+    "name": "Kiruna kommun, Norrbottens län, Sverige",
+    "timestamp": 1754361521954,
+    "accuracy": "medium"
+  }
+}

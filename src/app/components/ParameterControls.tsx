@@ -1,4 +1,4 @@
-// @ts-nocheck
+// TypeScript ignore for legacy component
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';

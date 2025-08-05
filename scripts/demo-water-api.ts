@@ -225,7 +225,53 @@ function displayBasicData(data: BasicWaterData) {
   console.log(`   🔗 VISS: ${data.viss_url}`);
 }
 
-function mapVissStatus(code: string): string {
+function mapVissStatus(code: string, parameter?: string): string {
+  // Specifika mappningar baserat på parameter typ
+  if (parameter === 'nutrients') {
+    const nutrientMap: { [key: string]: string } = {
+      'H': 'Mycket låg risk',
+      'G': 'Låg risk',
+      'M': 'Måttlig risk',
+      'B': 'Hög risk',
+      'P': 'Mycket hög risk'
+    };
+    return nutrientMap[code] || code;
+  }
+  
+  if (parameter === 'chlorophyll') {
+    const chlorophyllMap: { [key: string]: string } = {
+      'H': 'Mycket låg risk',
+      'G': 'Låg risk',
+      'M': 'Måttlig risk',
+      'B': 'Hög risk',
+      'P': 'Mycket hög risk'
+    };
+    return chlorophyllMap[code] || code;
+  }
+  
+  if (parameter === 'oxygen') {
+    const oxygenMap: { [key: string]: string } = {
+      'H': 'Mycket hög syrenivå',
+      'G': 'Acceptabel syrenivå',
+      'M': 'Lite låg syrenivå',
+      'B': 'Låg syrenivå',
+      'P': 'Mycket låg syrenivå'
+    };
+    return oxygenMap[code] || code;
+  }
+  
+  if (parameter === 'transparency') {
+    const transparencyMap: { [key: string]: string } = {
+      'H': 'Mycket klart',
+      'G': 'Klart',
+      'M': 'Lite grumligt',
+      'B': 'Grumligt',
+      'P': 'Mycket grumligt'
+    };
+    return transparencyMap[code] || code;
+  }
+  
+  // Fallback för ekologisk status och andra parametrar
   const statusMap: { [key: string]: string } = {
     'H': 'Hög/Bra',
     'G': 'God',

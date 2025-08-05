@@ -389,12 +389,18 @@ export async function getSMHIWaterBodyDetails(
 
     const smhiWaterBody = convertToSMHIWaterBody(waterBody);
     
-    // Hämta komplett VISS/SMHI-data för svenska sjöar
+    // Hämta komplett VISS/SMHI-data för svenska sjöar med geografisk validering
     let vissData: WaterBodyData | null = null;
     if (smhiWaterBody.country === 'SE' && smhiWaterBody.name) {
       try {
         const fetcher = new WaterBodyDataFetcher();
-        vissData = await fetcher.fetchWaterBodyData(smhiWaterBody.name);
+        // Använd validerad hämtning med SMHI-koordinater som referens
+        vissData = await fetcher.fetchWaterBodyDataWithValidation(
+          smhiWaterBody.name,
+          smhiWaterBody.coordinates ? 
+            { lat: smhiWaterBody.coordinates[0], lon: smhiWaterBody.coordinates[1] } : 
+            undefined
+        );
     
       } catch (error) {
         console.warn('❌ Kunde inte hämta VISS/SMHI-data för:', smhiWaterBody.name, error);

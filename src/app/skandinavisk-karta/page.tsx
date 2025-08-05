@@ -5,7 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft, MapPin, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { searchSMHIWaterBodies, SMHIWaterBody } from '@/lib/smhiWaterService';
+import { searchUnifiedWaterBodies, UnifiedWaterBody } from '@/lib/unifiedWaterService';
+// NEW: Import service with place names
+import { searchWaterBodiesWithPlaces, WaterBodyWithPlaces } from '@/lib/waterBodiesWithPlacesService';
+
+// FEATURE FLAG: Use new system with place names  
+const USE_PLACES_SYSTEM = true;
+// Keep compatibility
+type SMHIWaterBody = UnifiedWaterBody;
 
 // Dynamically import MapLibre GL map to avoid SSR issues
 const ScandinavianWaterMapGL = dynamic(() => import('@/components/ScandinavianWaterMapGL'), {
@@ -50,9 +57,25 @@ export default function ScandinavianMapPage() {
 
       setIsSearching(true);
       try {
-        const results = await searchSMHIWaterBodies(searchTerm, 8);
-        setSearchResults(results);
-        setShowSuggestions(results.length > 0);
+        if (USE_PLACES_SYSTEM) {
+          // NEW SYSTEM: Use water_bodies_with_places with disambiguation
+          const results = await searchWaterBodiesWithPlaces(searchTerm, 8);
+          // Convert to compatible format - CRITICAL: Add coordinates!
+          const compatibleResults = results.map(wb => ({
+            ...wb,
+            name: wb.display_name || wb.name, // Use display_name if available!
+            municipality: wb.municipality,
+            country: wb.country,
+            coordinates: [wb.lat || 60.0, wb.lon || 15.0] // CRITICAL: This is what focusOnWaterBody expects!
+          }));
+          setSearchResults(compatibleResults as any);
+          setShowSuggestions(compatibleResults.length > 0);
+        } else {
+          // OLD SYSTEM: Use unified system
+          const results = await searchUnifiedWaterBodies(searchTerm, 8);
+          setSearchResults(results);
+          setShowSuggestions(results.length > 0);
+        }
         setSelectedResultIndex(-1);
       } catch (error) {
         console.error('Search error:', error);

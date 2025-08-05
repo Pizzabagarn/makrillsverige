@@ -6,12 +6,23 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import { X, ExternalLink, Thermometer } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
-import { 
-  SMHIWaterBody, 
+import {
+  SMHIWaterBody,
+  SMHIWaterBodySearchResult,
   getSMHIWaterBodiesInBounds,
   getSMHIWaterBodyDetails,
   getSMHIWaterBodyAtCoordinates
 } from '@/lib/smhiWaterService';
+
+// NEW: Import the enhanced service with place names
+import {
+  WaterBodyWithPlaces,
+  getWaterBodyWithPlacesAtCoordinates,
+  convertToSMHIFormat
+} from '@/lib/waterBodiesWithPlacesService';
+
+// FEATURE FLAG: Use new system with place names
+const USE_PLACES_SYSTEM = true;
 
 interface WaterBodyInfoPanelProps {
   waterBody: SMHIWaterBody | null;
@@ -60,54 +71,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
       {/* Content */}
       <div className="p-6 space-y-6">
 
-        {/* SMHI Data Section */}
-        {(waterBody.area_km2 || waterBody.depth_mean || waterBody.depth_max || waterBody.volume_m3 || waterBody.ecological_status) && (
-          <div>
-            <h4 className="font-semibold text-white mb-4 flex items-center text-lg">
-              🇸🇪 SMHI-data
-            </h4>
-            
-            <div className="grid grid-cols-2 gap-4">
 
-              {/* Depth Mean */}
-              {waterBody.depth_mean && waterBody.depth_mean > 0 && (
-                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded-xl p-4">
-                  <div className="text-cyan-300 text-sm font-medium mb-1">Medeldjup</div>
-                                     <div className="text-white font-bold text-lg">{waterBody.depth_mean.toFixed(1)}</div>
-                </div>
-              )}
-
-              {/* Depth Max */}
-              {waterBody.depth_max && waterBody.depth_max > 0 && (
-                <div className="bg-gradient-to-br from-indigo-900/30 to-indigo-800/20 border border-indigo-700/30 rounded-xl p-4">
-                  <div className="text-indigo-300 text-sm font-medium mb-1">Maxdjup</div>
-                                     <div className="text-white font-bold text-lg">{waterBody.depth_max.toFixed(1)}</div>
-                </div>
-              )}
-
-              {/* Volume */}
-              {waterBody.volume_m3 && waterBody.volume_m3 > 0 && (
-                <div className="bg-gradient-to-br from-teal-900/30 to-teal-800/20 border border-teal-700/30 rounded-xl p-4">
-                  <div className="text-teal-300 text-sm font-medium mb-1">Volym</div>
-                                     <div className="text-white font-bold text-lg">
-                     {waterBody.volume_m3 > 1000000 
-                       ? `${(waterBody.volume_m3 / 1000000).toFixed(1)}`
-                       : `${(waterBody.volume_m3 / 1000).toFixed(0)}`
-                     }
-                   </div>
-                </div>
-              )}
-
-              {/* Ecological Status */}
-              {waterBody.ecological_status && (
-                <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded-xl p-4 col-span-2">
-                  <div className="text-green-300 text-sm font-medium mb-1">Ekologisk status</div>
-                  <div className="text-white font-bold text-lg">{waterBody.ecological_status}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Loading State */}
         {loading && (
@@ -119,12 +83,12 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
         {/* Water Quality Data (VISS) - Only show if actual data exists */}
         {waterBody.country === 'SE' && waterData?.waterQuality && (() => {
-          // Check if there's any real data (not just "Okänt")
-          const hasOxygenData = waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt';
-          const hasNutrientsData = waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt';
-          const hasTransparencyData = waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt';
-          const hasAcidityData = waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt';
-          const hasEcologicalData = waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt';
+          // Check if there's any real data (not just "Okänt" or "-")
+          const hasOxygenData = waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-';
+          const hasNutrientsData = waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-';
+          const hasTransparencyData = waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-';
+          const hasAcidityData = waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-';
+          const hasEcologicalData = waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && waterData.waterQuality.ecological_status !== '-';
           
           const hasAnyData = hasOxygenData || hasNutrientsData || hasTransparencyData || hasAcidityData || hasEcologicalData;
           
@@ -133,37 +97,36 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
           <div>
             <h4 className="font-semibold text-white mb-4 flex items-center text-lg">
               🧪 Vattenkvalitet (VISS)
+              <span className="ml-2 text-xs text-slate-400 font-normal">2017-2021</span>
             </h4>
             
             <div className="grid grid-cols-2 gap-4">
               {/* Oxygen - only if real data */}
-              {waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && (
+              {waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-' && (
                 <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded-xl p-4">
                   <div className="text-cyan-300 text-sm font-medium mb-1">Syrgasförhållanden</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.oxygen.status}
                   </div>
-                  {waterData.waterQuality.oxygen.conditions && waterData.waterQuality.oxygen.conditions !== 'Okänt' && (
-                    <div className="text-cyan-400 text-xs">{waterData.waterQuality.oxygen.conditions}</div>
-                  )}
+
                 </div>
               )}
 
               {/* Nutrients - only if real data */}
-              {waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && (
+              {waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-' && (
                 <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded-xl p-4">
-                  <div className="text-green-300 text-sm font-medium mb-1">Näringsämnen</div>
+                  <div className="text-green-300 text-sm font-medium mb-1">Övergödning</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.nutrients.status}
                   </div>
                   {waterData.waterQuality.nutrients.chlorophyll && waterData.waterQuality.nutrients.chlorophyll !== 'Okänt' && (
-                    <div className="text-green-400 text-xs">Klorofyll: {waterData.waterQuality.nutrients.chlorophyll}</div>
+                    <div className="text-green-400 text-xs">Algblomning: {waterData.waterQuality.nutrients.chlorophyll}</div>
                   )}
                 </div>
               )}
 
               {/* Transparency - only if real data */}
-              {waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && (
+              {waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-' && (
                 <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-4">
                   <div className="text-blue-300 text-sm font-medium mb-1">Ljusförhållanden</div>
                   <div className="text-white font-bold text-lg">
@@ -176,12 +139,13 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
               )}
 
               {/* Acidity - only if real data */}
-              {waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && (
+              {waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-' && (
                 <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/30 rounded-xl p-4">
-                  <div className="text-yellow-300 text-sm font-medium mb-1">Försurning</div>
+                  <div className="text-yellow-300 text-sm font-medium mb-1">pH-nivå</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.acidity.ph_status}
                   </div>
+
                 </div>
               )}
 
@@ -366,7 +330,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     if (zoom < 4) return;
 
     try {
-      const waterBodies = await getSMHIWaterBodiesInBounds({
+              const waterBodies = await getSMHIWaterBodiesInBounds({
         north: bounds.getNorth(),
         south: bounds.getSouth(),
         east: bounds.getEast(),
@@ -560,7 +524,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     
     try {
       // Förbättrad sökning med större tolerans för små geometrier
-      const waterBody = await getSMHIWaterBodyAtCoordinatesImproved(lat, lng);
+      const waterBody = await getSMHIWaterBodyImproved(lat, lng);
       
       if (waterBody) {
         // Markera att vi hanterat klicket
@@ -575,18 +539,36 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   };
 
   // FÖRBÄTTRAD geometri-sökning med större tolerans för stora sjöar
-  const getSMHIWaterBodyAtCoordinatesImproved = async (lat: number, lng: number): Promise<SMHIWaterBody | null> => {
-    // SMART STRATEGI: Börja med större tolerans för stora sjöar
-    let waterBody = await getSMHIWaterBodyAtCoordinates(lat, lng, 5); // Direkt med stor tolerans
-    if (waterBody) return waterBody;
+  const getSMHIWaterBodyImproved = async (lat: number, lng: number): Promise<SMHIWaterBody | null> => {
     
-    // Fallback: Sök i cache bland synliga vattendrag
-    const cachedMatch = findInCachedWaterBodies(lat, lng);
-    if (cachedMatch) return cachedMatch;
-    
-    // Sista försök med maximal tolerans (10km för mycket stora sjöar)
-    waterBody = await getSMHIWaterBodyAtCoordinates(lat, lng, 10);
-    return waterBody;
+    if (USE_PLACES_SYSTEM) {
+      // NEW SYSTEM: Use water_bodies_with_places with disambiguation
+      let waterBodyWithPlaces = await getWaterBodyWithPlacesAtCoordinates(lat, lng, 5);
+      if (waterBodyWithPlaces) {
+        return convertToSMHIFormat(waterBodyWithPlaces);
+      }
+      
+      // Fallback: Sök i cache bland synliga vattendrag
+      const cachedMatch = findInCachedWaterBodies(lat, lng);
+      if (cachedMatch) return cachedMatch;
+      
+      // Sista försök med maximal tolerans (10km för mycket stora sjöar)
+      waterBodyWithPlaces = await getWaterBodyWithPlacesAtCoordinates(lat, lng, 10);
+      return waterBodyWithPlaces ? convertToSMHIFormat(waterBodyWithPlaces) : null;
+      
+    } else {
+      // OLD SYSTEM: Use water_bodies_integrated
+      let waterBody = await getSMHIWaterBodyAtCoordinates(lat, lng, 5);
+      if (waterBody) return waterBody;
+      
+      // Fallback: Sök i cache bland synliga vattendrag
+      const cachedMatch = findInCachedWaterBodies(lat, lng);
+      if (cachedMatch) return cachedMatch;
+      
+      // Sista försök med maximal tolerans (10km för mycket stora sjöar)
+      waterBody = await getSMHIWaterBodyAtCoordinates(lat, lng, 10);
+      return waterBody;
+    }
   };
 
   // Hjälpfunktion: Sök i cachade vattendrag för snabb matchning
@@ -804,7 +786,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const fetchWaterBodyDataInBackground = async (waterBody: SMHIWaterBody) => {
     try {
       // Fetch detailed data for ALL water bodies now (including full geometry)
-      const details = await getSMHIWaterBodyDetails(waterBody.id);
+              const details = await getSMHIWaterBodyDetails(waterBody.id);
       
       if (details) {
         // Uppdatera med VISS-data
