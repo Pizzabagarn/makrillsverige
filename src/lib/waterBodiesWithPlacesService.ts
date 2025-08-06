@@ -5,6 +5,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { WaterBodyData, WaterBodyDataFetcher } from './waterBodyDataFetcher';
+import { vissCache } from './vissCache';
 
 // Use same configuration as other services
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -59,6 +61,11 @@ export interface WaterBodySearchResult {
   total_count: number;
 }
 
+export interface WaterBodyWithPlacesSearchResult {
+  waterBody: WaterBodyWithPlaces;
+  vissData: WaterBodyData | null;
+}
+
 /**
  * SEARCH FUNCTION - EXACT SAME LOGIC AS ORIGINAL but with water_bodies_with_places
  */
@@ -79,7 +86,7 @@ export async function searchWaterBodiesWithPlaces(
           const searchRadius = maxDistance * 0.009; // ~1km = 0.009 grader
           
           const dbResult = await supabase
-            .from('water_bodies_with_places_fast_lookup')
+            .from('water_bodies_merged_fast_lookup')
             .select(`id, name, water_type, geometry, lat, lon, area_km2,
               data_source, source_priority, original_id,
               depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
@@ -105,7 +112,7 @@ export async function searchWaterBodiesWithPlaces(
         } else {
           // Vanlig sökning utan geografisk filtrering - EXAKT som gamla systemet!
           const dbResult = await supabase
-            .from('water_bodies_with_places_fast_lookup')
+            .from('water_bodies_merged_fast_lookup')
             .select(`id, name, water_type, geometry, lat, lon, area_km2,
               data_source, source_priority, original_id,
               depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
@@ -184,12 +191,13 @@ async function getWaterBodyByGeometryContains(
 ): Promise<WaterBodyWithPlaces | null> {
   
   try {
-    // SMART STRATEGY: Larger tolerance for big lakes
-    const largeRadius = maxDistanceKm * 0.05; // Larger radius for big lakes
+    // HYBRID STRATEGY: Different tolerance for different water types
+    // Larger tolerance for rivers/streams to make them easier to click
+    const largeRadius = maxDistanceKm * 0.02; // Tolerance for lakes and general use
     
     // Use our new PostGIS function with place names
     const { data: results, error } = await supabase
-      .rpc('find_water_body_with_places_containing_point', {
+      .rpc('find_merged_water_body_containing_point', {
         click_lat: lat,
         click_lon: lon,
         search_radius_deg: largeRadius
@@ -227,7 +235,7 @@ async function getWaterBodyBySmartProximity(
     const searchRadius = maxDistanceKm * 0.02; // ~1km = 0.009 degrees, scaled up
     
     const { data: results, error } = await supabase
-      .from('water_bodies_with_places')
+      .from('water_bodies_merged_fast_lookup')
       .select('*')
       // Fast bounding box filter (uses regular numeric indexes)
       .gte('lat', lat - searchRadius)
@@ -284,6 +292,139 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
+}
+
+/**
+ * GET DETAILED DATA WITH VISS - Same as SMHI system but for water_bodies_with_places
+ */
+export async function getWaterBodyWithPlacesDetails(
+  waterBodyId: string
+): Promise<WaterBodyWithPlacesSearchResult | null> {
+  
+  try {
+    const { data: waterBody, error } = await supabase
+      .from('water_bodies_merged_fast_lookup')
+      .select('*')
+      .eq('id', waterBodyId)
+      .single();
+
+    if (error || !waterBody) {
+      console.warn('Water body with places not found:', waterBodyId, error);
+      return null;
+    }
+
+    // ANVÄND CACHAD VISS-DATA istället för live API-anrop (SNABBT!)
+    let vissData: WaterBodyData | null = null;
+    if (waterBody.country === 'SE' && waterBody.name) {
+      // Kolla om vi har cachad VISS-data
+      if (waterBody.ecological_status || waterBody.water_quality_status || waterBody.fishing_regulations || waterBody.cached_viss_data) {
+        // Skapa VISS-data från cache (OMEDELBART!)
+        
+        // Använd cached_viss_data om det finns, annars bygg från grundfält
+        if (waterBody.cached_viss_data) {
+          // Komplett cachad VISS-data
+          vissData = waterBody.cached_viss_data;
+        } else {
+          // Bygg från grundläggande cachade fält
+          vissData = {
+            basic: {
+              name: waterBody.name,
+              eu_cd: '',
+              ms_cd: '',
+              type: waterBody.water_type === 'lake' ? 'lake' : 'river',
+              coordinates: { lat: waterBody.lat || 0, lon: waterBody.lon || 0 },
+              area_m2: waterBody.volume_m3 ? Math.sqrt(waterBody.volume_m3) * 1000 : undefined,
+              county: waterBody.county || '',
+              district: waterBody.water_district || '',
+              viss_url: ''
+            },
+            waterQuality: waterBody.ecological_status ? {
+              oxygen: { status: 'Unknown', conditions: 'Unknown' },
+              nutrients: { status: 'Unknown', chlorophyll: 'Unknown' },
+              acidity: { ph_status: 'Unknown', acid_neutralizing: 'Unknown' },
+              transparency: { light_conditions: 'Unknown', visibility: 'Unknown' },
+              ecological_status: waterBody.ecological_status,
+              chemical_status: waterBody.water_quality_status || 'Unknown',
+              overall_risk: 'Unknown'
+            } : null,
+            fishData: waterBody.fishing_regulations || waterBody.depth_mean ? {
+              fish_community_status: 'Unknown',
+              fish_indices: {},
+              fishing_regulations: waterBody.fishing_regulations ? {
+                general_info: waterBody.fishing_regulations
+              } : undefined
+            } : null,
+            currentConditions: {},
+            metadata: {
+              last_updated: waterBody.viss_last_updated || new Date().toISOString(),
+              data_sources: ['VISS_CACHE'],
+              quality_assessment: {
+                viss_data_age: 'cached',
+                smhi_data_freshness: 'cached',
+                completeness_score: 75
+              }
+            }
+          };
+        }
+      } else {
+        // Fallback till live hämtning bara om ingen cache finns
+        try {
+          // ANVÄND ORIGINAL-NAMNET för VISS-sökning, inte merged-namnet!
+          const originalName = waterBody.original_id || waterBody.name;
+          
+          // SÄKERHETSKOLL: Se till att vi har ett giltigt namn
+          if (!originalName || typeof originalName !== 'string') {
+            console.warn('❌ Inget giltigt namn för VISS-sökning:', { originalName, waterBodyName: waterBody.name, waterBodyId: waterBody.id });
+            // FORTSÄTT ÄNDÅ - använd waterBody.name som fallback
+          }
+          const coordinates = waterBody.lat && waterBody.lon ? 
+            { lat: waterBody.lat, lon: waterBody.lon } : undefined;
+          
+          // MULTI-LEVEL CACHE: localStorage → CDN → VISS API
+          
+          // Använd giltigt namn för sökning
+          const searchName = (originalName && typeof originalName === 'string') ? originalName : waterBody.name;
+          
+          if (!searchName) {
+            console.warn('❌ Inget namn att söka på:', waterBody);
+            vissData = null;
+          } else {
+            // Level 1: localStorage cache (snabbast)
+            vissData = vissCache.get(searchName, coordinates);
+          
+            if (!vissData) {
+              // Level 2: CDN cache (snabbt + global)
+              vissData = await vissCache.fetchFromCDN(searchName, coordinates);
+              
+              if (vissData) {
+                // Spara i localStorage för nästa gång
+                vissCache.set(searchName, vissData, coordinates);
+              } else {
+                // Level 3: Direct VISS API (långsammast, sista utväg)
+                const fetcher = new WaterBodyDataFetcher();
+                vissData = await fetcher.fetchWaterBodyDataWithValidation(searchName, coordinates);
+                
+                if (vissData) {
+                  vissCache.set(searchName, vissData, coordinates);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('❌ Kunde inte hämta VISS-data för:', waterBody.name, error);
+        }
+      }
+    }
+
+    return {
+      waterBody: waterBody as WaterBodyWithPlaces,
+      vissData
+    };
+    
+  } catch (error) {
+    console.error('Fel vid hämtning av water body with places details:', error);
+    return null;
+  }
 }
 
 /**

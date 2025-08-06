@@ -82,11 +82,10 @@ BEGIN
     w.disambiguation_method,
     w.administrative_source
   FROM water_bodies_with_places_fast_lookup w
-  WHERE w.center_lat BETWEEN click_lat - search_radius_deg AND click_lat + search_radius_deg
-    AND w.center_lon BETWEEN click_lon - search_radius_deg AND click_lon + search_radius_deg
-    AND w.geometry IS NOT NULL
+  WHERE w.geometry IS NOT NULL
     AND w.name IS NOT NULL
-    -- KRITISK: ST_Contains gör att HELA geometrin är klickbar!
+    -- PRECISION FÖRST: Använd ST_Contains för alla vattentyp (ingen centroid-optimering)
+    -- Detta är långsammare men mycket mer precist för alla vattendrag
     AND ST_Contains(w.geometry, ST_Point(click_lon, click_lat, 4326))
   ORDER BY
     -- 1. Prioritera SMHI lakes (högsta kvalitet)

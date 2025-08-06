@@ -18,6 +18,7 @@ import {
 import {
   WaterBodyWithPlaces,
   getWaterBodyWithPlacesAtCoordinates,
+  getWaterBodyWithPlacesDetails,
   convertToSMHIFormat
 } from '@/lib/waterBodiesWithPlacesService';
 
@@ -785,18 +786,36 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   // Hämta data i bakgrunden och uppdatera geometri om behövs
   const fetchWaterBodyDataInBackground = async (waterBody: SMHIWaterBody) => {
     try {
-      // Fetch detailed data for ALL water bodies now (including full geometry)
-              const details = await getSMHIWaterBodyDetails(waterBody.id);
-      
-      if (details) {
-        // Uppdatera med VISS-data
-        setWaterData(details.vissData || null);
+      // Choose the right service based on feature flag
+      if (USE_PLACES_SYSTEM) {
+        // NEW SYSTEM: Use water_bodies_with_places for VISS data
+        const details = await getWaterBodyWithPlacesDetails(waterBody.id);
         
-        // Om vi fick bättre geometri, uppdatera highlighting
-        if (details.waterBody.geometry && !waterBody.geometry) {
-          waterBody.geometry = details.waterBody.geometry;
-          // Visa förbättrad highlighting med fullständig geometri
-          showImmediateHighlight(waterBody);
+        if (details) {
+          // Uppdatera med VISS-data från nya systemet
+          setWaterData(details.vissData || null);
+          
+          // Om vi fick bättre geometri, uppdatera highlighting
+          if (details.waterBody.geometry && !waterBody.geometry) {
+            waterBody.geometry = details.waterBody.geometry;
+            // Visa förbättrad highlighting med fullständig geometri
+            showImmediateHighlight(waterBody);
+          }
+        }
+      } else {
+        // OLD SYSTEM: Use water_bodies_integrated
+        const details = await getSMHIWaterBodyDetails(waterBody.id);
+        
+        if (details) {
+          // Uppdatera med VISS-data
+          setWaterData(details.vissData || null);
+          
+          // Om vi fick bättre geometri, uppdatera highlighting
+          if (details.waterBody.geometry && !waterBody.geometry) {
+            waterBody.geometry = details.waterBody.geometry;
+            // Visa förbättrad highlighting med fullständig geometri
+            showImmediateHighlight(waterBody);
+          }
         }
       }
     } catch (error) {

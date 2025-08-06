@@ -161,6 +161,12 @@ export class WaterBodyDataFetcher {
    * Hitta vattenförekomst i VISS
    */
   private async findWaterBody(name: string): Promise<WaterBodyData['basic'] | null> {
+    // SÄKERHETSKOLL: Se till att vi har ett giltigt namn
+    if (!name || typeof name !== 'string') {
+      console.warn('❌ findWaterBody fick ogiltigt namn:', name);
+      return null;
+    }
+    
     // Normalisera sökning för bättre matchning
     const normalizedSearchName = this.normalizeSwedishName(name);
     
@@ -610,6 +616,12 @@ export class WaterBodyDataFetcher {
 
   // Normalisera svenska namn för bättre matchning
   private normalizeSwedishName(name: string): string {
+    // SÄKERHETSKOLL: Se till att name är en string
+    if (!name || typeof name !== 'string') {
+      console.warn('❌ normalizeSwedishName fick ogiltigt namn:', name);
+      return '';
+    }
+    
     return name
       .toLowerCase()
       .replace(/å/g, 'a')
