@@ -79,7 +79,7 @@ export async function searchWaterBodiesWithPlaces(
           const searchRadius = maxDistance * 0.009; // ~1km = 0.009 grader
           
           const dbResult = await supabase
-            .from('water_bodies_with_places')
+            .from('water_bodies_with_places_fast_lookup')
             .select(`id, name, water_type, geometry, lat, lon, area_km2,
               data_source, source_priority, original_id,
               depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
@@ -105,7 +105,7 @@ export async function searchWaterBodiesWithPlaces(
         } else {
           // Vanlig sökning utan geografisk filtrering - EXAKT som gamla systemet!
           const dbResult = await supabase
-            .from('water_bodies_with_places')
+            .from('water_bodies_with_places_fast_lookup')
             .select(`id, name, water_type, geometry, lat, lon, area_km2,
               data_source, source_priority, original_id,
               depth_mean, depth_max, volume_m3, ecological_status, segment_count, unification_method,
