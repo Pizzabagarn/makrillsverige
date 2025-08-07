@@ -4,19 +4,9 @@
  * Same performance as existing system but with proper place names
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import { WaterBodyData, WaterBodyDataFetcher } from './waterBodyDataFetcher';
 import { vissCache } from './vissCache';
-
-// Use same configuration as other services
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface WaterBodyWithPlaces {
   id: number;
@@ -369,26 +359,19 @@ export async function getWaterBodyWithPlacesDetails(
       } else {
         // Fallback till live hämtning bara om ingen cache finns
         try {
-          // ANVÄND ORIGINAL-NAMNET för VISS-sökning, inte merged-namnet!
-          const originalName = waterBody.original_id || waterBody.name;
+          // ANVÄND NAMNET för VISS-sökning (original_id är ett ID-nummer, inte ett namn!)
+          const searchName = waterBody.name;
           
           // SÄKERHETSKOLL: Se till att vi har ett giltigt namn
-          if (!originalName || typeof originalName !== 'string') {
-            console.warn('❌ Inget giltigt namn för VISS-sökning:', { originalName, waterBodyName: waterBody.name, waterBodyId: waterBody.id });
-            // FORTSÄTT ÄNDÅ - använd waterBody.name som fallback
-          }
-          const coordinates = waterBody.lat && waterBody.lon ? 
-            { lat: waterBody.lat, lon: waterBody.lon } : undefined;
-          
-          // MULTI-LEVEL CACHE: localStorage → CDN → VISS API
-          
-          // Använd giltigt namn för sökning
-          const searchName = (originalName && typeof originalName === 'string') ? originalName : waterBody.name;
-          
-          if (!searchName) {
-            console.warn('❌ Inget namn att söka på:', waterBody);
+          if (!searchName || typeof searchName !== 'string') {
+    
             vissData = null;
           } else {
+            const coordinates = waterBody.lat && waterBody.lon ? 
+              { lat: waterBody.lat, lon: waterBody.lon } : undefined;
+            
+            // MULTI-LEVEL CACHE: localStorage → CDN → VISS API
+            
             // Level 1: localStorage cache (snabbast)
             vissData = vissCache.get(searchName, coordinates);
           
@@ -434,11 +417,14 @@ export function convertToSMHIFormat(waterBody: WaterBodyWithPlaces): any {
   const lat = waterBody.lat || 60.0;
   const lon = waterBody.lon || 15.0;
   
+  // FINLAND-FIX: Om country inte är satt (null/undefined), sätt till Finland
+  const country = waterBody.country || 'FI';
+  
   return {
     id: waterBody.id.toString(),
     name: waterBody.display_name || waterBody.name, // Use display_name if available!
     water_type: waterBody.water_type,
-    country: waterBody.country,
+    country: country,
     coordinates: [lat, lon], // CRITICAL: This is what the component expects!
     geometry: waterBody.geometry,
     lat: lat,

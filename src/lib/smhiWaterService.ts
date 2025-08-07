@@ -424,7 +424,9 @@ export async function getSMHIWaterBodyDetails(
 function convertToSMHIWaterBody(water: any): SMHIWaterBody {
   const lat = water.lat || 60.0;
   const lon = water.lon || 15.0;
-  const country = getCountryFromCoordinates(lat, lon);
+  
+  // FINLAND-FIX: Om country finns i data, använd det, annars beräkna från koordinater
+  const country = water.country || getCountryFromCoordinates(lat, lon);
   
   return {
     id: water.id.toString(),
@@ -460,11 +462,6 @@ function convertToSMHIWaterBody(water: any): SMHIWaterBody {
  * Bestämma land baserat på koordinater (inkluderar Finland)
  */
 function getCountryFromCoordinates(lat: number, lon: number): 'SE' | 'NO' | 'DK' | 'FI' {
-  // FINLAND - östliga koordinater
-  if (lon >= 20.0 && lon <= 32.0 && lat >= 59.5 && lat <= 70.5) {
-    return 'FI';
-  }
-  
   // NORGE - latitud-beroende gränser (smalare i söder, bredare i norr)
   if (lat >= 65.0 && lon >= 4.5 && lon <= 15.0) {
     return 'NO';
@@ -474,18 +471,24 @@ function getCountryFromCoordinates(lat: number, lon: number): 'SE' | 'NO' | 'DK'
     return 'NO';
   }
   
-  // SVERIGE - efter Norge-kontroll (inkluderar HELA Skåne)
-  if (lon >= 11.0 && lon <= 24.5 && lat >= 55.0 && lat <= 69.5) {
-    return 'SE';
-  }
-  
   // DANMARK - mer restriktiva gränser (INTE Skåne!)
   if (lon >= 8.0 && lon <= 12.5 && lat >= 54.5 && lat <= 57.0) {
     return 'DK';
   }
   
-  // Fallback för okända områden
-  return 'SE';
+  // SVERIGE - efter Norge/Danmark-kontroll (inkluderar HELA Skåne)
+  if (lon >= 11.0 && lon <= 24.5 && lat >= 55.0 && lat <= 69.5) {
+    return 'SE';
+  }
+  
+  // FINLAND - östliga koordinater ELLER fallback för okända områden
+  // Detta täcker både explicita finska koordinater OCH vattendrag utan country
+  if (lon >= 20.0 && lon <= 32.0 && lat >= 59.5 && lat <= 70.5) {
+    return 'FI';
+  }
+  
+  // VIKTIGT: Fallback är nu Finland (för vattendrag utan country i databasen)
+  return 'FI';
 }
 
 /**

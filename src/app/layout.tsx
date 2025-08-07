@@ -36,7 +36,7 @@ const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('✅ Service Worker registrerat:', registration);
+      
       
       // Uppdatera service worker vid behov
       registration.addEventListener('updatefound', () => {

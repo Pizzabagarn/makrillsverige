@@ -167,8 +167,11 @@ export class WaterBodyDataFetcher {
       return null;
     }
     
-    // Normalisera sökning för bättre matchning
-    const normalizedSearchName = this.normalizeSwedishName(name);
+    // VIKTIGT: Extrahera grundnamnet för VISS-sökning (t.ex. "Vänern (Mariestad)" → "Vänern")
+    const baseName = this.extractBaseLakeName(name);
+    const originalName = name; // Behåll originalnamnet för visning
+    
+
     
     // Testa flera layers för olika vattentyper
     const layers = [
@@ -181,11 +184,14 @@ export class WaterBodyDataFetcher {
       try {
         const url = `${this.VISS_BASE_URL}/VISS/lst_viss_api/MapServer/${layer.id}/query`;
         
-        // Testa exakt matchning först, sedan fuzzy
+        // Testa exakt matchning först, sedan fuzzy - använd GRUNDNAMNET för sökning
         const searchQueries = [
-          `UPPER(${layer.field}) = UPPER('${name}')`, // Exakt matchning
-          `UPPER(${layer.field}) LIKE UPPER('%${name}%')`, // Partiell matchning
-          `UPPER(${layer.field}) LIKE UPPER('%${name.replace(/ö/g, 'o').replace(/ä/g, 'a').replace(/å/g, 'a')}%')` // Normaliserad matchning
+          `UPPER(${layer.field}) = UPPER('${baseName}')`, // Exakt matchning med grundnamn
+          `UPPER(${layer.field}) LIKE UPPER('%${baseName}%')`, // Partiell matchning med grundnamn
+          `UPPER(${layer.field}) LIKE UPPER('%${baseName.replace(/ö/g, 'o').replace(/ä/g, 'a').replace(/å/g, 'a')}%')`, // Normaliserad matchning
+          // Fallback: Testa även originalnamnet om grundnamnet inte fungerar
+          `UPPER(${layer.field}) = UPPER('${originalName}')`,
+          `UPPER(${layer.field}) LIKE UPPER('%${originalName}%')`
         ];
         
         for (const whereClause of searchQueries) {
@@ -230,7 +236,7 @@ export class WaterBodyDataFetcher {
             const areaM2 = attrs.HARO ? attrs.HARO * 10000 : (attrs['SHAPE.area'] || undefined);
             
             return {
-              name: attrs[layer.field] || attrs.NAME_VISS || name,
+              name: originalName, // VIKTIGT: Använd originalnamnet för visning (t.ex. "Vänern (Mariestad)")
               eu_cd: attrs.EU_CD,
               ms_cd: attrs.MS_CD,
               type: layer.type,
@@ -614,6 +620,30 @@ export class WaterBodyDataFetcher {
     }
   }
 
+  // Extrahera grundnamn från sjönamn med platsnamn (t.ex. "Vänern (Mariestad)" → "Vänern")
+  private extractBaseLakeName(name: string): string {
+    if (!name || typeof name !== 'string') {
+
+      return '';
+    }
+    
+    // Ta bort ALLA platsnamn i parenteser: "Vänern (Mariestad)" → "Vänern"
+    // Även flera parenteser: "Långsjön (Kommun A) (Kommun B)" → "Långsjön"
+    const baseNameMatch = name.match(/^([^(]+?)(?:\s*\([^)]+\))*\s*$/);
+    if (baseNameMatch) {
+      return baseNameMatch[1].trim();
+    }
+    
+    // Enklare fallback - ta allt före första parentesen
+    const simpleMatch = name.split('(')[0].trim();
+    if (simpleMatch) {
+      return simpleMatch;
+    }
+    
+    // Sista fallback - returnera originalnamnet
+    return name.trim();
+  }
+
   // Normalisera svenska namn för bättre matchning
   private normalizeSwedishName(name: string): string {
     // SÄKERHETSKOLL: Se till att name är en string
@@ -660,7 +690,7 @@ export class WaterBodyDataFetcher {
     }
     
     if (distance > maxDistanceKm) {
-      console.warn(`⚠️ VISS-koordinater avviker ${distance.toFixed(1)}km från förväntad position (max ${maxDistanceKm}km för denna sjöstorlek)`);
+
       return false;
     }
     
@@ -676,13 +706,13 @@ export class WaterBodyDataFetcher {
       // 1. Hitta vattenförekomsten i VISS
       const basicInfo = await this.findWaterBody(waterBodyName);
       if (!basicInfo) {
-        console.warn(`🔍 Ingen VISS-data hittades för: ${waterBodyName}`);
+    
         return null;
       }
 
       // 2. Validera geografisk matchning om vi har referenskoordinater
       if (expectedCoords && !this.validateGeographicMatch(basicInfo.coordinates, expectedCoords, basicInfo.area_m2)) {
-        console.warn(`❌ VISS-data för "${basicInfo.name}" matchar inte förväntad position för "${waterBodyName}"`);
+
         return null; // Avvisa data som troligen är från fel sjö
       }
 

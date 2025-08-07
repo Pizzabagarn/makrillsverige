@@ -169,12 +169,14 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
 
 
-        {/* Norwegian/Danish waters message */}
+        {/* Non-Swedish waters message */}
         {waterBody.country !== 'SE' && (
           <div className="bg-blue-900/20 border border-blue-800/50 p-3 rounded-lg">
             <p className="text-blue-300 text-sm">
-              {waterBody.country === 'NO' ? '🇳🇴 Norska' : '🇩🇰 Danska'} vattendrag. 
-              VISS-data finns endast för svenska vatten.
+              {waterBody.country === 'NO' && '🇳🇴 Norska vattendrag.'}
+              {waterBody.country === 'DK' && '🇩🇰 Danska vattendrag.'}
+              {waterBody.country === 'FI' && '🇫🇮 Finska vattendrag.'}
+              {' '}VISS-data finns endast för svenska vatten.
             </p>
           </div>
         )}
@@ -419,6 +421,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             ['==', ['get', 'country'], 'SE'], '#06b6d4', // Swedish cyan
             ['==', ['get', 'country'], 'NO'], '#ef4444', // Norwegian red  
             ['==', ['get', 'country'], 'DK'], '#f59e0b', // Danish amber
+            ['==', ['get', 'country'], 'FI'], '#10b981', // Finnish green
             '#64748b' // Default slate
           ],
           'circle-stroke-width': [
@@ -458,10 +461,11 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           ],
           'circle-color': [
             'case',
-            ['==', ['get', 'country'], 'SE'], '#06b6d4',
-            ['==', ['get', 'country'], 'NO'], '#ef4444',
-            ['==', ['get', 'country'], 'DK'], '#f59e0b', 
-            '#64748b'
+            ['==', ['get', 'country'], 'SE'], '#06b6d4',  // Sverige - cyan
+            ['==', ['get', 'country'], 'NO'], '#ef4444',  // Norge - röd
+            ['==', ['get', 'country'], 'DK'], '#f59e0b',  // Danmark - orange
+            ['==', ['get', 'country'], 'FI'], '#10b981',  // Finland - grön
+            '#64748b'  // Fallback - grå
           ],
           'circle-opacity': [
             'interpolate',

@@ -414,7 +414,7 @@ class LayerPreloadingManager {
 
   // NYTT: Desktop preloading - aggressiv parallell laddning
   private async preloadDesktop(): Promise<void> {
-    console.log('🖥️ Desktop preloading: Full parallell laddning');
+    
 
     // Alla lager parallellt med olika delays
     const layerPromises = this.LAYER_PRIORITY.map((layer, index) => {
@@ -463,7 +463,7 @@ class LayerPreloadingManager {
     });
 
     await Promise.all(metadataPromises);
-    console.log('📊 Metadata laddad för alla lager');
+
   }
 
   // REVOLUTIONÄR preload-metod med smart bildhantering

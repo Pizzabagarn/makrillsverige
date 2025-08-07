@@ -58,7 +58,8 @@ function convertToHybridWaterBody(water: any): HybridWaterBody {
     lat: water.lat,
     lon: water.lon,
     area_km2: water.area_km2 || 0,
-    country: deriveCountryFromRegion(water.region, water.lat, water.lon),
+    // FINLAND-FIX: Använd country från databas om det finns, annars beräkna
+    country: water.country || deriveCountryFromRegion(water.region, water.lat, water.lon),
     
     // Source metadata
     data_source: water.data_source,
@@ -109,7 +110,8 @@ function deriveCountryFromRegion(region?: string, lat?: number, lon?: number): s
     if (lat >= 54 && lat <= 58 && lon >= 8 && lon <= 15) return 'DK' // Denmark
   }
   
-  return 'SE' // Default to Sweden for SMHI data
+  // FINLAND-FIX: Default to Finland for unknown water bodies (likely Finnish)
+  return 'FI';
 }
 
 /**

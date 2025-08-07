@@ -9,7 +9,7 @@
  * - VISS-kompatibilitet bevarad
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import { WaterBodyDataFetcher, WaterBodyData } from './waterBodyDataFetcher';
 
 // Import existing services for fallback
@@ -22,9 +22,7 @@ import {
     SMHIWaterBodySearchResult
 } from './smhiWaterService';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Use centralized Supabase client to avoid multiple GoTrueClient instances
 
 // FEATURE FLAG - Du kan ändra detta för att switcha system
 const USE_UNIFIED_SYSTEM = false; // <-- Sätt till true när redo att testa
