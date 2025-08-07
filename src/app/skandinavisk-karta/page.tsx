@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft, MapPin, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { getLayoutType, type LayoutType } from '@/lib/layoutUtils';
 import { searchUnifiedWaterBodies, UnifiedWaterBody } from '@/lib/unifiedWaterService';
 // NEW: Import service with place names
 import { searchWaterBodiesWithPlaces, WaterBodyWithPlaces } from '@/lib/waterBodiesWithPlacesService';
@@ -28,6 +29,7 @@ const ScandinavianWaterMapGL = dynamic(() => import('@/components/ScandinavianWa
 });
 
 export default function ScandinavianMapPage() {
+  const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SMHIWaterBody[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -39,6 +41,22 @@ export default function ScandinavianMapPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<any>(null);
   const skipNextSearchRef = useRef(false);
+
+  // Layout detection
+  useEffect(() => {
+    const checkLayout = () => {
+      setLayoutType(getLayoutType());
+    };
+    
+    checkLayout();
+    window.addEventListener('resize', checkLayout);
+    window.addEventListener('orientationchange', checkLayout);
+    
+    return () => {
+      window.removeEventListener('resize', checkLayout);
+      window.removeEventListener('orientationchange', checkLayout);
+    };
+  }, []);
 
   // Search water bodies with debouncing
   useEffect(() => {
@@ -170,90 +188,164 @@ export default function ScandinavianMapPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <div className="relative z-20 bg-slate-800/90 backdrop-blur-sm border-b border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Back button */}
-            <Link
-              href="/"
-              className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors group"
-            >
-              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform duration-200" />
-              <span className="hidden sm:inline">Tillbaka</span>
-            </Link>
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-slate-900">
+      {/* DESKTOP & TABLET: Fixed Header */}
+      {(layoutType === 'desktop' || layoutType === 'tabletLandscape' || layoutType === 'tablet') && (
+        <div className="relative z-20 bg-slate-800/90 backdrop-blur-sm border-b border-slate-700 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* Back button */}
+              <Link
+                href="/"
+                className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors group"
+              >
+                <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform duration-200" />
+                <span className="hidden sm:inline">Tillbaka</span>
+              </Link>
 
-            {/* Search */}
-            <div className="flex-1 max-w-2xl mx-8" ref={searchRef}>
-              <div className="relative">
+              {/* Search */}
+              <div className="flex-1 max-w-2xl mx-4 lg:mx-8" ref={searchRef}>
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => searchResults.length > 0 && setShowSuggestions(true)}
-                    placeholder="Sök skandinaviska vattendrag..."
-                    className="w-full pl-12 pr-12 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-200"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={clearSearch}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                  {isSearching && (
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                      <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Search Suggestions */}
-                {showSuggestions && searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-xl overflow-hidden z-50">
-                    {searchResults.map((result, index) => (
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onFocus={() => searchResults.length > 0 && setShowSuggestions(true)}
+                      placeholder="Sök skandinaviska vattendrag..."
+                      className="w-full pl-12 pr-12 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-200"
+                    />
+                    {searchTerm && (
                       <button
-                        key={result.id}
-                        onClick={() => selectWaterBody(result)}
-                        className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0 ${
-                          index === selectedResultIndex ? 'bg-slate-700' : ''
-                        }`}
+                        onClick={clearSearch}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <MapPin className="w-4 h-4 text-cyan-400" />
-                            <div>
-                              <div className="text-white font-medium">{result.name}</div>
-                              <div className="text-slate-400 text-sm">
-                                {getWaterTypeLabel(result.water_type)} • {getCountryName(result.country)}
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
+                    {isSearching && (
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                        <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Search Suggestions */}
+                  {showSuggestions && searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-xl overflow-hidden z-50 max-h-80 overflow-y-auto">
+                      {searchResults.map((result, index) => (
+                        <button
+                          key={result.id}
+                          onClick={() => selectWaterBody(result)}
+                          className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0 ${
+                            index === selectedResultIndex ? 'bg-slate-700' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <MapPin className="w-4 h-4 text-cyan-400" />
+                              <div>
+                                <div className="text-white font-medium">{result.name}</div>
+                                <div className="text-slate-400 text-sm">
+                                  {getWaterTypeLabel(result.water_type)} • {getCountryName(result.country)}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Title */}
-            <div className="text-right">
-              <h1 className="text-xl font-bold text-white">Vattenkarta</h1>
-              <p className="text-sm text-slate-400">🇸🇪 🇳🇴 🇩🇰</p>
+              {/* Title */}
+              <div className="text-right">
+                <h1 className="text-xl font-bold text-white">Vattenkarta</h1>
+                <p className="text-sm text-slate-400">🇸🇪 🇳🇴 🇩🇰</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Map Container - Full screen minus header */}
-      <div className="h-[calc(100vh-4rem)]">
+      {/* MOBILE: Overlay Search */}
+      {(layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
+        <div className="absolute top-4 left-4 right-4 z-30" ref={searchRef}>
+          <div className="flex items-center space-x-2">
+            <Link
+              href="/"
+              className="flex-shrink-0 p-3 bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-xl text-slate-300 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            
+            <div className="flex-1 relative">
+              <div className="relative">
+                <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 ${layoutType === 'mobileLandscape' ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => searchResults.length > 0 && setShowSuggestions(true)}
+                  placeholder="Sök vattendrag..."
+                  className={`w-full ${layoutType === 'mobileLandscape' ? 'pl-10 pr-10 py-2 text-sm' : 'pl-12 pr-12 py-3'} bg-slate-800/90 backdrop-blur-sm border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-200`}
+                />
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <X className={`${layoutType === 'mobileLandscape' ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                  </button>
+                )}
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className={`${layoutType === 'mobileLandscape' ? 'w-4 h-4' : 'w-5 h-5'} text-cyan-400 animate-spin`} />
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Search Suggestions */}
+              {showSuggestions && searchResults.length > 0 && (
+                <div className={`absolute top-full left-0 right-0 mt-2 bg-slate-800/95 backdrop-blur-sm border border-slate-600 rounded-xl shadow-xl overflow-hidden z-50 ${layoutType === 'mobileLandscape' ? 'max-h-32' : 'max-h-60'} overflow-y-auto`}>
+                  {searchResults.map((result, index) => (
+                    <button
+                      key={result.id}
+                      onClick={() => selectWaterBody(result)}
+                      className={`w-full ${layoutType === 'mobileLandscape' ? 'px-3 py-2' : 'px-4 py-3'} text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0 ${
+                        index === selectedResultIndex ? 'bg-slate-700' : ''
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <MapPin className={`${layoutType === 'mobileLandscape' ? 'w-3 h-3' : 'w-4 h-4'} text-cyan-400`} />
+                        <div>
+                          <div className={`text-white font-medium ${layoutType === 'mobileLandscape' ? 'text-sm' : ''}`}>{result.name}</div>
+                          <div className={`text-slate-400 ${layoutType === 'mobileLandscape' ? 'text-xs' : 'text-sm'}`}>
+                            {getWaterTypeLabel(result.water_type)} • {getCountryName(result.country)}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Map Container - Responsive Height */}
+      <div className={`flex-1 relative overflow-hidden ${
+        layoutType === 'desktop' || layoutType === 'tabletLandscape' || layoutType === 'tablet' 
+          ? '' 
+          : 'h-full'
+      }`}>
         <ScandinavianWaterMapGL 
           ref={mapRef}
           searchTerm={searchTerm}

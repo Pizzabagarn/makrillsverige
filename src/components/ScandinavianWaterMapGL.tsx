@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import { X, ExternalLink, Thermometer } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
+import { getLayoutType, type LayoutType } from '@/lib/layoutUtils';
 import {
   SMHIWaterBody,
   SMHIWaterBodySearchResult,
@@ -30,9 +31,10 @@ interface WaterBodyInfoPanelProps {
   waterData: WaterBodyData | null;
   loading: boolean;
   onClose: () => void;
+  layoutType: LayoutType;
 }
 
-function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBodyInfoPanelProps) {
+function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType }: WaterBodyInfoPanelProps) {
   if (!waterBody) return null;
 
   const countryNames = {
@@ -50,13 +52,148 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
     'canal': 'Kanal'
   };
 
+    // Mobile: Same as desktop but smaller and more compact
+  const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
+  
+  if (isMobile) {
   return (
-    <div className="absolute top-4 right-4 w-96 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-2xl border border-slate-600/50 shadow-2xl z-[1000] max-h-[85vh] overflow-y-auto">
+      <div 
+        className={`absolute ${layoutType === 'mobileLandscape' ? 'top-16 right-1' : 'top-20 right-1'} w-48 sm:w-56 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-lg border border-slate-600/50 shadow-2xl z-[1000] flex flex-col`}
+        style={{
+          // ADAPTIV: Liten när lite data, max 2 kort när mycket data
+          maxHeight: '160px' // Max höjd för 2 kort, men kan vara mindre
+        }}>
+        {/* Mobile Header - Ultra Compact for tiny screens */}
+        <div className="flex justify-between items-center p-1.5 sm:p-2 border-b border-slate-600/50 bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-t-lg flex-shrink-0">
+          <div className="min-w-0 flex-1 pr-1">
+            <h3 className="text-xs font-bold text-white mb-0 truncate">{waterBody.name}</h3>
+            <p className="text-xs text-slate-300 font-medium leading-tight truncate">
+              {typeLabels[waterBody.water_type]} • {countryNames[waterBody.country]}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-0.5 sm:p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200 flex-shrink-0"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Mobile Content - Extra compact for tiny screens */}
+        <div 
+          className="p-1.5 sm:p-2 space-y-1.5 sm:space-y-2 overflow-y-auto"
+          style={{ 
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#64748b #1e293b',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-2">
+              <div className="animate-spin rounded-full h-3 w-3 border border-cyan-400 border-t-transparent"></div>
+              <span className="ml-2 text-xs text-slate-300">Laddar...</span>
+            </div>
+          )}
+
+          {/* Water Quality Data (VISS) - Mobile optimized but same structure */}
+          {waterBody.country === 'SE' && waterData?.waterQuality && (() => {
+            const hasOxygenData = waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-';
+            const hasNutrientsData = waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-';
+            const hasTransparencyData = waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-';
+            const hasAcidityData = waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-';
+            const hasEcologicalData = waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && waterData.waterQuality.ecological_status !== '-';
+            
+            const hasAnyData = hasOxygenData || hasNutrientsData || hasTransparencyData || hasAcidityData || hasEcologicalData;
+            
+            return hasAnyData;
+          })() && (
+            <div>
+              {/* Ta bort titel på mobil för att spara plats och visa exakt 2 kort */}
+              <div className="grid grid-cols-1 gap-1">
+                {/* Oxygen */}
+                {waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-' && (
+                  <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded p-1 sm:p-1.5">
+                    <div className="text-cyan-300 text-xs font-medium mb-0.5">Syrgas</div>
+                    <div className="text-white font-bold text-xs">
+                      {waterData.waterQuality.oxygen.status}
+                    </div>
+                  </div>
+                )}
+
+                {/* Nutrients */}
+                {waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-' && (
+                  <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded p-1 sm:p-1.5">
+                    <div className="text-green-300 text-xs font-medium mb-0.5">Övergödning</div>
+                    <div className="text-white font-bold text-xs">
+                      {waterData.waterQuality.nutrients.status}
+                    </div>
+                    {waterData.waterQuality.nutrients.chlorophyll && waterData.waterQuality.nutrients.chlorophyll !== 'Okänt' && (
+                      <div className="text-green-400 text-xs mt-0.5">Alger: {waterData.waterQuality.nutrients.chlorophyll}</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Transparency */}
+                {waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-' && (
+                  <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded p-1 sm:p-1.5">
+                    <div className="text-blue-300 text-xs font-medium mb-0.5">Ljus</div>
+                    <div className="text-white font-bold text-xs">
+                      {waterData.waterQuality.transparency.light_conditions}
+                    </div>
+                    {waterData.waterQuality.transparency.visibility && waterData.waterQuality.transparency.visibility !== 'Okänt' && (
+                      <div className="text-blue-400 text-xs mt-0.5">Sikt: {waterData.waterQuality.transparency.visibility}</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Acidity */}
+                {waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-' && (
+                  <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/30 rounded p-1 sm:p-1.5">
+                    <div className="text-yellow-300 text-xs font-medium mb-0.5">pH</div>
+                    <div className="text-white font-bold text-xs">
+                      {waterData.waterQuality.acidity.ph_status}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ecological Status */}
+                {waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && (
+                  <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700/30 rounded p-1 sm:p-1.5">
+                    <div className="text-purple-300 text-xs font-medium mb-0.5">Ekologi</div>
+                    <div className="text-white font-bold text-xs">
+                      {waterData.waterQuality.ecological_status}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Non-Swedish waters message */}
+          {waterBody.country !== 'SE' && (
+            <div className="bg-blue-900/20 border border-blue-800/50 p-1 sm:p-1.5 rounded">
+              <p className="text-blue-300 text-xs leading-tight">
+                {waterBody.country === 'NO' && '🇳🇴 Norge.'}
+                {waterBody.country === 'DK' && '🇩🇰 Danmark.'}
+                {waterBody.country === 'FI' && '🇫🇮 Finland.'}
+                {' '}VISS endast för Sverige.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: Right sidebar design with fixed height
+  return (
+    <div className="absolute top-4 right-4 w-full max-w-sm lg:max-w-md xl:max-w-lg mx-4 lg:mx-0 lg:w-96 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-2xl border border-slate-600/50 shadow-2xl z-[1000] flex flex-col">
       {/* Header */}
-      <div className="flex justify-between items-center p-6 border-b border-slate-600/50 bg-gradient-to-r from-slate-800/50 to-slate-700/50">
+      <div className="flex justify-between items-center p-4 lg:p-6 border-b border-slate-600/50 bg-gradient-to-r from-slate-800/50 to-slate-700/50">
         <div>
-          <h3 className="text-xl font-bold text-white mb-1">{waterBody.name}</h3>
-          <p className="text-sm text-slate-300 font-medium">
+          <h3 className="text-lg lg:text-xl font-bold text-white mb-1">{waterBody.name}</h3>
+          <p className="text-xs lg:text-sm text-slate-300 font-medium">
             {typeLabels[waterBody.water_type]} • {countryNames[waterBody.country]}
           </p>
 
@@ -65,12 +202,19 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
           onClick={onClose}
           className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4 lg:w-5 lg:h-5" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="p-6 space-y-6">
+      {/* Content - Fixed height with scrolling for max ~2 cards */}
+      <div 
+        className="p-4 lg:p-6 space-y-4 lg:space-y-6 overflow-y-auto max-h-[400px]" 
+        style={{ 
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#64748b #1e293b',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
 
 
 
@@ -101,10 +245,10 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
               <span className="ml-2 text-xs text-slate-400 font-normal">2017-2021</span>
             </h4>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
               {/* Oxygen - only if real data */}
               {waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-' && (
-                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded-xl p-4">
+                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded-xl p-3 lg:p-4">
                   <div className="text-cyan-300 text-sm font-medium mb-1">Syrgasförhållanden</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.oxygen.status}
@@ -115,7 +259,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
               {/* Nutrients - only if real data */}
               {waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-' && (
-                <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded-xl p-4">
+                <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded-xl p-3 lg:p-4">
                   <div className="text-green-300 text-sm font-medium mb-1">Övergödning</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.nutrients.status}
@@ -128,7 +272,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
               {/* Transparency - only if real data */}
               {waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-' && (
-                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-4">
+                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-3 lg:p-4">
                   <div className="text-blue-300 text-sm font-medium mb-1">Ljusförhållanden</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.transparency.light_conditions}
@@ -141,7 +285,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
               {/* Acidity - only if real data */}
               {waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-' && (
-                <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/30 rounded-xl p-4">
+                <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/30 rounded-xl p-3 lg:p-4">
                   <div className="text-yellow-300 text-sm font-medium mb-1">pH-nivå</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.acidity.ph_status}
@@ -152,7 +296,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
 
               {/* Ecological Status - only if real data */}
               {waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && (
-                <div className="col-span-2 bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700/30 rounded-xl p-4">
+                <div className="col-span-1 sm:col-span-2 bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700/30 rounded-xl p-3 lg:p-4">
                   <div className="text-purple-300 text-sm font-medium mb-1">Ekologisk status</div>
                   <div className="text-white font-bold text-lg">
                     {waterData.waterQuality.ecological_status}
@@ -189,6 +333,8 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose }: WaterBod
   );
 }
 
+
+
 interface MapRef {
   focusOnWaterBody: (waterBody: SMHIWaterBody) => void;
 }
@@ -202,6 +348,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   
+  // Layout detection for responsive design
+  const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
+  
   // REF för synkron state tracking (löser React async state problem)
   const selectedWaterBodyRef = useRef<SMHIWaterBody | null>(null);
   
@@ -209,6 +358,22 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const [waterData, setWaterData] = useState<WaterBodyData | null>(null);
   const [loading, setLoading] = useState(false);
   const [visibleWaterBodies, setVisibleWaterBodies] = useState<SMHIWaterBody[]>([]);
+
+  // Layout detection effect
+  useEffect(() => {
+    const checkLayout = () => {
+      setLayoutType(getLayoutType());
+    };
+    
+    checkLayout();
+    window.addEventListener('resize', checkLayout);
+    window.addEventListener('orientationchange', checkLayout);
+    
+    return () => {
+      window.removeEventListener('resize', checkLayout);
+      window.removeEventListener('orientationchange', checkLayout);
+    };
+  }, []);
 
   useImperativeHandle(ref, () => ({
     focusOnWaterBody: (waterBody: SMHIWaterBody) => {
@@ -840,6 +1005,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         waterData={waterData}
         loading={loading}
         onClose={clearSelection}
+        layoutType={layoutType}
       />
     </div>
   );
