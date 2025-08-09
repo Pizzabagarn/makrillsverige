@@ -10,7 +10,8 @@ import {
 import Link from 'next/link';
 import { weatherGeocodingService, type GeoLocation } from '@/lib/weatherGeocodingService';
 import WeatherAttribution from '@/app/components/WeatherAttribution';
-import { searchAllWaterBodies, type WaterBody } from '@/lib/swedishWaterBodies';
+import { searchWaterBodiesWithPlaces, type WaterBodyWithPlaces } from '@/lib/waterBodiesWithPlacesService';
+import { getSwedishWaterTypeName, formatWaterType } from '@/lib/waterTypeTranslation';
 
 interface WeatherData {
   time: string;
@@ -46,7 +47,7 @@ export default function WeatherPage() {
   // Optimerad lösning: Använd live API direkt för snabb laddning
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
-  const [waterResults, setWaterResults] = useState<WaterBody[]>([]);
+  const [waterResults, setWaterResults] = useState<WaterBodyWithPlaces[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<GeoLocation | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherData[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -213,10 +214,10 @@ export default function WeatherPage() {
       setIsSearching(true);
       setSelectedResultIndex(-1);
       try {
-        // Parallell sökning - borde vara snabb igen nu!
+        // Parallell sökning - använd nya databastabellen för konsistens med kartan!
         const [geoResult, waterBodies] = await Promise.all([
           weatherGeocodingService.searchLocations(searchTerm),
-          searchAllWaterBodies(searchTerm, userLocation || undefined)
+          searchWaterBodiesWithPlaces(searchTerm, 15, userLocation || undefined)
         ]);
         
         setSearchResults(geoResult.locations || []);
@@ -741,17 +742,24 @@ export default function WeatherPage() {
     setIsDropdownFocused(false);
   };
 
-  // Hantera val av vattenområde
-  const handleWaterBodySelect = async (waterBody: WaterBody) => {
-    const formatWaterType = (type: string) => type.charAt(0).toUpperCase() + type.slice(1);
+  // Nu använder vi den centraliserade intelligenta översättningen
+
+  // Hantera val av vattenområde (nya systemet med platsnamn)
+  const handleWaterBodySelect = async (waterBody: WaterBodyWithPlaces) => {
+    const swedishType = getSwedishWaterTypeName(waterBody.name, waterBody.water_type);
     
-    // Använd land-info från sökresultat (Sverige/Norge/Danmark) för header
-    const country = waterBody.region;
+    // Använd förbättrad platsinfo från nya systemet
+    const locationParts = [];
+    if (waterBody.municipality) locationParts.push(waterBody.municipality);
+    if (waterBody.county && waterBody.county !== waterBody.municipality) locationParts.push(waterBody.county);
+    if (waterBody.country) locationParts.push(waterBody.country);
+    
+    const locationInfo = locationParts.length > 0 ? locationParts.join(', ') : 'Skandinavien';
     
     const geoLocation: GeoLocation = {
       lat: waterBody.lat,
       lon: waterBody.lon,
-      displayName: `${waterBody.name} (${formatWaterType(waterBody.type)} i ${country})`,
+      displayName: `${waterBody.name} (${formatWaterType(swedishType)} i ${locationInfo})`,
     };
     await fetchWeatherData(geoLocation);
     setShowSuggestions(false);
@@ -859,7 +867,7 @@ export default function WeatherPage() {
                   <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20">
                     {(searchResults.length > 0 || waterResults.length > 0) ? (
                       <>
-                        {/* Vattenområden FÖRST */}
+                        {/* Vattendrag/sjöar FÖRST (svenska först) */}
                         {waterResults.length > 0 && (
                           <>
                             <div className="px-4 py-2 border-b border-white/10 bg-blue-500/10">
@@ -868,39 +876,45 @@ export default function WeatherPage() {
                               </p>
                             </div>
                             
-                            {waterResults.map((waterBody, index) => (
-                              <button
-                                key={`water-${waterBody.lat}-${waterBody.lon}-${index}`}
-                                onClick={() => handleWaterBodySelect(waterBody)}
-                                className={`w-full px-4 py-3 text-left transition-all duration-150 border-b border-white/5 last:border-b-0 group ${
-                                  selectedResultIndex === index || (isDropdownFocused && selectedResultIndex === index)
-                                    ? 'bg-blue-500/20 border-blue-400/30' 
-                                    : 'hover:bg-blue-500/10'
-                                }`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                                    selectedResultIndex === index
-                                      ? 'bg-blue-400/30 text-blue-300' 
-                                      : 'bg-blue-500/20 text-blue-300/80 group-hover:bg-blue-400/25 group-hover:text-blue-200'
-                                  }`}>
-                                    <Droplets className="w-4 h-4" />
+                            {waterResults.map((waterBody, index) => {
+                              const swedishType = getSwedishWaterTypeName(waterBody.name, waterBody.water_type);
+                              const formattedType = formatWaterType(swedishType);
+                              
+                              return (
+                                <button
+                                  key={`water-${waterBody.id}-${index}`}
+                                  onClick={() => handleWaterBodySelect(waterBody)}
+                                  className={`w-full px-4 py-3 text-left transition-all duration-150 border-b border-white/5 last:border-b-0 group ${
+                                    selectedResultIndex === index || (isDropdownFocused && selectedResultIndex === index)
+                                      ? 'bg-blue-500/20 border-blue-400/30' 
+                                      : 'hover:bg-blue-500/10'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                      selectedResultIndex === index
+                                        ? 'bg-blue-400/30 text-blue-300' 
+                                        : 'bg-blue-500/20 text-blue-300/80 group-hover:bg-blue-400/25 group-hover:text-blue-200'
+                                    }`}>
+                                      <Droplets className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-white font-medium text-sm leading-tight">
+                                        {waterBody.name}
+                                      </p>
+                                      <p className="text-blue-300/60 text-xs mt-0.5">
+                                        {formattedType}
+                                        {waterBody.municipality && ` • ${waterBody.municipality}`}
+                                        {waterBody.county && waterBody.county !== waterBody.municipality && ` • ${waterBody.county}`}
+                                      </p>
+                                    </div>
+                                    <ChevronRight className={`w-4 h-4 text-white/40 transition-transform group-hover:translate-x-0.5 ${
+                                      selectedResultIndex === index ? 'text-blue-400' : ''
+                                    }`} />
                                   </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-white font-medium text-sm leading-tight">
-                                      {waterBody.name}
-                                    </p>
-                                    <p className="text-blue-300/60 text-xs mt-0.5">
-                                      {waterBody.type.charAt(0).toUpperCase() + waterBody.type.slice(1)} • {waterBody.region}
-                                      {waterBody.description && ` • ${waterBody.description}`}
-                                    </p>
-                                  </div>
-                                  <ChevronRight className={`w-4 h-4 text-white/40 transition-transform group-hover:translate-x-0.5 ${
-                                    selectedResultIndex === index ? 'text-blue-400' : ''
-                                  }`} />
-                                </div>
-                              </button>
-                            ))}
+                                </button>
+                              );
+                            })}
                           </>
                         )}
 

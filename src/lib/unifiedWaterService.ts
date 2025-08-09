@@ -235,7 +235,7 @@ export async function getUnifiedWaterBodyAtCoordinates(
 
                     if (!exactError && exactResults && exactResults.length > 0) {
                         // Prioritera sammansatta vattendrag
-                        const mergedResult = exactResults.find(r => r.original_segment_count > 1);
+                        const mergedResult = exactResults.find((r: any) => r.original_segment_count > 1);
                         bestMatch = mergedResult || exactResults[0];
                     }
                 } catch (stError) {

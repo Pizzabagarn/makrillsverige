@@ -223,9 +223,9 @@ export default function CacheDebugPanel({ alwaysOpen = false }: CacheDebugPanelP
           </div>
                      <div className="mt-2 p-2 bg-green-900/30 rounded text-green-200">
              <strong>✅ FIXADE ALLA STORA PROBLEM!</strong><br/>
-             ✅ Tog bort HÅRDKODAD "känns som" temperatur<br/>
+             ✅ Tog bort HÅRDKODAD &quot;känns som&quot; temperatur<br/>
              ✅ Tog bort PÅHITTAD sannolikhet nederbörd<br/>
-             ✅ <strong>FIXADE VINDRIKTNING!</strong> FMI använder "blowing TO", vi korrigerar +180°<br/>
+             ✅ <strong>FIXADE VINDRIKTNING!</strong> FMI använder &quot;blowing TO&quot;, vi korrigerar +180°<br/>
              ✅ 164° → 344° (North ↑), 178° → 358° (North ↑) - matchar nu SMHI!
            </div>
            <div className="mt-2 p-2 bg-orange-900/20 rounded text-orange-200">

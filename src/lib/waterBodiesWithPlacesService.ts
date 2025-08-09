@@ -328,22 +328,20 @@ export async function getWaterBodyWithPlacesDetails(
               district: waterBody.water_district || '',
               viss_url: ''
             },
-            waterQuality: waterBody.ecological_status ? {
+            waterQuality: {
               oxygen: { status: 'Unknown', conditions: 'Unknown' },
               nutrients: { status: 'Unknown', chlorophyll: 'Unknown' },
               acidity: { ph_status: 'Unknown', acid_neutralizing: 'Unknown' },
               transparency: { light_conditions: 'Unknown', visibility: 'Unknown' },
-              ecological_status: waterBody.ecological_status,
+              ecological_status: waterBody.ecological_status || 'Unknown',
               chemical_status: waterBody.water_quality_status || 'Unknown',
               overall_risk: 'Unknown'
-            } : null,
-            fishData: waterBody.fishing_regulations || waterBody.depth_mean ? {
+            },
+            fishData: {
               fish_community_status: 'Unknown',
               fish_indices: {},
-              fishing_regulations: waterBody.fishing_regulations ? {
-                general_info: waterBody.fishing_regulations
-              } : undefined
-            } : null,
+              fishing_regulations: undefined
+            },
             currentConditions: {},
             metadata: {
               last_updated: waterBody.viss_last_updated || new Date().toISOString(),

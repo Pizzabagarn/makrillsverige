@@ -35,6 +35,7 @@ export default function ParameterControls({
     season: 'summer',
     weather: 'clear',
     moon_phase: 'new_moon',
+    depth: 5,
     oxygen_level: 8,
     current_speed: 0.1,
     wind_speed: 5
@@ -101,7 +102,8 @@ export default function ParameterControls({
       moon_phase: 'new_moon',
       depth: 5,
       oxygen_level: 8,
-      current_speed: 0.1
+      current_speed: 0.1,
+      wind_speed: 5
     });
   }, []);
 
@@ -118,7 +120,8 @@ export default function ParameterControls({
         moon_phase: 'new_moon',
         depth: 3,
         oxygen_level: 9,
-        current_speed: 0.2
+        current_speed: 0.2,
+        wind_speed: 4
       },
       'winter_challenge': {
         water_temperature: 4,
@@ -130,7 +133,8 @@ export default function ParameterControls({
         moon_phase: 'full_moon',
         depth: 8,
         oxygen_level: 10,
-        current_speed: 0.05
+        current_speed: 0.05,
+        wind_speed: 6
       },
       'spring_feeding': {
         water_temperature: 12,
@@ -142,7 +146,8 @@ export default function ParameterControls({
         moon_phase: 'waxing_crescent',
         depth: 2,
         oxygen_level: 8.5,
-        current_speed: 0.3
+        current_speed: 0.3,
+        wind_speed: 3
       },
       'coastal_conditions': {
         water_temperature: 16,
@@ -154,7 +159,8 @@ export default function ParameterControls({
         moon_phase: 'new_moon',
         depth: 4,
         oxygen_level: 7.5,
-        current_speed: 0.4
+        current_speed: 0.4,
+        wind_speed: 5
       }
     };
 

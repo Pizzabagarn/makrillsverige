@@ -283,7 +283,7 @@ export async function searchWaterBodiesDatabase(query: string): Promise<WaterBod
       .not('name', 'is', null)  // Bara vattenområden med namn
       .not('geometry', 'is', null)  // Bara med geometri
       .ilike('name', `%${searchTerm}%`)  // Case-insensitive sökning
-      .order('area_km2', { ascending: false, nullsLast: true })  // Större sjöar först
+      .order('area_km2', { ascending: false, nullsFirst: false })  // Större sjöar först
       .limit(15);
 
     if (error) {

@@ -17,6 +17,7 @@ export interface ParameterState {
   moon_phase: string;
   oxygen_level: number;
   wind_speed: number;
+  depth: number;
 }
 
 export interface ActivityBreakdown {

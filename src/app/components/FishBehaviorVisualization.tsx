@@ -1215,7 +1215,8 @@ export default function FishBehaviorVisualization({ fishName }: FishBehaviorVisu
     weather: 'clear',
     moon_phase: 'new_moon',
     oxygen_level: 8,
-    wind_speed: 3
+    wind_speed: 3,
+    depth: 5
   });
 
   // Load data

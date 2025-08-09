@@ -7,6 +7,7 @@ import * as turf from '@turf/turf';
 import { X, ExternalLink, Thermometer } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
 import { getLayoutType, type LayoutType } from '@/lib/layoutUtils';
+import { getSwedishWaterTypeName, formatWaterType } from '@/lib/waterTypeTranslation';
 import {
   SMHIWaterBody,
   SMHIWaterBodySearchResult,
@@ -44,12 +45,10 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType
     'FI': 'Finland'
   };
 
-  const typeLabels = {
-    'lake': 'Sjö',
-    'river': 'Å/Flod',
-    'stream': 'Bäck',
-    'reservoir': 'Reservoar',
-    'canal': 'Kanal'
+  // Använd intelligent översättning baserad på namn
+  const getDisplayType = (waterBody: SMHIWaterBody) => {
+    const swedishType = getSwedishWaterTypeName(waterBody.name, waterBody.water_type);
+    return formatWaterType(swedishType);
   };
 
     // Mobile: Same as desktop but smaller and more compact
@@ -68,7 +67,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType
           <div className="min-w-0 flex-1 pr-1">
             <h3 className="text-xs font-bold text-white mb-0 truncate">{waterBody.name}</h3>
             <p className="text-xs text-slate-300 font-medium leading-tight truncate">
-              {typeLabels[waterBody.water_type]} • {countryNames[waterBody.country]}
+              {getDisplayType(waterBody)} • {countryNames[waterBody.country]}
             </p>
           </div>
           <button
@@ -194,7 +193,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType
         <div>
           <h3 className="text-lg lg:text-xl font-bold text-white mb-1">{waterBody.name}</h3>
           <p className="text-xs lg:text-sm text-slate-300 font-medium">
-            {typeLabels[waterBody.water_type]} • {countryNames[waterBody.country]}
+                          {getDisplayType(waterBody)} • {countryNames[waterBody.country]}
           </p>
 
         </div>
