@@ -31,7 +31,6 @@ async function loadGlobalMackerelData(): Promise<any> {
   }
 
   isLoadingGlobalData = true;
-  console.log(`🗜️ Laddar HELA makrill-datafilen till global cache...`);
   const startTime = Date.now();
 
   try {
@@ -81,7 +80,6 @@ async function loadGlobalMackerelData(): Promise<any> {
     
     const loadTime = Date.now() - startTime;
     const timestamps = Object.keys(allData?.timestamps || {}).length;
-    console.log(`✅ Global makrill-cache laddad: ${timestamps} timestamps på ${loadTime}ms`);
     
     return allData;
 

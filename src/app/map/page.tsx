@@ -3,27 +3,33 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { getLayoutType, shouldShowMobileSlider, type LayoutType } from '../../lib/layoutUtils';
-import { useLayer } from '../context/LayerContext';
 import { useImageLayer, type ImageLayerType } from '../context/ImageLayerContext';
+import { useLayer } from '../context/LayerContext';
 import { useSimulationLayer } from '../context/SimulationContext';
 import LayerPreloadingManager, { type PreloadStatus } from '@/lib/layerPreloadingManager';
 import PopupPreloadManager from '@/lib/popupPreloadManager';
 import { useCacheOptimization } from '@/lib/throttleHooks';
 import { Loader2 } from 'lucide-react';
 import ValidationDashboard from '../components/FishingValidationDashboard';
+import ModernDropdown from '../components/ModernDropdown';
+import MobileTopbar from '../components/MobileTopbar';
 
 const MapView = dynamic(() => import('../components/Map'), { ssr: false });
 const ClockKnob = dynamic(() => import('../components/ClockKnob'), { ssr: false });
 const SimulationPlayer = dynamic(() => import('../components/SimulationPlayer'), { ssr: false });
+const UserMenu = dynamic(() => import('../components/UserMenu'), { ssr: false });
 
 export default function MapPage() {
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
   const { simulationLayer, setSimulationLayer } = useSimulationLayer();
+  const { activeLayer, setActiveLayer } = useImageLayer();
   
   // Layer state från LayerContext - kontrolleras nu från sidebaren
-  const { showCurrentVectors } = useLayer();
+  const { showCurrentVectors, setShowCurrentVectors } = useLayer();
   
   // NYTT: Global cache-optimering
   const { isLowEndDevice, optimizeForDevice, clearApiCache } = useCacheOptimization();
@@ -150,8 +156,123 @@ export default function MapPage() {
 
 
 
+
+
   return (
-    <div className="map-page max-h-dvh h-full w-full flex flex-col lg:flex-row overflow-hidden">
+    <div className="map-page max-h-dvh h-full w-full flex flex-col overflow-hidden bg-slate-900">
+      {/* DESKTOP/TABLET: Professional top bar. On desktop, place profile icon at far viewport right. */}
+      {(layoutType === 'desktop' || layoutType === 'tabletLandscape' || layoutType === 'tablet') && (
+        <div className="relative z-20 bg-gradient-to-b from-blue-950/70 via-blue-900/55 to-blue-900/35 backdrop-blur-lg border-b border-blue-300/15 shadow-[0_10px_40px_rgba(0,0,0,0.25)] flex-shrink-0 transform-gpu will-change-transform">
+          {/* Inner content container */}
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="flex items-center h-[76px]">
+              {/* Left section - Title (desktop/tablet) - ger utrymme för bakåtknappen på iPad */}
+              <div className="flex items-center space-x-4 md:ml-16 lg:ml-0">
+                <div className="text-left select-none">
+                  <h1 className="text-2xl font-light text-white tracking-tight">Havskarta</h1>
+                  <p className="text-blue-100/80 font-light text-[13px] tracking-wide">Marindata & väderförhållanden</p>
+                </div>
+              </div>
+
+              {/* Center section - Desktop/Tablet controls */}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="hidden md:flex items-center gap-6">
+                  <ModernDropdown
+                    label="Kartlager"
+                    value={showCurrentVectors ? 'vectors' : (activeLayer || 'temperature')}
+                    selectedValues={[
+                      activeLayer || 'temperature',
+                      ...(showCurrentVectors ? ['vectors'] : [])
+                    ]}
+                    onChange={(value) => {
+                      // När man väljer kartlager, stäng av simulering
+                      if (simulationLayer) {
+                        setSimulationLayer(null);
+                      }
+
+                      if (value === 'current') {
+                        // When selecting Strömstyrka, automatically enable vectors
+                        setActiveLayer('current');
+                        setShowCurrentVectors(true);
+                      } else if (value === 'vectors') {
+                        // Toggle vectors on/off over current layer
+                        setShowCurrentVectors(!showCurrentVectors);
+                      } else {
+                        setShowCurrentVectors(false);
+                        setActiveLayer(value as ImageLayerType);
+                      }
+                    }}
+                    options={[
+                      { value: 'current', label: 'Strömstyrka' },
+                      { value: 'vectors', label: 'Strömriktning' },
+                      { value: 'temperature', label: 'Temperatur' },
+                      { value: 'salinity', label: 'Salthalt' },
+                      { value: 'mackerel', label: 'Makrill' }
+                    ]}
+                    size="default"
+                  />
+
+                  <ModernDropdown
+                    label="Simulering"
+                    value={simulationLayer || ''}
+                    onChange={(value) => setSimulationLayer((value || null) as ImageLayerType | null)}
+                    options={[
+                      { value: '', label: 'Av' },
+                      { value: 'current', label: 'Strömstyrka' },
+                      { value: 'temperature', label: 'Temperatur' },
+                      { value: 'salinity', label: 'Salthalt' },
+                      { value: 'mackerel', label: 'Makrill' }
+                    ]}
+                    size="default"
+                  />
+                </div>
+              </div>
+
+              {/* Tablet fallback: show user menu in-flow (endast för små tablets) */}
+              <div className="flex items-center ml-8 md:hidden">
+                <UserMenu />
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop/iPad: User menu pinned at far edge */}
+          <div className="hidden md:flex items-center absolute inset-y-0 right-8">
+            <UserMenu />
+          </div>
+
+          {/* Desktop/iPad: Back button restored inside topbar at far left */}
+          <div className="hidden md:flex items-center absolute inset-y-0 left-6">
+            <Link
+              href="/"
+              className="flex items-center space-x-2 text-blue-100/90 hover:text-white transition-colors group"
+            >
+              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform duration-200" />
+              <span className="hidden xl:inline">Tillbaka</span>
+            </Link>
+          </div>
+        </div>
+      )}
+      {/* MOBILE: Isolerad topbar-komponent för att undvika re-render konflikter */}
+      <MobileTopbar
+        layoutType={layoutType}
+        activeLayer={activeLayer}
+        setActiveLayer={setActiveLayer}
+        showCurrentVectors={showCurrentVectors}
+        setShowCurrentVectors={setShowCurrentVectors}
+        simulationLayer={simulationLayer}
+        setSimulationLayer={setSimulationLayer}
+      />
+      {/* Flytande tillbaka-knapp på kartan för mobil */}
+      {(layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape') && (
+        <Link
+          href="/"
+          className="fixed top-4 left-4 z-[35] bg-blue-900/60 backdrop-blur-xl border border-blue-300/30 p-3 rounded-2xl text-white shadow-2xl hover:bg-blue-900/70 transition-all duration-300"
+          aria-label="Tillbaka"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+      )}
+
       {/* Map Loading Overlay - inte används längre */}
       {isMapLoading && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
@@ -170,16 +291,18 @@ export default function MapPage() {
         </div>
               )}
 
-      {/* KARTA - VISAS ALLTID DIREKT MED ORIGINALSTRUKTUR */}
+      {/* KARTA */}
       <div 
         className="flex-1 relative overflow-hidden"
         style={{
+          paddingTop: 0,
           paddingBottom: layoutType === 'mobileLandscape' ? '25vh' : '0'
         }}
       >
         <MapView 
           showZoom={false}
           showCurrentVectors={showCurrentVectors}
+          key="main-map" // FÖRBÄTTRING: Stabil key för att undvika onödiga re-mounts
         />
         
         {/* Lager-kontroller flyttade till sidebaren - ingen overlay längre */}
@@ -194,6 +317,13 @@ export default function MapPage() {
         {isLowEndDevice && (
           <div className="absolute bottom-4 left-4 bg-yellow-500/20 text-yellow-100 px-2 py-1 rounded text-xs">
             📱 Mobil-optimering aktiv
+          </div>
+        )}
+
+        {/* DESKTOP: ClockKnob direkt på kartan, höger sida under legenderna */}
+        {(layoutType === 'desktop' || layoutType === 'tabletLandscape' || layoutType === 'tablet') && (
+          <div className="absolute right-4 top-48 z-[1001]">
+            <ClockKnob />
           </div>
         )}
       </div>

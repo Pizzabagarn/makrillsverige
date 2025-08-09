@@ -35,10 +35,10 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
       const setInitialPosition = () => {
         const isMobile = window.innerWidth < 640; // sm breakpoint
         if (isMobile) {
-          // Mobile: centered horizontally BELOW legend
+          // Mobile: centered horizontally BELOW topbar and legend
           const centerX = window.innerWidth / 2 - 100; // Simple center calculation
           const safeX = Math.max(16, Math.min(centerX, window.innerWidth - 220)); // Ensure it fits
-          setPosition({ x: safeX, y: 120 }); // Y=120 to position below legend
+          setPosition({ x: safeX, y: 80 }); // Y=80 to position below toggle button and legend
         } else {
           // Desktop: centered horizontally, top with margin
           const centerX = window.innerWidth / 2 - 175; // Simple center calculation
@@ -248,8 +248,12 @@ export default function SimulationPlayer({ simulationLayer, onLayerChange }: Sim
       startY: position?.y || 0
     });
     
-    // Prevent scrolling while dragging
-    e.preventDefault();
+    // Prevent scrolling while dragging - but handle passive event listener
+    try {
+      e.preventDefault();
+    } catch (error) {
+      // Ignore passive event listener error
+    }
   }, [position]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {

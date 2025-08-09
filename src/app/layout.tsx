@@ -111,10 +111,11 @@ export default function RootLayout({
     registerServiceWorker();
   }, []);
 
-  // Kontrollera om vi ska visa sidebaren (inte på startsidan, fiskinformationssidan, väder-sidan, skandinavisk-karta eller admin-sidor)
+  // Kontrollera om vi ska visa sidebaren (inte på startsidan, fiskinformationssidan, väder-sidan, skandinavisk-karta, kart-sidan eller admin-sidor)
   const shouldShowSidebar = pathname !== '/' && 
                            pathname !== '/fiskinformation' && 
                            pathname !== '/weather' &&
+                           pathname !== '/map' &&
                            pathname !== '/skandinavisk-karta' &&
                            !pathname.startsWith('/admin');
 

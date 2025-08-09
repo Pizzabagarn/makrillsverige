@@ -62,7 +62,6 @@ export default function CurrentMagnitudeLegend({
       {/* Titel */}
               <div className="flex items-center mb-2 sm:mb-3 w-full relative">
         <div className="max-[380px]:w-3 max-[380px]:h-3 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-blue-900 via-cyan-400 via-green-400 via-yellow-400 via-orange-500 to-red-900 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold">🌊</span>
         </div>
         <h3 className="max-[380px]:text-[10px] text-xs sm:text-sm font-semibold absolute inset-0 flex items-center justify-center">Strömstyrka</h3>
       </div>

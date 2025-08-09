@@ -165,81 +165,72 @@ function isDaylightSavingTime(date: Date): boolean {
   return date >= marchLastSunday && date < octoberLastSunday;
 }
 
-// Beräkna solens synlighet och fade-transitions
+// Beräkna solens synlighet och fade-transitions (heltimmes-ankrad, Malmö)
 function getSunMoonState(currentHour: number, currentDate: Date) {
   const sunTimes = calculateSunTimes(currentDate);
   const { sunrise, sunset } = sunTimes;
   
-  // Kör årlig test första gången (en gång per dag) - avstängd för prestanda
-  // const today = new Date().toDateString();
-  // if (!(window as any).lastSunTestDate || (window as any).lastSunTestDate !== today) {
-  //   testSunTimesOverYear(currentDate);
-  //   (window as any).lastSunTestDate = today;
-  // }
-  
-  // Konvertera från timmar från midnatt till verklig tid
+  // Timme på dygnet [0..23]
   const timeOfDay = (currentHour % 24 + 24) % 24;
-  
-  // Formatera tider för debugging
-  const formatTime = (hour: number) => {
-    const h = Math.floor(hour);
-    const m = Math.floor((hour - h) * 60);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  const hourInt = Math.floor(timeOfDay);
+
+  // Heltimmes-ankring runt händelser
+  const sunriseHour = Math.floor(sunrise);
+  const sunsetHour = Math.floor(sunset);
+
+  // Hjälpfunktioner för modulo 24-logik
+  const mod24 = (h: number) => (h % 24 + 24) % 24;
+  const stepIndexForWindow = (h: number, eventHour: number): number => {
+    const start = mod24(eventHour - 1); // start = H-1
+    const diff = mod24(h - start); // 0..23
+    return diff <= 2 ? diff : -1; // 0,1,2 inom fönster; annars -1
   };
+  const distanceToEvent = (h: number, eventHour: number): number => {
+    const a = mod24(h);
+    const b = mod24(eventHour);
+    const d = Math.abs(a - b);
+    return Math.min(d, 24 - d);
+  };
+
+  // Beräkna steg (0 = H-1, 1 = H, 2 = H+1) för respektive övergång
+  const sunriseStep = stepIndexForWindow(hourInt, sunriseHour);
+  const sunsetStep = stepIndexForWindow(hourInt, sunsetHour);
   
   let sunOpacity = 0;
   let moonOpacity = 0;
   
-  // Beräkna transition-fönster - mjukare övergångar över längre tid
-  // Börja fada 1 timme före och sluta 1 timme efter soluppgång/solnedgång
-  const transitionHours = 1.0; // Förlängt från 2 timmar till 2 timmar total (1h före + 1h efter)
-  const sunriseStart = sunrise - transitionHours; // Börja 1h före soluppgång
-  const sunriseEnd = sunrise + transitionHours; // Sluta 1h efter soluppgång
-  
-  const sunsetStart = sunset - transitionHours; // Börja 1h före solnedgång
-  const sunsetEnd = sunset + transitionHours; // Sluta 1h efter solnedgång
-  
-  // Minimal loggning endast under utveckling
-  if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) {
-    // console.log(`🌞 Sol/måne: ${formatTime(timeOfDay)} | Upp: ${formatTime(sunrise)} | Ner: ${formatTime(sunset)}`);
-  }
-  
-  // Kolla om vi är i någon transition-period
-  const inSunriseTransition = timeOfDay >= sunriseStart && timeOfDay <= sunriseEnd;
-  const inSunsetTransition = timeOfDay >= sunsetStart && timeOfDay <= sunsetEnd;
-  
-  if (inSunriseTransition) {
-    // Soluppgång transition: månen fadas ut, solen fadas in
-    const totalTransitionTime = transitionHours * 2; // 2 timmar total (1h före + 1h efter)
-    const progress = (timeOfDay - sunriseStart) / totalTransitionTime;
-    
-    // Extra mjuk sinuskurva för naturlig transition
-    const clampedProgress = Math.max(0, Math.min(1, progress));
-    const smoothProgress = 0.5 * (1 - Math.cos(clampedProgress * Math.PI));
-    
-    sunOpacity = smoothProgress;
-    moonOpacity = 1 - smoothProgress;
-    
-  } else if (inSunsetTransition) {
-    // Solnedgång transition: solen fadas ut, månen fadas in
-    const totalTransitionTime = transitionHours * 2; // 2 timmar total (1h före + 1h efter)
-    const progress = (timeOfDay - sunsetStart) / totalTransitionTime;
-    
-    // Extra mjuk sinuskurva för naturlig transition
-    const clampedProgress = Math.max(0, Math.min(1, progress));
-    const smoothProgress = 0.5 * (1 - Math.cos(clampedProgress * Math.PI));
-    
-    sunOpacity = 1 - smoothProgress;  // Sol fadas ut
-    moonOpacity = smoothProgress;     // Måne fadas in
-    
+  // Fördefinierade mål per steg för proffsig trestegs-fade
+  // Sunset: sol 0.9 -> 0.15 -> 0.0, måne 0.1 -> 0.85 -> 1.0
+  const SUNSET_SUN = [0.9, 0.15, 0.0];
+  const SUNSET_MOON = [0.1, 0.85, 1.0];
+  // Sunrise: sol 0.1 -> 0.85 -> 1.0, måne 0.9 -> 0.15 -> 0.0
+  const SUNRISE_SUN = [0.1, 0.85, 1.0];
+  const SUNRISE_MOON = [0.9, 0.15, 0.0];
+
+  // Om båda fönstren skulle gälla samtidigt (osannolikt i Malmö), välj närmast event
+  if (sunriseStep !== -1 && sunsetStep !== -1) {
+    const nearerIsSunrise = distanceToEvent(hourInt, sunriseHour) <= distanceToEvent(hourInt, sunsetHour);
+    if (nearerIsSunrise) {
+      sunOpacity = SUNRISE_SUN[sunriseStep];
+      moonOpacity = SUNRISE_MOON[sunriseStep];
+    } else {
+      sunOpacity = SUNSET_SUN[sunsetStep];
+      moonOpacity = SUNSET_MOON[sunsetStep];
+    }
+  } else if (sunriseStep !== -1) {
+    // Soluppgång: månen ut, solen in
+    sunOpacity = SUNRISE_SUN[sunriseStep];
+    moonOpacity = SUNRISE_MOON[sunriseStep];
+  } else if (sunsetStep !== -1) {
+    // Solnedgång: solen ut, månen in
+    sunOpacity = SUNSET_SUN[sunsetStep];
+    moonOpacity = SUNSET_MOON[sunsetStep];
   } else {
-    // Utanför transition-perioder - bestäm baserat på tid
-    if (timeOfDay >= sunrise && timeOfDay <= sunset) {
-      // Dag: efter soluppgång, före solnedgång (men inte i transition)
+    // Utanför övergångsfönster: avgör dag/natt med exakta tider
+    if (timeOfDay >= sunrise && timeOfDay < sunset) {
       sunOpacity = 1;
       moonOpacity = 0;
     } else {
-      // Natt: före soluppgång eller efter solnedgång (men inte i transition)
       sunOpacity = 0;
       moonOpacity = 1;
     }
@@ -250,7 +241,7 @@ function getSunMoonState(currentHour: number, currentDate: Date) {
     moonOpacity: Math.max(0, Math.min(1, moonOpacity)),
     sunrise,
     sunset,
-    isDaytime: timeOfDay >= sunrise && timeOfDay <= sunset,
+    isDaytime: timeOfDay >= sunrise && timeOfDay < sunset,
     timeOfDay
   };
 }
@@ -569,28 +560,28 @@ const ClockKnob = React.memo(() => {
             </div>
           </div>
 
+          {/* Readable texts & buttons without outer container - outlined for visibility */}
           <div className="text-center text-white space-y-0.5">
-            <p className="text-lg font-semibold">{dateInfo.weekday}</p>
-            <p className="text-sm text-white/70">{dateInfo.fullDate}</p>
-            <p className="text-base font-bold">{dateInfo.time}</p>
-            <p className="text-xs text-white/50 leading-tight mt-1">
+            <p className="text-lg font-semibold text-outline-strong drop-shadow-md">{dateInfo.weekday}</p>
+            <p className="text-sm text-white/95 text-outline-strong drop-shadow">{dateInfo.fullDate}</p>
+            <p className="text-base font-bold tracking-wide text-outline-strong drop-shadow-lg">{dateInfo.time}</p>
+            <p className="text-xs text-white/95 leading-tight mt-1 text-outline-strong drop-shadow">
               Prognos:<br />{dateInfo.offsetString}
             </p>
           </div>
-
-          <div className="flex flex-col gap-2 mt-3">
+          <div className="flex flex-col gap-2 mt-2">
             <div className="flex gap-2 justify-center">
               <button 
                 onClick={() => setSelectedHour(clampedHour - 24)} 
                 disabled={clampedHour === minHour} 
-                className="px-3 py-1 rounded-md bg-amber-900/80 hover:bg-amber-800/80 text-sm text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-amber-700/80 border border-amber-600/30"
+                className="px-3 py-1 rounded-md bg-black/60 hover:bg-black/70 text-sm text-white font-semibold shadow-xl backdrop-blur-sm transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed border border-white/25"
               >
                 « -1 dag
               </button>
               <button 
                 onClick={() => setSelectedHour(clampedHour + 24)} 
                 disabled={clampedHour === maxHour} 
-                className="px-3 py-1 rounded-md bg-amber-900/80 hover:bg-amber-800/80 text-sm text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-amber-700/80 border border-amber-600/30"
+                className="px-3 py-1 rounded-md bg-black/60 hover:bg-black/70 text-sm text-white font-semibold shadow-xl backdrop-blur-sm transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed border border-white/25"
               >
                 +1 dag »
               </button>
@@ -599,14 +590,14 @@ const ClockKnob = React.memo(() => {
               <button 
                 onClick={() => setSelectedHour(clampedHour - 1)} 
                 disabled={clampedHour === minHour} 
-                className="px-3 py-1 rounded-md bg-slate-800/90 hover:bg-slate-700/90 text-sm text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-slate-600/90 border border-white/10"
+                className="px-3 py-1 rounded-md bg-black/60 hover:bg-black/70 text-sm text-white font-semibold shadow-xl backdrop-blur-sm transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed border border-white/25"
               >
                 − 1 tim
               </button>
               <button 
                 onClick={() => setSelectedHour(clampedHour + 1)} 
                 disabled={clampedHour === maxHour} 
-                className="px-3 py-1 rounded-md bg-slate-800/90 hover:bg-slate-700/90 text-sm text-white font-medium shadow-sm backdrop-blur-md transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed active:bg-slate-600/90 border border-white/10"
+                className="px-3 py-1 rounded-md bg-black/60 hover:bg-black/70 text-sm text-white font-semibold shadow-xl backdrop-blur-sm transition-all duration-100 disabled:opacity-30 disabled:cursor-not-allowed border border-white/25"
               >
                 +1 tim
               </button>

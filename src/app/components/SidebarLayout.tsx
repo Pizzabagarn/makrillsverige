@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import { getLayoutType, shouldShowSidebar, shouldShowHamburger, type LayoutType } from '../../lib/layoutUtils';
 import { useLayer } from '../context/LayerContext';
@@ -21,6 +22,7 @@ export default function SidebarWithToggle({ children, simulationLayer, onSimulat
   } = useLayer();
   const [open, setOpen] = useState(false);
   const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
+  const pathname = usePathname();
 
   useEffect(() => {
     const checkLayout = () => {
@@ -46,9 +48,13 @@ export default function SidebarWithToggle({ children, simulationLayer, onSimulat
 
   return (
     <div className="relative h-dvh w-full">
-      {/* Bakgrundsbild & dim */}
-      <div className="absolute inset-0 bg-[url('/images/makrill-bg.jpg')] bg-cover bg-center bg-no-repeat" />
-      <div className="absolute inset-0 bg-black/30 z-0" />
+      {/* Bakgrundsbild & dim - visa ej på /map */}
+      {pathname !== '/map' && (
+        <>
+          <div className="absolute inset-0 bg-[url('/images/makrill-bg.jpg')] bg-cover bg-center bg-no-repeat" />
+          <div className="absolute inset-0 bg-black/30 z-0" />
+        </>
+      )}
 
       {/* Innehåll i desktop */}
       <div className="relative z-10 flex h-full">

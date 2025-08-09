@@ -55,7 +55,6 @@ const MackerelLegend = ({ visible = true, className = "" }: MackerelLegendProps)
         <div className={`backdrop-blur-md bg-black/80 border border-white/20 rounded-lg shadow-xl text-white max-[380px]:p-2 p-3 sm:p-4 max-[380px]:w-32 w-44 lg:w-56 ${className}`}>
         <div className="flex items-center mb-2 sm:mb-3 w-full relative">
           <div className="max-[380px]:w-3 max-[380px]:h-3 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-black via-amber-800 via-yellow-600 to-yellow-400 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold">🐟</span>
           </div>
           <h3 className="max-[380px]:text-[8px] text-xs sm:text-sm font-semibold absolute inset-0 flex items-center justify-center">Makrillsannolikhet</h3>
         </div>
