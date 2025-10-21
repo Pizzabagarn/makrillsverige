@@ -1,0 +1,111 @@
+name: Daglig Datahämtning & Bildgenerering
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Kör kl 03:00 svensk tid varje natt (02:00 UTC)
+  workflow_dispatch:     # Möjliggör manuell körning
+
+jobs:
+  build-everything:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 timmar timeout (GitHub Actions max)
+
+    steps:
+      - name: 📥 Klona repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Installera Node-beroenden
+        run: npm ci
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Installera Python-beroenden
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🌊 Kör Build Everything Script
+        env:
+          DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
+        run: |
+          python scripts/build_everything.py
+
+      - name: 📊 Kontrollera genererade filer
+        run: |
+          echo "## 📁 Genererade filer" >> $GITHUB_STEP_SUMMARY
+          
+          # Kontrollera area-parameters
+          if [ -f "public/data/area-parameters-extended.json.gz" ]; then
+            FILE_SIZE=$(stat -c%s "public/data/area-parameters-extended.json.gz")
+            FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+            echo "✅ Area Parameters: ${FILE_SIZE_MB}MB" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Area Parameters saknas" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Räkna bilder per kategori
+          for dir in current temperature salinity mackerel-probability; do
+            DIR_PATH="public/data/${dir}-images-mercator"
+            if [ -d "$DIR_PATH" ]; then
+              WEBP_COUNT=$(find "$DIR_PATH" -name "*.webp" 2>/dev/null | wc -l)
+              echo "✅ ${dir}: ${WEBP_COUNT} WebP-bilder" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: 🔄 Commita och pusha ändringar till main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Lägg till alla genererade filer
+          git add public/data/area-parameters-extended.json.gz
+          git add public/data/current-images-mercator/
+          git add public/data/temperature-images-mercator/
+          git add public/data/salinity-images-mercator/
+          git add public/data/mackerel-probability-images-mercator/
+          git add public/data/mackerel-values/
+          git add public/data/marine_data_snapshots.json
+          
+          # Kontrollera om det finns ändringar
+          if git diff --staged --quiet; then
+            echo "✅ Inga ändringar att commita"
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M UTC')
+            git commit -m "🌊 Auto-uppdatering: Marina data & bilder ($TIMESTAMP)"
+            git push origin main
+            echo "✅ Ändringar pushade till main"
+          fi
+
+      - name: 📝 Slutsammanfattning
+        if: always()
+        run: |
+          echo "## 🌊 Daglig Build Slutförd" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tid**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: main" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow**: Build Everything" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "public/data/area-parameters-extended.json.gz" ]; then
+            FILE_SIZE=$(stat -c%s "public/data/area-parameters-extended.json.gz")
+            FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+            echo "- **Data**: ${FILE_SIZE_MB}MB komprimerad" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Totalt antal bilder
+          TOTAL_IMAGES=$(find public/data/*-images-mercator -name "*.webp" 2>/dev/null | wc -l)
+          echo "- **Bilder**: ${TOTAL_IMAGES} WebP-bilder totalt" >> $GITHUB_STEP_SUMMARY
+          
+          echo "- **Status**: ✅ Klart - Vercel deployer automatiskt" >> $GITHUB_STEP_SUMMARY
+
