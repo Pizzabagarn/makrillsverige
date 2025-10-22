@@ -18,6 +18,7 @@ Användning:
 import subprocess
 import sys
 import time
+import os
 from pathlib import Path
 import argparse
 import json
@@ -70,16 +71,22 @@ def run_command_with_timeout(cmd, description, cwd=None, shell=False, timeout_mi
     timeout_seconds = timeout_minutes * 60
     
     try:
+        # Sätt environment för unbuffered Python output
+        env = os.environ.copy()
+        env['PYTHONUNBUFFERED'] = '1'
+        
         if shell:
             process = subprocess.Popen(cmd, shell=True, cwd=cwd, 
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                     text=True, bufsize=1, universal_newlines=True,
-                                     encoding='utf-8', errors='replace')  # FIX: UTF-8 encoding
+                                     text=True, bufsize=0, universal_newlines=True,
+                                     encoding='utf-8', errors='replace',
+                                     env=env)  # Lägg till environment
         else:
             process = subprocess.Popen(cmd, cwd=cwd,
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                     text=True, bufsize=1, universal_newlines=True,
-                                     encoding='utf-8', errors='replace')  # FIX: UTF-8 encoding
+                                     text=True, bufsize=0, universal_newlines=True,
+                                     encoding='utf-8', errors='replace',
+                                     env=env)  # Lägg till environment
         
         # Live output med timeout check
         output_lines = []
@@ -304,7 +311,7 @@ def build_everything(parameter='all', resolution=1400, quality=85, quick_mode=No
     
     
     # Steg 4: Generera Marina Bilder (WebP direkt)
-    marine_cmd_parts = ['python', 'scripts/generate_marine_images_mercator.py']
+    marine_cmd_parts = ['python', '-u', 'scripts/generate_marine_images_mercator.py']  # -u för unbuffered output
     marine_cmd_parts.extend(['--parameter', parameter])
     marine_cmd_parts.extend(['--resolution', str(resolution)])
     marine_cmd_parts.extend(['--quality', str(quality)])
