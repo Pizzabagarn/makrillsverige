@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 're
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
-import { X, ExternalLink, Thermometer, Navigation } from 'lucide-react';
+import { X, ExternalLink, Thermometer, Navigation, Car, Bike, User, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
 import { getLayoutType, type LayoutType } from '@/lib/layoutUtils';
 import { getSwedishWaterTypeName, formatWaterType } from '@/lib/waterTypeTranslation';
@@ -25,8 +25,7 @@ import {
 } from '@/lib/waterBodiesWithPlacesService';
 
 // Import routing services
-import { Route, TransportMode, getRoute } from '@/lib/routingService';
-import NavigationPanel from '@/components/NavigationPanel';
+import { Route, TransportMode, getRoute, formatDistance, formatDuration } from '@/lib/routingService';
 
 // FEATURE FLAG: Use new system with place names
 const USE_PLACES_SYSTEM = true;
@@ -38,9 +37,15 @@ interface WaterBodyInfoPanelProps {
   onClose: () => void;
   onNavigate?: () => void;
   layoutType: LayoutType;
+  // Navigation integration
+  route?: Route | null;
+  routeLoading?: boolean;
+  onTransportChange?: (mode: TransportMode) => void;
+  currentMode?: TransportMode;
+  onBackFromNavigation?: () => void;
 }
 
-function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate, layoutType }: WaterBodyInfoPanelProps) {
+function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate, layoutType, route, routeLoading, onTransportChange, currentMode, onBackFromNavigation }: WaterBodyInfoPanelProps) {
   if (!waterBody) return null;
 
   const countryNames = {
@@ -58,8 +63,11 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
 
     // Mobile: Same as desktop but smaller and more compact
   const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
+  const navActive = !!route || !!routeLoading;
+  const allSteps = route?.segments?.flatMap(seg => seg.steps || []) || [];
   
   if (isMobile) {
+  const [showMobileSteps, setShowMobileSteps] = useState(false);
   return (
       <div 
         className={`absolute ${layoutType === 'mobileLandscape' ? 'top-16 right-1' : 'top-20 right-1'} w-48 sm:w-56 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-lg border border-slate-600/50 shadow-2xl z-[1000] flex flex-col`}
@@ -76,7 +84,15 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             </p>
           </div>
           <div className="flex items-center space-x-1 flex-shrink-0">
-            {onNavigate && (
+            {navActive && onBackFromNavigation ? (
+              <button
+                onClick={onBackFromNavigation}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                title="Tillbaka"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            ) : onNavigate ? (
               <button
                 onClick={onNavigate}
                 className="p-1 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 transition-all duration-200"
@@ -84,7 +100,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
               >
                 <Navigation className="w-3.5 h-3.5" />
               </button>
-            )}
+            ) : null}
             <button
               onClick={onClose}
               className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
@@ -103,6 +119,57 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             WebkitOverflowScrolling: 'touch'
           }}
         >
+          {/* Navigation mode (mobile) */}
+          {navActive ? (
+            <div className="space-y-2">
+              {routeLoading && (
+                <div className="flex items-center justify-center py-2">
+                  <div className="animate-spin rounded-full h-3 w-3 border border-cyan-400 border-t-transparent"></div>
+                  <span className="ml-2 text-xs text-slate-300">Beräknar rutt...</span>
+                </div>
+              )}
+              {route && !routeLoading && (
+                <>
+                  <div className="text-xs text-slate-300">
+                    {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                  </div>
+                  {onTransportChange && currentMode && (
+                    <div className="flex space-x-1">
+                      <button onClick={() => onTransportChange('driving-car')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Car className="w-3 h-3 inline mr-1"/>Bil</button>
+                      <button onClick={() => onTransportChange('cycling-regular')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='cycling-regular'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Bike className="w-3 h-3 inline mr-1"/>Cykel</button>
+                      <button onClick={() => onTransportChange('foot-walking')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='foot-walking'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><User className="w-3 h-3 inline mr-1"/>Gång</button>
+                    </div>
+                  )}
+                  {/* Toggle for steps (mobile) */}
+                  {allSteps.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => setShowMobileSteps(!showMobileSteps)}
+                        className="w-full py-1.5 px-2 bg-slate-700/50 hover:bg-slate-700 rounded text-xs text-white flex items-center justify-between"
+                      >
+                        <span>Vägbeskrivning ({allSteps.length} steg)</span>
+                        {showMobileSteps ? <ChevronDown className="w-3.5 h-3.5"/> : <ChevronUp className="w-3.5 h-3.5"/>}
+                      </button>
+                      {showMobileSteps && (
+                        <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg bg-slate-800/50 p-2">
+                          {allSteps.map((step, index) => (
+                            <div key={index} className="text-xs text-slate-300 py-1 border-b border-slate-700/50 last:border-b-0">
+                              <div className="font-medium text-white">{index + 1}. {step.instruction}</div>
+                              {step.distance > 0 && (
+                                <div className="text-slate-400 mt-0.5">{formatDistance(step.distance)}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Original info content hidden while navigating */}
           {/* Loading State */}
           {loading && (
             <div className="flex items-center justify-center py-2">
@@ -196,6 +263,8 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
               </p>
             </div>
           )}
+            </>
+          )}
         </div>
       </div>
     );
@@ -213,7 +282,16 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
           </p>
         </div>
         <div className="flex items-center space-x-1 flex-shrink-0">
-          {onNavigate && (
+          {navActive && onBackFromNavigation ? (
+            <button
+              onClick={onBackFromNavigation}
+              className="px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50"
+              title="Tillbaka"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="text-sm font-medium">Tillbaka</span>
+            </button>
+          ) : onNavigate ? (
             <button
               onClick={onNavigate}
               className="px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50"
@@ -222,7 +300,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
               <Navigation className="w-4 h-4" />
               <span className="text-sm font-medium">Navigera</span>
             </button>
-          )}
+          ) : null}
           <button
             onClick={onClose}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200"
@@ -241,9 +319,52 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
           WebkitOverflowScrolling: 'touch'
         }}
       >
-
-
-
+        {/* Navigation mode (desktop) */}
+        {navActive ? (
+          <div className="space-y-3">
+            {routeLoading && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                <span className="ml-3 text-sm text-slate-300">Beräknar rutt...</span>
+              </div>
+            )}
+            {route && !routeLoading && (
+              <>
+                <div className="text-sm text-slate-300">
+                  {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                </div>
+                {onTransportChange && currentMode && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <button onClick={() => onTransportChange('driving-car')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Car className="w-4 h-4 inline mr-1"/>Bil</button>
+                    <button onClick={() => onTransportChange('cycling-regular')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='cycling-regular'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Bike className="w-4 h-4 inline mr-1"/>Cykel</button>
+                    <button onClick={() => onTransportChange('foot-walking')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='foot-walking'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><User className="w-4 h-4 inline mr-1"/>Gång</button>
+                  </div>
+                )}
+                {/* Steps list */}
+                {allSteps.length > 0 && (
+                  <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl bg-slate-800/50 p-3">
+                    {allSteps.map((step, index) => (
+                      <div key={index} className="text-sm p-3 bg-slate-700/30 rounded-lg">
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 w-6 h-6 bg-cyan-600/20 text-cyan-400 rounded-full flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white font-medium">{step.instruction}</div>
+                            {step.distance > 0 && (
+                              <div className="text-slate-400 text-xs mt-1">{formatDistance(step.distance)}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <>
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-8">
@@ -350,9 +471,8 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             </p>
           </div>
         )}
-
-
-
+        </>
+        )}
 
       </div>
     </div>
@@ -389,6 +509,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const [loading, setLoading] = useState(false);
   const [visibleWaterBodies, setVisibleWaterBodies] = useState<SMHIWaterBody[]>([]);
   const [userHeading, setUserHeading] = useState<number | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
   
   // Navigation state
   const [currentRoute, setCurrentRoute] = useState<Route | null>(null);
@@ -509,7 +630,11 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       map.on('moveend', handleMapMove); // För preloading av detaljer
       
       // SMART KLICK-HANTERING: Klicka ut först, sedan välj nytt
-      map.on('click', handleSmartMapClick);
+      map.on('click', (e) => {
+        // Klick på karta: rensa rutt och urval
+        handleCloseNavigation();
+        handleSmartMapClick(e);
+      });
       
       // Starta användarpositionering
       startUserLocationTracking();
@@ -683,12 +808,21 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     watchIdRef.current = navigator.geolocation.watchPosition(
       updateUserPosition,
       (error) => {
-        console.error('Geolocation error:', error);
+        const err = error as GeolocationPositionError;
+        let message = 'Platsfel.';
+        if (typeof window !== 'undefined' && !window.isSecureContext && !location.hostname.includes('localhost')) {
+          message = 'Plats kräver HTTPS. Öppna sidan via https:// eller aktivera plats manuellt.';
+        } else if (err && typeof err.code === 'number') {
+          if (err.code === 1) message = 'Platsåtkomst nekad. Tillåt platsdelning för webbplatsen.';
+          else if (err.code === 2) message = 'Plats otillgänglig. Prova utomhus eller aktivera GPS.';
+          else if (err.code === 3) message = 'Platsförfrågan tog för lång tid. Försök igen.';
+        }
+        setGeoError(message);
       },
       {
         enableHighAccuracy: true,
         maximumAge: 0,
-        timeout: 5000
+        timeout: 8000
       }
     );
   };
@@ -1257,7 +1391,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           source: 'route-vehicle',
           paint: {
             'line-color': '#ffffff',
-            'line-width': 10,
+            'line-width': 5,
             'line-opacity': 0.8
           }
         });
@@ -1272,33 +1406,46 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           },
           paint: {
             'line-color': '#3b82f6',
-            'line-width': 6,
+            'line-width': 3,
             'line-opacity': 1.0
           }
         });
       }
 
-      // Gång-del (prickad)
+      // Gång-del (prickad) – snappa sista punkten till NÄRMASTE kant från vägslutet
       if (route.partialGeometries?.walk) {
+        let walkGeometry = route.partialGeometries.walk;
+        const vehicleEnd = route.partialGeometries?.vehicle?.coordinates?.[route.partialGeometries?.vehicle?.coordinates.length - 1];
+        try {
+          const water = selectedWaterBodyRef.current?.geometry as any;
+          if (water && walkGeometry?.coordinates?.length >= 2) {
+            let boundaryLine: any = null;
+            if (water.type === 'Polygon' || water.type === 'MultiPolygon') {
+              boundaryLine = turf.polygonToLine(water as any);
+            } else if (water.type === 'LineString' || water.type === 'MultiLineString') {
+              boundaryLine = { type: water.type, coordinates: water.coordinates } as any;
+            }
+            if (boundaryLine) {
+              const referencePoint = vehicleEnd || walkGeometry.coordinates[0];
+              const snapped = turf.nearestPointOnLine(boundaryLine as any, referencePoint as any) as any;
+              if (snapped?.geometry?.coordinates) {
+                const newCoords = walkGeometry.coordinates.slice();
+                newCoords[newCoords.length - 1] = snapped.geometry.coordinates as [number, number];
+                walkGeometry = { type: 'LineString', coordinates: newCoords } as any;
+              }
+            }
+          }
+        } catch {}
         map.addSource('route-walk', {
           type: 'geojson',
           data: {
             type: 'Feature',
             properties: {},
-            geometry: route.partialGeometries.walk
+            geometry: walkGeometry
           }
         });
 
-        map.addLayer({
-          id: 'route-walk-outline',
-          type: 'line',
-          source: 'route-walk',
-          paint: {
-            'line-color': '#ffffff',
-            'line-width': 10,
-            'line-opacity': 0.8
-          }
-        });
+        // Ingen vit outline för gång-delen så prickar syns bättre
 
         map.addLayer({
           id: 'route-walk-line',
@@ -1310,9 +1457,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           },
           paint: {
             'line-color': '#3b82f6',
-            'line-width': 6,
+            'line-width': 3,
             'line-opacity': 1.0,
-            'line-dasharray': [1, 1]
+            'line-dasharray': [0.0001, 5] // tydligare separerade "prickar" även vid utzoomning
           }
         });
       }
@@ -1321,12 +1468,35 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     }
 
     // Fallback: enkel rutt (solid linje)
+    // Om vi bara har en gång-rutt, snappa sista punkten till närmaste kant från start
+    let routeGeometry = route.geometry;
+    try {
+      const water = selectedWaterBodyRef.current?.geometry as any;
+      if (water && routeGeometry?.coordinates?.length >= 2) {
+        let boundaryLine: any = null;
+        if (water.type === 'Polygon' || water.type === 'MultiPolygon') {
+          boundaryLine = turf.polygonToLine(water as any);
+        } else if (water.type === 'LineString' || water.type === 'MultiLineString') {
+          boundaryLine = { type: water.type, coordinates: water.coordinates } as any;
+        }
+        if (boundaryLine) {
+          const start = routeGeometry.coordinates[0];
+          const snapped = turf.nearestPointOnLine(boundaryLine as any, start as any) as any;
+          if (snapped?.geometry?.coordinates) {
+            const newCoords = routeGeometry.coordinates.slice();
+            newCoords[newCoords.length - 1] = snapped.geometry.coordinates as [number, number];
+            routeGeometry = { type: 'LineString', coordinates: newCoords } as any;
+          }
+        }
+      }
+    } catch {}
+
     map.addSource('route', {
       type: 'geojson',
       data: {
         type: 'Feature',
         properties: {},
-        geometry: route.geometry
+        geometry: routeGeometry
       }
     });
 
@@ -1336,7 +1506,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       source: 'route',
       paint: {
         'line-color': '#ffffff',
-        'line-width': 10,
+        'line-width': 5,
         'line-opacity': 0.8
       }
     });
@@ -1351,7 +1521,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       },
       paint: {
         'line-color': '#3b82f6',
-        'line-width': 6,
+        'line-width': 3,
         'line-opacity': 1.0
       }
     });
@@ -1374,6 +1544,11 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       ['route', 'route-vehicle', 'route-walk']
         .forEach(id => removeIfExists('source', id));
     }
+  };
+
+  // Tillbaka från navigation: visa info-panel igen och ta bort rutt från karta
+  const handleBackFromNavigation = () => {
+    handleCloseNavigation();
   };
 
   // Byt transporttyp
@@ -1506,8 +1681,15 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         }
       `}</style>
 
+      {/* Geolocation error toast */}
+      {geoError && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1100] bg-red-600 text-white text-sm px-3 py-2 rounded shadow-lg">
+          {geoError}
+        </div>
+      )}
+
       {/* Info Panel */}
-      {!currentRoute && (
+      {selectedWaterBody && (
         <WaterBodyInfoPanel
           waterBody={selectedWaterBody}
           waterData={waterData}
@@ -1515,19 +1697,11 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           onClose={clearSelection}
           onNavigate={userPosition ? handleNavigate : undefined}
           layoutType={layoutType}
-        />
-      )}
-
-      {/* Navigation Panel */}
-      {(currentRoute || routeLoading) && selectedWaterBody && (
-        <NavigationPanel
           route={currentRoute}
-          destinationName={selectedWaterBody.name}
-          loading={routeLoading}
-          onClose={handleCloseNavigation}
+          routeLoading={routeLoading}
           onTransportChange={handleTransportChange}
           currentMode={navigationMode}
-          layoutType={layoutType}
+          onBackFromNavigation={handleBackFromNavigation}
         />
       )}
     </div>

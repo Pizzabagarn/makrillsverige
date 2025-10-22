@@ -77,6 +77,83 @@ function normalizeRouteGeometry(route: any): { type: 'LineString'; coordinates: 
   return { type: 'LineString', coordinates: [] };
 }
 
+async function snapToNetwork(
+  profile: string,
+  coord: [number, number],
+  apiKey: string,
+  radiusMeters = 30000
+): Promise<[number, number] | null> {
+  try {
+    const url = `https://api.openrouteservice.org/v2/snap/${profile}/json`;
+    const body = {
+      locations: [coord],
+      radius: [radiusMeters]
+    } as any;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Try several possible result shapes
+    if (Array.isArray(data?.locations) && data.locations[0]?.location) {
+      const [lng, lat] = data.locations[0].location;
+      return [lng, lat];
+    }
+    if (Array.isArray(data?.snapped) && data.snapped[0]?.location) {
+      const [lng, lat] = data.snapped[0].location;
+      return [lng, lat];
+    }
+    if (Array.isArray(data?.features) && data.features[0]?.geometry?.coordinates) {
+      const [lng, lat] = data.features[0].geometry.coordinates;
+      return [lng, lat];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function haversineDistanceMeters(a: [number, number], b: [number, number]): number {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371000; // meters
+  const dLat = toRad(b[1] - a[1]);
+  const dLng = toRad(b[0] - a[0]);
+  const lat1 = toRad(a[1]);
+  const lat2 = toRad(b[1]);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  return R * c;
+}
+
+function computeBboxFromCoords(coords: [number, number][]): [number, number, number, number] {
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+  for (const [lng, lat] of coords) {
+    if (lng < minLng) minLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lng > maxLng) maxLng = lng;
+    if (lat > maxLat) maxLat = lat;
+  }
+  return [minLng, minLat, maxLng, maxLat];
+}
+
+function createStraightWalkSegment(start: [number, number], end: [number, number]) {
+  const distance = haversineDistanceMeters(start, end);
+  const walkingSpeedMps = 1.4; // ~5 km/h
+  const duration = distance / walkingSpeedMps;
+  return {
+    geometry: { type: 'LineString' as const, coordinates: [start, end] as [number, number][] },
+    segment: { distance, duration, steps: [{ instruction: 'Walk to destination', distance, duration, type: 0, name: '' }] }
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { start, end, mode } = await request.json();
@@ -106,12 +183,15 @@ export async function POST(request: NextRequest) {
     
     if (isVehicle) {
       // MULTIMODAL: Bil/cykel + gång
-      // 1. Först: Hitta närmaste körbara punkt till sjön
+      // 0. Snappa destinationen till närmaste väg för valt profil
+      const snappedEnd = await snapToNetwork(transportMode, end as [number, number], apiKey, 30000);
+      const vehicleTarget = snappedEnd || end;
+      // 1. Försök rutt till snappad punkt (eller end om snappning saknas)
       const vehicleUrl = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
       const vehicleBody = {
-        coordinates: [start, end],
+        coordinates: [start, vehicleTarget],
         instructions: true,
-        radiuses: [-1, 10000] // 10km radius för att hitta närmaste väg
+        radiuses: [-1, 30000]
       };
 
       console.log('🚗 Vehicle routing (steg 1):', { url: vehicleUrl, mode: transportMode });
@@ -141,7 +221,8 @@ export async function POST(request: NextRequest) {
           const walkBody = {
             coordinates: [start, end],
             instructions: true,
-            language: 'sv'
+            language: 'sv',
+            radiuses: [-1, 20000]
           };
           
           const walkResponse = await fetch(walkUrl, {
@@ -177,7 +258,8 @@ export async function POST(request: NextRequest) {
         const walkBody = {
           coordinates: [vehicleEndPoint, end],
           instructions: true,
-          language: 'sv'
+          language: 'sv',
+          radiuses: [-1, 20000]
         };
 
         console.log('🚶 Walking routing (steg 2):', { from: vehicleEndPoint, to: end });
@@ -238,22 +320,107 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
         } else {
-          // Om gång-rutten misslyckas, returnera bara bil-rutten
-          console.log('⚠️ Walk route failed, returning vehicle-only route');
-          // Normalisera bil/cykel-rutten innan vi returnerar
-          const normalizedVehicle = { ...vehicleRoute, geometry: vehicleGeom };
-          return NextResponse.json({ routes: [normalizedVehicle], metadata: vehicleData.metadata });
+          // Om gång-rutten misslyckas, skapa rak gång-linje sista biten
+          const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
+          const { geometry: straightWalkGeom, segment: straightWalkSeg } = createStraightWalkSegment(vehicleEndPoint as [number, number], end);
+          const combinedCoords = [...vehicleGeom.coordinates, ...straightWalkGeom.coordinates.slice(1)];
+          const bbox = computeBboxFromCoords(combinedCoords);
+          const combinedRoute: any = {
+            ...vehicleRoute,
+            geometry: { type: 'LineString', coordinates: combinedCoords },
+            partialGeometries: {
+              vehicle: vehicleGeom,
+              walk: straightWalkGeom
+            },
+            segments: [
+              ...((vehicleRoute.segments as any[]) || []),
+              { distance: straightWalkSeg.distance, duration: straightWalkSeg.duration, steps: straightWalkSeg.steps }
+            ],
+            summary: {
+              distance: (vehicleRoute.summary?.distance || 0) + straightWalkSeg.distance,
+              duration: (vehicleRoute.summary?.duration || 0) + straightWalkSeg.duration
+            },
+            bbox
+          };
+          console.log('✅ Multimodal with straight walk fallback');
+          return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
         }
       } else {
         const errorText = await vehicleResponse.text();
-        console.log('⚠️ Vehicle routing failed, trying walking instead:', errorText);
+        console.log('⚠️ Vehicle routing failed, trying snapped target or walking instead:', errorText);
+        // Second attempt: if we have a snapped end, try routing to that explicitly
+        if (snappedEnd) {
+          try {
+            const retryRes = await fetch(vehicleUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({ coordinates: [start, snappedEnd], instructions: true, radiuses: [-1, 30000] })
+            });
+            if (retryRes.ok) {
+              const vehicleData = await retryRes.json();
+              const vehicleRoute = vehicleData.routes?.[0];
+              if (vehicleRoute) {
+                const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
+                const vehicleEndPoint = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1];
+                // Try walking from road end to original end
+                const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
+                const walkBody = { coordinates: [vehicleEndPoint, end], instructions: true, language: 'sv', radiuses: [-1, 20000] } as any;
+                const walkResponse = await fetch(walkUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                  },
+                  body: JSON.stringify(walkBody)
+                });
+                if (walkResponse.ok) {
+                  const walkData = await walkResponse.json();
+                  const walkRoute = walkData.routes[0];
+                  const walkGeom = normalizeRouteGeometry(walkRoute);
+                  const combinedRoute: any = {
+                    ...vehicleRoute,
+                    geometry: { type: 'LineString', coordinates: [...vehicleGeom.coordinates, ...walkGeom.coordinates.slice(1)] },
+                    partialGeometries: { vehicle: vehicleGeom, walk: walkGeom },
+                    segments: [...((vehicleRoute.segments as any[]) || []), ...((walkRoute.segments as any[]) || [])],
+                    summary: {
+                      distance: (vehicleRoute.summary?.distance || 0) + (walkRoute.summary?.distance || 0),
+                      duration: (vehicleRoute.summary?.duration || 0) + (walkRoute.summary?.duration || 0)
+                    },
+                    bbox: computeBboxFromCoords([...vehicleGeom.coordinates, ...walkGeom.coordinates])
+                  };
+                  return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
+                } else {
+                  // Straight dotted last bit
+                  const { geometry: straightWalkGeom, segment: straightWalkSeg } = createStraightWalkSegment(vehicleEndPoint as [number, number], end as [number, number]);
+                  const combinedCoords = [...vehicleGeom.coordinates, ...straightWalkGeom.coordinates.slice(1)];
+                  const bbox = computeBboxFromCoords(combinedCoords);
+                  const combinedRoute: any = {
+                    ...vehicleRoute,
+                    geometry: { type: 'LineString', coordinates: combinedCoords },
+                    partialGeometries: { vehicle: vehicleGeom, walk: straightWalkGeom },
+                    segments: [...((vehicleRoute.segments as any[]) || []), { distance: straightWalkSeg.distance, duration: straightWalkSeg.duration, steps: straightWalkSeg.steps }],
+                    summary: { distance: (vehicleRoute.summary?.distance || 0) + straightWalkSeg.distance, duration: (vehicleRoute.summary?.duration || 0) + straightWalkSeg.duration },
+                    bbox
+                  };
+                  return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
+                }
+              }
+            }
+          } catch {}
+        }
         
         // Fallback: Om bil inte funkar alls, prova bara gång
         const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
         const walkBody = {
           coordinates: [start, end],
           instructions: true,
-          language: 'sv'
+          language: 'sv',
+          radiuses: [-1, 20000]
         };
         
         const walkResponse = await fetch(walkUrl, {
@@ -271,11 +438,17 @@ export async function POST(request: NextRequest) {
           console.log('✅ Walking route found instead');
           return NextResponse.json(walkData);
         } else {
-          const walkError = await walkResponse.text();
-          return NextResponse.json(
-            { error: 'Kunde inte hitta någon rutt', vehicleError: errorText, walkError },
-            { status: 404 }
-          );
+          // Sista fallback: rak gång-linje från start till mål
+          const { geometry: straightGeom, segment } = createStraightWalkSegment(start as [number, number], end as [number, number]);
+          const bbox = computeBboxFromCoords(straightGeom.coordinates);
+          const route: any = {
+            geometry: straightGeom,
+            segments: [{ distance: segment.distance, duration: segment.duration, steps: segment.steps }],
+            summary: { distance: segment.distance, duration: segment.duration },
+            bbox
+          };
+          console.log('✅ Straight walking fallback created');
+          return NextResponse.json({ routes: [route], metadata: {} });
         }
       }
     }
@@ -284,7 +457,8 @@ export async function POST(request: NextRequest) {
     const url = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
     const body = {
       coordinates: [start, end],
-      instructions: true
+      instructions: true,
+      radiuses: [-1, 20000]
     };
 
     console.log('🚗 Routing request:', { 
@@ -313,15 +487,37 @@ export async function POST(request: NextRequest) {
         url,
         coordinates: [start, end]
       });
-      return NextResponse.json(
-        { 
-          error: 'Kunde inte hämta rutt', 
-          details: errorText,
-          status: response.status,
-          statusText: response.statusText
-        },
-        { status: response.status }
-      );
+      // Fallback: snappa mål till närmsta foot-walking nät och räkna så långt det går,
+      // annars rak sista biten – och snappa slutpunkt till sjökant hanteras i frontend.
+      const snappedEnd = await snapToNetwork('foot-walking', end as [number, number], apiKey, 30000);
+      if (snappedEnd) {
+        try {
+          const retry = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ coordinates: [start, snappedEnd], instructions: true, radiuses: [-1, 30000] })
+          });
+          if (retry.ok) {
+            const data2 = await retry.json();
+            if (data2?.routes?.[0]) {
+              const route = data2.routes[0];
+              const geometry = normalizeRouteGeometry(route);
+              const normalized = { ...route, geometry };
+              return NextResponse.json({ routes: [normalized], metadata: data2.metadata });
+            }
+          }
+        } catch {}
+      }
+      const { geometry: straightGeom, segment } = createStraightWalkSegment(start as [number, number], end as [number, number]);
+      const bbox = computeBboxFromCoords(straightGeom.coordinates);
+      const route: any = {
+        geometry: straightGeom,
+        segments: [{ distance: segment.distance, duration: segment.duration, steps: segment.steps }],
+        summary: { distance: segment.distance, duration: segment.duration },
+        bbox
+      };
+      console.log('✅ Straight walking fallback created (direct walking mode)');
+      return NextResponse.json({ routes: [route], metadata: {} });
     }
 
     const data = await response.json();
