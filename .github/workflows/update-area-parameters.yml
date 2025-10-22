@@ -1,21 +1,33 @@
-name: Uppdatera Marina Bilder & Data
+name: Uppdatera Marina Bilder & Data (Parallell)
 
 on:
   schedule:
     - cron: '0 1 * * *'  # Kör kl 02:00 svensk tid varje natt (01:00 UTC)
   workflow_dispatch:     # Möjliggör manuell körning
 
-jobs:
-  build-everything:
-    runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 timmar max
+permissions:
+  contents: write
+  pull-requests: write
 
+env:
+  AUTO_MERGE: 'true'
+
+concurrency:
+  group: area-parameters-update
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      RESOLUTION: '1400'
     steps:
       - name: 📥 Klona repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -24,42 +36,153 @@ jobs:
         run: npm ci
 
       - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
 
       - name: 📦 Installera Python-beroenden
         run: |
           pip install numpy matplotlib scipy shapely geojson pillow scikit-learn pyproj colorcet
 
-      - name: 🌊 Kör MASTER BUILD - Build Everything
+      - name: ♻️ Återställ cache för vattenmask
+        id: cache-water-mask
+        uses: actions/cache@v4
+        with:
+          path: public/data/water-mask-cache
+          key: water-mask-${{ runner.os }}-${{ env.RESOLUTION }}-${{ hashFiles('public/data/scandinavian-waters.geojson') }}-merc3857
+          restore-keys: |
+            water-mask-${{ runner.os }}-${{ env.RESOLUTION }}-
+
+      - name: 📥 Hämta area-parameters (med retry)
+        env:
+          SKIP_MANUAL_POINTS: 'true'
+          CI: 'true'
+          DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
+        run: |
+          for i in 1 2 3; do
+            if npm run fetch:area-parameters; then
+              break
+            fi
+            echo "⚠️ Fetch misslyckades, försök $i/3..." && sleep 10
+          done
+          if [ ! -f "public/data/area-parameters-extended.json.gz" ]; then
+            echo "❌ area-parameters-extended.json.gz saknas efter fetch"; exit 1; fi
+
+      - name: 🧮 Förberäkna vattenmask (ingen bildgenerering)
+        if: steps.cache-water-mask.outputs.cache-hit != 'true'
+        run: |
+          python -u scripts/generate_marine_images_mercator.py \
+            --parameter current \
+            --max-images 0 \
+            --resolution $RESOLUTION \
+            --skip-values \
+            --water-mask-cache-dir public/data/water-mask-cache
+
+      - name: ⬆️ Publicera artifacts (data + vattenmask-cache)
+        uses: actions/upload-artifact@v4
+        with:
+          name: prepared-data
+          path: |
+            public/data/area-parameters-extended.json.gz
+            public/data/water-mask-cache
+          retention-days: 3
+
+  generate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        parameter: [current, temperature, salinity, mackerel]
+    steps:
+      - name: 📥 Klona repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+
+      - name: 📦 Installera Python-beroenden
+        run: |
+          pip install numpy matplotlib scipy shapely geojson pillow scikit-learn pyproj colorcet
+
+      - name: ♻️ Återställ cache för vattenmask
+        uses: actions/cache@v4
+        with:
+          path: public/data/water-mask-cache
+          key: water-mask-${{ runner.os }}-1400-${{ hashFiles('public/data/scandinavian-waters.geojson') }}-merc3857
+
+      - name: ⬇️ Hämta prepared artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prepared-data
+          path: public/data
+
+      - name: 🖼️ Generera bilder för ${{ matrix.parameter }} (återanvänder vattenmask-cache)
         env:
           DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
-          SKIP_MANUAL_POINTS: 'true'
-        run: python scripts/build_everything.py --quality 85
+        run: |
+          python -u scripts/generate_marine_images_mercator.py \
+            --parameter ${{ matrix.parameter }} \
+            --resolution 1400 \
+            --quality 85 \
+            --water-mask-cache-dir public/data/water-mask-cache
+
+      - name: 📦 Packa resultat
+        run: |
+          case "${{ matrix.parameter }}" in
+            current) OUT=public/data/current-images-mercator ;;
+            temperature) OUT=public/data/temperature-images-mercator ;;
+            salinity) OUT=public/data/salinity-images-mercator ;;
+            mackerel) OUT=public/data/mackerel-probability-images-mercator ;;
+          esac
+          tar -I 'zstd -19' -cf images-${{ matrix.parameter }}.tar.zst "$OUT"
+
+      - name: ⬆️ Ladda upp artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: images-${{ matrix.parameter }}
+          path: images-${{ matrix.parameter }}.tar.zst
+          retention-days: 3
+
+  aggregate-and-push:
+    needs: generate
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: 📥 Klona repo
+        uses: actions/checkout@v4
+
+      - name: ⬇️ Ladda ner alla artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 📦 Extrahera artifacts
+        run: |
+          mkdir -p public/data
+          for f in artifacts/images-*/images-*.tar.zst; do
+            tar -I zstd -xf "$f"
+          done
 
       - name: 📊 Kontrollera resultat
         run: |
           echo "🔍 Kontrollerar genererade filer..."
-          
-          # Kontrollera area-parameters data
           if [ -f "public/data/area-parameters-extended.json.gz" ]; then
             FILE_SIZE=$(stat -c%s "public/data/area-parameters-extended.json.gz")
             FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
             echo "✅ Area Parameters: ${FILE_SIZE_MB}MB"
-            
-            if [ $FILE_SIZE -gt 104857600 ]; then  # 100MB i bytes
-              echo "❌ Fil är för stor (${FILE_SIZE_MB}MB > 100MB)"
-              exit 1
-            fi
+            if [ $FILE_SIZE -gt 104857600 ]; then
+              echo "❌ Fil är för stor (${FILE_SIZE_MB}MB > 100MB)"; exit 1; fi
           else
-            echo "❌ area-parameters-extended.json.gz hittades inte"
-            exit 1
-          fi
-          
-          # Kontrollera genererade WebP bilder för alla lager
+            echo "❌ area-parameters-extended.json.gz hittades inte"; exit 1; fi
           TOTAL_IMAGES=0
-          
           for DIR in current-images-mercator temperature-images-mercator salinity-images-mercator mackerel-probability-images-mercator; do
             if [ -d "public/data/$DIR" ]; then
               COUNT=$(find public/data/$DIR -name "*.webp" | wc -l)
@@ -69,43 +192,59 @@ jobs:
               echo "⚠️ $DIR saknas"
             fi
           done
-          
           echo "📊 Totalt: ${TOTAL_IMAGES} WebP-bilder genererade"
-          
           if [ $TOTAL_IMAGES -lt 100 ]; then
-            echo "❌ För få bilder genererade (${TOTAL_IMAGES} < 100)"
-            exit 1
-          fi
+            echo "❌ För få bilder genererade (${TOTAL_IMAGES} < 100)"; exit 1; fi
 
-      - name: 🔄 Pusha uppdaterad data och bilder
+      - name: 🔄 Pusha uppdaterad data och bilder (till branch)
         run: |
+          BRANCH="auto/data-update"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Lägg till alla genererade filer
+          git checkout -B "$BRANCH"
           git add public/data/area-parameters-extended.json.gz
           git add public/data/current-images-mercator/
           git add public/data/temperature-images-mercator/
           git add public/data/salinity-images-mercator/
           git add public/data/mackerel-probability-images-mercator/
-          
-          # Kontrollera om det finns ändringar
           if git diff --staged --quiet; then
-            echo "ℹ️ Inga ändringar att commita"
-          else
-            git commit -m "🌊 Auto-uppdatera marina bilder & data ($(date +'%Y-%m-%d %H:%M'))"
-            git push
-            echo "✅ Marina bilder och data uppdaterade och pushade"
-          fi
+            echo "ℹ️ Inga ändringar att commita"; exit 0; fi
+          git commit -m "🌊 Auto-uppdatera marina bilder & data ($(date +'%Y-%m-%d %H:%M'))"
+          git push --force --set-upstream origin "$BRANCH"
+
+      - name: 🛠️ Skapa PR mot main
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: auto/data-update
+          title: "🌊 Auto-uppdatera marina bilder & data"
+          body: "Genererad parallellt per parameter och med cache för vattenmask."
+          commit-message: "🌊 Auto-uppdatering"
+          delete-branch: false
+          base: main
+
+      - name: 🔀 Auto-merge PR (valfritt)
+        if: ${{ env.AUTO_MERGE == 'true' && steps.cpr.outputs.pull-request-number }}
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+        with:
+          script: |
+            const pr = parseInt(process.env.PR_NUMBER, 10);
+            if (!pr) { core.setFailed('No PR number'); return; }
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr,
+              merge_method: 'squash'
+            });
 
       - name: 📝 Sammanfattning
         run: |
-          echo "## 🌊 Marina Bilder & Data Uppdaterade" >> $GITHUB_STEP_SUMMARY
+          echo "## 🌊 Marina Bilder & Data Uppdaterade (Parallell)" >> $GITHUB_STEP_SUMMARY
           echo "- **Tid**: $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Mode**: Cronjob (manuella punkter skippade)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode**: Cronjob (parallella jobb)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Data-fil info
           if [ -f "public/data/area-parameters-extended.json.gz" ]; then
             FILE_SIZE=$(stat -c%s "public/data/area-parameters-extended.json.gz")
             FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
@@ -114,8 +253,6 @@ jobs:
             echo "- **Storlek**: ${FILE_SIZE_MB}MB (komprimerad)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          # Räkna WebP bilder per lager
           echo "### 🎨 Genererade WebP-bilder" >> $GITHUB_STEP_SUMMARY
           TOTAL=0
           for DIR in current-images-mercator temperature-images-mercator salinity-images-mercator mackerel-probability-images-mercator; do
@@ -129,4 +266,4 @@ jobs:
           echo "- **Totalt**: ${TOTAL} WebP-bilder" >> $GITHUB_STEP_SUMMARY
           echo "- **Kvalitet**: 85/100 (hög kvalitet)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ✅ Status: Klart" >> $GITHUB_STEP_SUMMARY 
+          echo "### ✅ Status: Klart" >> $GITHUB_STEP_SUMMARY

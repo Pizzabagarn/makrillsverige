@@ -33,6 +33,7 @@ import math
 import colorcet as cc
 import time
 import re
+import hashlib
 
 # Tysta alla warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -720,6 +721,61 @@ def create_water_mask_grid_mercator(water_polygons, mercator_bbox, grid_resoluti
     print(f"✅ Mercator vattenmask: {water_pixels}/{total_pixels} pixlar ({100*water_pixels/total_pixels:.1f}%)")
     return water_mask
 
+def _safe_mkdirs(path: Path):
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        print(f"⚠️ Kunde inte skapa katalog {path}: {e}")
+
+def _hash_file_sha1(file_path: Path) -> str:
+    """Beräkna sha1-hash för en fil (streamad för att hantera stora filer)."""
+    sha1 = hashlib.sha1()
+    try:
+        with open(file_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                sha1.update(chunk)
+        return sha1.hexdigest()
+    except Exception as e:
+        print(f"⚠️ Kunde inte hasha {file_path}: {e}")
+        # Fallback till mtime+size om läsning misslyckas
+        try:
+            stat = file_path.stat()
+            return hashlib.sha1(f"{stat.st_mtime_ns}:{stat.st_size}".encode()).hexdigest()
+        except Exception:
+            # Sista fallback: konstant sträng så att cachen inte krockar
+            return "nohash"
+
+def _make_water_mask_cache_key(resolution: int, mercator_bbox: tuple, geojson_hash: str) -> str:
+    x_min, x_max, y_min, y_max = mercator_bbox
+    # Runda bbox för stabila filnamn (Mercator meterprecision är hög, runda till 0.1 km)
+    def r(v):
+        return int(round(v / 100.0))  # 100 meter
+    bbox_part = f"{r(x_min)}_{r(x_max)}_{r(y_min)}_{r(y_max)}"
+    return f"mercator_mask_res{resolution}_{bbox_part}_{geojson_hash[:12]}"
+
+def load_water_mask_grid_from_cache(cache_dir: Path, key: str):
+    npz_path = cache_dir / f"{key}.npz"
+    if not npz_path.exists():
+        return None
+    try:
+        print(f"💾 Läser vattenmask från cache: {npz_path}")
+        data = np.load(npz_path, allow_pickle=False)
+        grid = data['water_mask']
+        return grid
+    except Exception as e:
+        print(f"⚠️ Kunde inte läsa cache {npz_path}: {e}")
+        return None
+
+def save_water_mask_grid_to_cache(cache_dir: Path, key: str, grid: np.ndarray):
+    try:
+        _safe_mkdirs(cache_dir)
+        npz_path = cache_dir / f"{key}.npz"
+        # Spara komprimerat
+        np.savez_compressed(npz_path, water_mask=grid)
+        print(f"✅ Sparade vattenmask till cache: {npz_path}")
+    except Exception as e:
+        print(f"⚠️ Kunde inte spara cache ({cache_dir}): {e}")
+
 def create_edge_enhancement_points_mercator(lons, lats, values, mercator_bbox, wgs84_to_mercator):
     """
     Skapa kantpunkter i Mercator-koordinater med IDENTISK logik som original scriptet
@@ -1290,6 +1346,12 @@ def main():
                        help='Skriv över befintliga bilder')
     parser.add_argument('--skip-values', action='store_true',
                        help='Hoppa över makrill-värden JSON-filer för snabbare testning')
+    parser.add_argument('--water-mask-cache-dir', default='public/data/water-mask-cache',
+                       help='Katalog för cache av vattenmask-grid (.npz)')
+    parser.add_argument('--water-mask-grid', default=None,
+                       help='Sökväg till förberäknad vattenmask-grid (.npz). Om satt, används direkt.')
+    parser.add_argument('--disable-water-mask-cache', action='store_true',
+                       help='Inaktivera laddning/sparning av vattenmask-cache')
     
     args = parser.parse_args()
     
@@ -1349,9 +1411,46 @@ def main():
     # Förbered cache-strukturer
     print("\n⚡ Förbereder cache-strukturer...")
     water_point_cache = create_water_point_cache(area_data, water_polygons)
-    water_mask_grid = create_water_mask_grid_mercator(
-        water_polygons, mercator_bbox, args.resolution, mercator_to_wgs84
-    )
+
+    # Vattenmask-grid: försök ladda från explicit fil, annars cache-dir, annars beräkna och spara
+    water_mask_grid = None
+
+    # 1) Explicit gridfil given
+    if args.water_mask_grid:
+        explicit_path = Path(args.water_mask_grid)
+        if explicit_path.exists():
+            try:
+                print(f"💾 Läser vattenmask från fil: {explicit_path}")
+                data = np.load(explicit_path, allow_pickle=False)
+                water_mask_grid = data['water_mask']
+            except Exception as e:
+                print(f"⚠️ Kunde inte läsa given vattenmask-grid ({explicit_path}): {e}")
+        else:
+            print(f"⚠️ Angiven vattenmask-grid finns inte: {explicit_path}")
+
+    # 2) Cache-dir
+    if water_mask_grid is None and not args.disable_water_mask_cache:
+        cache_dir = Path(args.water_mask_cache_dir)
+        geojson_hash = _hash_file_sha1(Path(args.water_mask))
+        cache_key = _make_water_mask_cache_key(args.resolution, mercator_bbox, geojson_hash)
+        cached = load_water_mask_grid_from_cache(cache_dir, cache_key)
+        if cached is not None:
+            if cached.shape == (args.resolution, args.resolution):
+                water_mask_grid = cached
+            else:
+                print(f"⚠️ Cache hittad men upplösning matchar inte: {cached.shape} != {(args.resolution, args.resolution)}")
+
+    # 3) Beräkna om behövs
+    if water_mask_grid is None:
+        water_mask_grid = create_water_mask_grid_mercator(
+            water_polygons, mercator_bbox, args.resolution, mercator_to_wgs84
+        )
+        # Spara till cache om aktiverat
+        if not args.disable_water_mask_cache:
+            cache_dir = Path(args.water_mask_cache_dir)
+            geojson_hash = _hash_file_sha1(Path(args.water_mask))
+            cache_key = _make_water_mask_cache_key(args.resolution, mercator_bbox, geojson_hash)
+            save_water_mask_grid_to_cache(cache_dir, cache_key, water_mask_grid)
     
     # Frigör minne från water_polygons nu när vi har water_mask_grid
     # (Frigörs efter bildgenerering)
