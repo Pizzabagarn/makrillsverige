@@ -29,7 +29,7 @@ jobs:
 
       - name: 📦 Installera Python-beroenden
         run: |
-          pip install numpy matplotlib scipy shapely geojson pillow
+          pip install numpy matplotlib scipy shapely geojson pillow scikit-learn pyproj colorcet
 
       - name: 🌊 Kör MASTER BUILD - Build Everything
         env:

@@ -248,7 +248,10 @@ def check_prerequisites():
         ('scipy', 'scipy'),
         ('PIL', 'pillow'),  # Pillow importeras som PIL
         ('geojson', 'geojson'),
-        ('shapely', 'shapely')
+        ('shapely', 'shapely'),
+        ('sklearn', 'scikit-learn'),
+        ('pyproj', 'pyproj'),
+        ('colorcet', 'colorcet')
     ]
     missing_packages = []
     
