@@ -317,11 +317,13 @@ def build_everything(parameter='all', resolution=1400, quality=85, quick_mode=No
     # Bygg shell-kommando för Windows-kompatibilitet
     marine_cmd = ' '.join(marine_cmd_parts)
     
-    success = run_command(
+    # Använd run_command_with_timeout för LIVE OUTPUT
+    success = run_command_with_timeout(
         marine_cmd,
         "Genererar Marina Bilder (WebP)",
         cwd=Path.cwd(),
-        shell=True  # WINDOWS FIX
+        shell=True,  # WINDOWS FIX
+        timeout_minutes=360  # 6 timmar timeout för bildgenerering (4 parametrar × 121 bilder)
     )
     if not success:
         print("❌ Marina bildgenerering misslyckades - avbryter")
