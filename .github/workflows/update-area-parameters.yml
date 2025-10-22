@@ -8,6 +8,7 @@ on:
 jobs:
   build-everything:
     runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 timmar max
 
     steps:
       - name: 📥 Klona repo
