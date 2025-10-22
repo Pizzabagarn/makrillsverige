@@ -1,0 +1,279 @@
+'use client';
+
+import { useState } from 'react';
+import { X, Navigation, Car, Bike, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  Route, 
+  TransportMode, 
+  formatDistance, 
+  formatDuration,
+  getTransportLabel 
+} from '@/lib/routingService';
+import { LayoutType } from '@/lib/layoutUtils';
+
+interface NavigationPanelProps {
+  route: Route | null;
+  destinationName: string;
+  loading: boolean;
+  onClose: () => void;
+  onTransportChange: (mode: TransportMode) => void;
+  currentMode: TransportMode;
+  layoutType: LayoutType;
+}
+
+export default function NavigationPanel({
+  route,
+  destinationName,
+  loading,
+  onClose,
+  onTransportChange,
+  currentMode,
+  layoutType
+}: NavigationPanelProps) {
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Visa panelen även om vi inte har rutt än (Google Maps-stil)
+  // if (!route && !loading) return null;
+
+  const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
+
+  // Mobile: Compact bottom panel
+  if (isMobile) {
+    return (
+      <div className={`absolute ${layoutType === 'mobileLandscape' ? 'bottom-2 left-2 right-2' : 'bottom-4 left-4 right-4'} z-[1000]`}>
+        <div className="bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-2xl border border-slate-600/50 shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 border-b border-slate-600/50">
+            <div className="flex items-center space-x-2 flex-1 min-w-0">
+              <Navigation className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-white truncate">{destinationName}</h3>
+                {route && (
+                  <div>
+                    <p className="text-xs text-slate-300">
+                      {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                    </p>
+                    {route.segments.length > 1 && currentMode !== 'foot-walking' && (
+                      <p className="text-[10px] text-slate-400">
+                        {currentMode === 'driving-car' ? '🚗+🚶' : '🚴+🚶'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Loading eller ingen rutt än */}
+          {(loading || !route) && (
+            <div className="p-4 flex items-center justify-center">
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-cyan-400 border-t-transparent"></div>
+                  <span className="ml-2 text-sm text-slate-300">Beräknar rutt...</span>
+                </>
+              ) : (
+                <span className="text-sm text-slate-400">Välj färdmedel för att se rutt</span>
+              )}
+            </div>
+          )}
+
+          {/* Content */}
+          {route && !loading && (
+            <div className="p-3 space-y-2">
+              {/* Transport mode selector */}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => onTransportChange('driving-car')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                    currentMode === 'driving-car'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Car className="w-4 h-4 mx-auto mb-1" />
+                  Bil
+                </button>
+                <button
+                  onClick={() => onTransportChange('cycling-regular')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                    currentMode === 'cycling-regular'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Bike className="w-4 h-4 mx-auto mb-1" />
+                  Cykel
+                </button>
+                <button
+                  onClick={() => onTransportChange('foot-walking')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                    currentMode === 'foot-walking'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <User className="w-4 h-4 mx-auto mb-1" />
+                  Gång
+                </button>
+              </div>
+
+              {/* Instructions toggle */}
+              {route.segments[0]?.steps && (
+                <button
+                  onClick={() => setShowInstructions(!showInstructions)}
+                  className="w-full py-2 px-3 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-sm text-white flex items-center justify-between transition-all"
+                >
+                  <span>Vägbeskrivning ({route.segments[0].steps.length} steg)</span>
+                  {showInstructions ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                </button>
+              )}
+
+              {/* Instructions list */}
+              {showInstructions && route.segments[0]?.steps && (
+                <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg bg-slate-800/50 p-2">
+                  {route.segments[0].steps.map((step, index) => (
+                    <div key={index} className="text-xs text-slate-300 py-1 border-b border-slate-700/50 last:border-b-0">
+                      <div className="font-medium text-white">{index + 1}. {step.instruction}</div>
+                      {step.distance > 0 && (
+                        <div className="text-slate-400 mt-0.5">{formatDistance(step.distance)}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: Right sidebar panel
+  return (
+    <div className="absolute top-4 left-4 w-full max-w-sm bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-2xl border border-slate-600/50 shadow-2xl z-[1000]">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-slate-600/50 bg-gradient-to-r from-cyan-900/30 to-cyan-800/20">
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+              <div className="p-2 bg-cyan-600/20 rounded-lg">
+                <Navigation className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold text-white truncate">{destinationName}</h3>
+                {route && (
+                  <div>
+                    <p className="text-sm text-cyan-300">
+                      {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                    </p>
+                    {route.segments.length > 1 && currentMode !== 'foot-walking' && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {currentMode === 'driving-car' ? '🚗' : '🚴'} + 🚶 Multimodal
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all flex-shrink-0"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Loading eller ingen rutt än */}
+      {(loading || !route) && (
+        <div className="p-8 flex flex-col items-center justify-center">
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-cyan-400 border-t-transparent mb-4"></div>
+              <span className="text-sm text-slate-300">Beräknar rutt...</span>
+            </>
+          ) : (
+            <span className="text-sm text-slate-400">Välj färdmedel ovan för att beräkna rutt</span>
+          )}
+        </div>
+      )}
+
+      {/* Content */}
+      {route && !loading && (
+        <div className="p-4 space-y-4">
+          {/* Transport mode selector */}
+          <div>
+            <label className="text-xs font-medium text-slate-400 mb-2 block">Färdsätt</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => onTransportChange('driving-car')}
+                className={`py-3 px-2 rounded-xl text-sm font-medium transition-all ${
+                  currentMode === 'driving-car'
+                    ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <Car className="w-5 h-5 mx-auto mb-1" />
+                Bil
+              </button>
+              <button
+                onClick={() => onTransportChange('cycling-regular')}
+                className={`py-3 px-2 rounded-xl text-sm font-medium transition-all ${
+                  currentMode === 'cycling-regular'
+                    ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <Bike className="w-5 h-5 mx-auto mb-1" />
+                Cykel
+              </button>
+              <button
+                onClick={() => onTransportChange('foot-walking')}
+                className={`py-3 px-2 rounded-xl text-sm font-medium transition-all ${
+                  currentMode === 'foot-walking'
+                    ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <User className="w-5 h-5 mx-auto mb-1" />
+                Gång
+              </button>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          {route.segments[0]?.steps && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-400">Vägbeskrivning</label>
+                <span className="text-xs text-slate-500">{route.segments[0].steps.length} steg</span>
+              </div>
+              <div className="max-h-96 overflow-y-auto space-y-2 rounded-xl bg-slate-800/50 p-3">
+                {route.segments[0].steps.map((step, index) => (
+                  <div key={index} className="text-sm p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-all">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-6 h-6 bg-cyan-600/20 text-cyan-400 rounded-full flex items-center justify-center text-xs font-bold">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-medium">{step.instruction}</div>
+                        {step.distance > 0 && (
+                          <div className="text-slate-400 text-xs mt-1">{formatDistance(step.distance)}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 're
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
-import { X, ExternalLink, Thermometer } from 'lucide-react';
+import { X, ExternalLink, Thermometer, Navigation } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
 import { getLayoutType, type LayoutType } from '@/lib/layoutUtils';
 import { getSwedishWaterTypeName, formatWaterType } from '@/lib/waterTypeTranslation';
@@ -24,6 +24,10 @@ import {
   convertToSMHIFormat
 } from '@/lib/waterBodiesWithPlacesService';
 
+// Import routing services
+import { Route, TransportMode, getRoute } from '@/lib/routingService';
+import NavigationPanel from '@/components/NavigationPanel';
+
 // FEATURE FLAG: Use new system with place names
 const USE_PLACES_SYSTEM = true;
 
@@ -32,10 +36,11 @@ interface WaterBodyInfoPanelProps {
   waterData: WaterBodyData | null;
   loading: boolean;
   onClose: () => void;
+  onNavigate?: () => void;
   layoutType: LayoutType;
 }
 
-function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType }: WaterBodyInfoPanelProps) {
+function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate, layoutType }: WaterBodyInfoPanelProps) {
   if (!waterBody) return null;
 
   const countryNames = {
@@ -70,12 +75,23 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType
               {getDisplayType(waterBody)} • {countryNames[waterBody.country]}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-0.5 sm:p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200 flex-shrink-0"
-          >
-            <X className="w-3 h-3" />
-          </button>
+          <div className="flex items-center space-x-1 flex-shrink-0">
+            {onNavigate && (
+              <button
+                onClick={onNavigate}
+                className="p-1 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 transition-all duration-200"
+                title="Navigera"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Mobile Content - Extra compact for tiny screens */}
@@ -190,19 +206,30 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType
     <div className="absolute top-4 right-4 w-full max-w-sm lg:max-w-md xl:max-w-lg mx-4 lg:mx-0 lg:w-96 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-2xl border border-slate-600/50 shadow-2xl z-[1000] flex flex-col">
       {/* Header */}
       <div className="flex justify-between items-center p-4 lg:p-6 border-b border-slate-600/50 bg-gradient-to-r from-slate-800/50 to-slate-700/50">
-        <div>
+        <div className="flex-1 min-w-0 pr-4">
           <h3 className="text-lg lg:text-xl font-bold text-white mb-1">{waterBody.name}</h3>
           <p className="text-xs lg:text-sm text-slate-300 font-medium">
                           {getDisplayType(waterBody)} • {countryNames[waterBody.country]}
           </p>
-
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200"
-        >
-          <X className="w-4 h-4 lg:w-5 lg:h-5" />
-        </button>
+        <div className="flex items-center space-x-1 flex-shrink-0">
+          {onNavigate && (
+            <button
+              onClick={onNavigate}
+              className="px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50"
+              title="Navigera"
+            >
+              <Navigation className="w-4 h-4" />
+              <span className="text-sm font-medium">Navigera</span>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200"
+          >
+            <X className="w-4 h-4 lg:w-5 lg:h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Content - Fixed height with scrolling for max ~2 cards */}
@@ -362,6 +389,12 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const [loading, setLoading] = useState(false);
   const [visibleWaterBodies, setVisibleWaterBodies] = useState<SMHIWaterBody[]>([]);
   const [userHeading, setUserHeading] = useState<number | null>(null);
+  
+  // Navigation state
+  const [currentRoute, setCurrentRoute] = useState<Route | null>(null);
+  const [navigationMode, setNavigationMode] = useState<TransportMode>('driving-car');
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
 
   // Layout detection effect - use prop if provided
   useEffect(() => {
@@ -553,6 +586,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
 
     const updateUserPosition = (position: GeolocationPosition) => {
       const { longitude, latitude } = position.coords;
+      
+      // Spara användarens position för routing
+      setUserPosition([longitude, latitude]);
 
       if (!userMarkerRef.current) {
         // Skapa custom marker
@@ -1134,6 +1170,255 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     }
   };
 
+  // Hantera navigation till vattendrag - visa valen först
+  const handleNavigate = async () => {
+    if (!selectedWaterBody || !userPosition || !mapRef.current) {
+      console.error('Saknar användarposition eller destination');
+      return;
+    }
+
+    // Visa navigation-panelen direkt med transportval (som Google Maps)
+    setRouteLoading(true);
+    setCurrentRoute(null); // Visa panelen men ingen rutt än
+    
+    // Beräkna första rutten (default: bil)
+    try {
+      const destination: [number, number] = [
+        selectedWaterBody.coordinates[1], // lng
+        selectedWaterBody.coordinates[0]  // lat
+      ];
+
+      const route = await getRoute(userPosition, destination, navigationMode);
+      
+      if (route) {
+        setCurrentRoute(route);
+        
+        // Rita rutten på kartan
+        drawRouteOnMap(route);
+        
+        // Zooma kartan för att visa hela rutten
+        if (mapRef.current) {
+          if (route.bbox) {
+            const [minLng, minLat, maxLng, maxLat] = route.bbox;
+            mapRef.current.fitBounds(
+              [[minLng, minLat], [maxLng, maxLat]],
+              { padding: 50, duration: 1000 }
+            );
+          } else if (route.geometry?.coordinates?.length) {
+            try {
+              const bbox = turf.bbox({ type: 'LineString', coordinates: route.geometry.coordinates } as any);
+              mapRef.current.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1000 });
+            } catch {}
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Fel vid routing:', error);
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  // Rita rutt-linjen på kartan (solid för bil/cykel, prickad för gång-del)
+  const drawRouteOnMap = (route: Route) => {
+    if (!mapRef.current) return;
+
+    const map = mapRef.current;
+
+    // Hjälpare: ta bort lager/källor om de finns
+    const removeIfExists = (type: 'layer' | 'source', id: string) => {
+      if (type === 'layer' && map.getLayer(id)) map.removeLayer(id);
+      if (type === 'source' && map.getSource(id)) map.removeSource(id);
+    };
+
+    // Rensa tidigare rutter (både enkel och multimodal)
+    ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline']
+      .forEach(id => removeIfExists('layer', id));
+    ['route', 'route-vehicle', 'route-walk']
+      .forEach(id => removeIfExists('source', id));
+
+    const hasParts = !!route.partialGeometries && (!!route.partialGeometries.vehicle || !!route.partialGeometries.walk);
+
+    if (hasParts) {
+      // Bil/cykel-del (solid)
+      if (route.partialGeometries?.vehicle) {
+        map.addSource('route-vehicle', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.partialGeometries.vehicle
+          }
+        });
+
+        map.addLayer({
+          id: 'route-vehicle-outline',
+          type: 'line',
+          source: 'route-vehicle',
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': 10,
+            'line-opacity': 0.8
+          }
+        });
+
+        map.addLayer({
+          id: 'route-vehicle-line',
+          type: 'line',
+          source: 'route-vehicle',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 6,
+            'line-opacity': 1.0
+          }
+        });
+      }
+
+      // Gång-del (prickad)
+      if (route.partialGeometries?.walk) {
+        map.addSource('route-walk', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.partialGeometries.walk
+          }
+        });
+
+        map.addLayer({
+          id: 'route-walk-outline',
+          type: 'line',
+          source: 'route-walk',
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': 10,
+            'line-opacity': 0.8
+          }
+        });
+
+        map.addLayer({
+          id: 'route-walk-line',
+          type: 'line',
+          source: 'route-walk',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 6,
+            'line-opacity': 1.0,
+            'line-dasharray': [1, 1]
+          }
+        });
+      }
+
+      return;
+    }
+
+    // Fallback: enkel rutt (solid linje)
+    map.addSource('route', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: route.geometry
+      }
+    });
+
+    map.addLayer({
+      id: 'route-outline',
+      type: 'line',
+      source: 'route',
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 10,
+        'line-opacity': 0.8
+      }
+    });
+
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      paint: {
+        'line-color': '#3b82f6',
+        'line-width': 6,
+        'line-opacity': 1.0
+      }
+    });
+  };
+
+  // Stäng navigation
+  const handleCloseNavigation = () => {
+    setCurrentRoute(null);
+    setRouteLoading(false);
+    
+    // Ta bort rutt från kartan
+    if (mapRef.current) {
+      const map = mapRef.current;
+      const removeIfExists = (type: 'layer' | 'source', id: string) => {
+        if (type === 'layer' && map.getLayer(id)) map.removeLayer(id);
+        if (type === 'source' && map.getSource(id)) map.removeSource(id);
+      };
+      ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline']
+        .forEach(id => removeIfExists('layer', id));
+      ['route', 'route-vehicle', 'route-walk']
+        .forEach(id => removeIfExists('source', id));
+    }
+  };
+
+  // Byt transporttyp
+  const handleTransportChange = async (mode: TransportMode) => {
+    setNavigationMode(mode);
+    
+    // Om vi redan har en rutt, uppdatera den med nytt transportläge
+    if (selectedWaterBody && userPosition) {
+      setRouteLoading(true);
+      
+      try {
+        const destination: [number, number] = [
+          selectedWaterBody.coordinates[1],
+          selectedWaterBody.coordinates[0]
+        ];
+
+        const route = await getRoute(userPosition, destination, mode);
+        
+        if (route) {
+          setCurrentRoute(route);
+          drawRouteOnMap(route);
+          // Zooma kartan för att visa hela rutten
+          if (mapRef.current) {
+            if (route.bbox) {
+              const [minLng, minLat, maxLng, maxLat] = route.bbox;
+              mapRef.current.fitBounds(
+                [[minLng, minLat], [maxLng, maxLat]],
+                { padding: 50, duration: 1000 }
+              );
+            } else if (route.geometry?.coordinates?.length) {
+              try {
+                const bbox = turf.bbox({ type: 'LineString', coordinates: route.geometry.coordinates } as any);
+                mapRef.current.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1000 });
+              } catch {}
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Fel vid byte av transporttyp:', error);
+      } finally {
+        setRouteLoading(false);
+      }
+    }
+  };
+
   // Hämta data i bakgrunden och uppdatera geometri om behövs
   const fetchWaterBodyDataInBackground = async (waterBody: SMHIWaterBody) => {
     try {
@@ -1222,13 +1507,29 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       `}</style>
 
       {/* Info Panel */}
-      <WaterBodyInfoPanel
-        waterBody={selectedWaterBody}
-        waterData={waterData}
-        loading={loading}
-        onClose={clearSelection}
-        layoutType={layoutType}
-      />
+      {!currentRoute && (
+        <WaterBodyInfoPanel
+          waterBody={selectedWaterBody}
+          waterData={waterData}
+          loading={loading}
+          onClose={clearSelection}
+          onNavigate={userPosition ? handleNavigate : undefined}
+          layoutType={layoutType}
+        />
+      )}
+
+      {/* Navigation Panel */}
+      {(currentRoute || routeLoading) && selectedWaterBody && (
+        <NavigationPanel
+          route={currentRoute}
+          destinationName={selectedWaterBody.name}
+          loading={routeLoading}
+          onClose={handleCloseNavigation}
+          onTransportChange={handleTransportChange}
+          currentMode={navigationMode}
+          layoutType={layoutType}
+        />
+      )}
     </div>
   );
 });
