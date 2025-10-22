@@ -336,19 +336,23 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, layoutType
 
 interface MapRef {
   focusOnWaterBody: (waterBody: SMHIWaterBody) => void;
+  triggerGeolocate: () => void;
 }
 
 interface Props {
   searchTerm?: string;
   onWaterBodySelect?: (waterBody: SMHIWaterBody) => void;
+  layoutType?: LayoutType;
 }
 
-const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterBodySelect }, ref) => {
+const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterBodySelect, layoutType: propLayoutType }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null);
   
   // Layout detection for responsive design
-  const [layoutType, setLayoutType] = useState<LayoutType>('desktop');
+  const [layoutType, setLayoutType] = useState<LayoutType>(propLayoutType || 'desktop');
   
   // REF för synkron state tracking (löser React async state problem)
   const selectedWaterBodyRef = useRef<SMHIWaterBody | null>(null);
@@ -357,9 +361,15 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const [waterData, setWaterData] = useState<WaterBodyData | null>(null);
   const [loading, setLoading] = useState(false);
   const [visibleWaterBodies, setVisibleWaterBodies] = useState<SMHIWaterBody[]>([]);
+  const [userHeading, setUserHeading] = useState<number | null>(null);
 
-  // Layout detection effect
+  // Layout detection effect - use prop if provided
   useEffect(() => {
+    if (propLayoutType) {
+      setLayoutType(propLayoutType);
+      return;
+    }
+    
     const checkLayout = () => {
       setLayoutType(getLayoutType());
     };
@@ -372,7 +382,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       window.removeEventListener('resize', checkLayout);
       window.removeEventListener('orientationchange', checkLayout);
     };
-  }, []);
+  }, [propLayoutType]);
 
   useImperativeHandle(ref, () => ({
     focusOnWaterBody: (waterBody: SMHIWaterBody) => {
@@ -384,11 +394,14 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         });
         handleWaterBodyClick(waterBody);
       }
+    },
+    triggerGeolocate: () => {
+      // Not needed anymore - position tracks automatically
     }
   }));
 
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
+    if (!mapContainer.current || mapRef.current || !layoutType) return;
 
     // Initialize MapLibre GL map with satellite imagery (same as main map)
     const map = new maplibregl.Map({
@@ -464,15 +477,185 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       
       // SMART KLICK-HANTERING: Klicka ut först, sedan välj nytt
       map.on('click', handleSmartMapClick);
+      
+      // Starta användarpositionering
+      startUserLocationTracking();
     });
 
     return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [layoutType]);
+
+  // Starta device orientation tracking för kompassriktning (BARA på mobil)
+  useEffect(() => {
+    // Kör bara på klienten och bara på mobila enheter
+    if (typeof window === 'undefined') return;
+    
+    const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
+    if (!isMobile) return;
+
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      if (event.alpha !== null) {
+        // alpha är kompassriktning (0-360 grader)
+        setUserHeading(event.alpha);
+      }
+    };
+
+    // Fråga om tillåtelse på iOS 13+
+    if (typeof DeviceOrientationEvent !== 'undefined' && 
+        typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      (DeviceOrientationEvent as any).requestPermission()
+        .then((response: string) => {
+          if (response === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+          }
+        })
+        .catch(console.error);
+    } else if (typeof DeviceOrientationEvent !== 'undefined') {
+      // Icke-iOS eller äldre iOS
+      window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('deviceorientation', handleOrientation);
+      }
+    };
+  }, [layoutType]);
+
+  // Uppdatera marker rotation när heading ändras (bara SVG, inte hela elementet)
+  useEffect(() => {
+    if (userMarkerRef.current && userHeading !== null) {
+      const element = userMarkerRef.current.getElement();
+      const svg = element.querySelector('svg');
+      if (svg) {
+        svg.style.transform = `rotate(${userHeading}deg)`;
+      }
+    }
+  }, [userHeading]);
+
+  const startUserLocationTracking = () => {
+    if (!mapRef.current || !navigator.geolocation) return;
+
+    const map = mapRef.current;
+    let isFirstPosition = true;
+    const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
+
+    const updateUserPosition = (position: GeolocationPosition) => {
+      const { longitude, latitude } = position.coords;
+
+      if (!userMarkerRef.current) {
+        // Skapa custom marker
+        const el = document.createElement('div');
+        el.className = 'user-location-marker';
+        
+        if (isMobile) {
+          // MOBIL: Stor marker med pil för navigation
+          el.classList.add('mobile');
+          el.innerHTML = `
+            <div class="ping"></div>
+            <div class="ping"></div>
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="display: block; position: relative; z-index: 1;">
+              <defs>
+                <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                  <feOffset dx="0" dy="2" result="offsetblur"/>
+                  <feComponentTransfer>
+                    <feFuncA type="linear" slope="0.3"/>
+                  </feComponentTransfer>
+                  <feMerge>
+                    <feMergeNode/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              <!-- Yttre cirkel (vit) -->
+              <circle cx="20" cy="20" r="12" fill="white" opacity="0.9" filter="url(#shadow)"/>
+              <!-- Inre cirkel (blå) -->
+              <circle cx="20" cy="20" r="8" fill="#3b82f6"/>
+              <!-- Pil -->
+              <path d="M 20 8 L 23 16 L 20 14 L 17 16 Z" fill="white"/>
+            </svg>
+          `;
+          el.style.width = '40px';
+          el.style.height = '40px';
+        } else {
+          // DESKTOP: Liten plupp utan pil
+          el.classList.add('desktop');
+          el.innerHTML = `
+            <div class="ping"></div>
+            <div class="ping"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="display: block; position: relative; z-index: 1;">
+              <defs>
+                <filter id="shadow-desktop" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+                  <feOffset dx="0" dy="1" result="offsetblur"/>
+                  <feComponentTransfer>
+                    <feFuncA type="linear" slope="0.3"/>
+                  </feComponentTransfer>
+                  <feMerge>
+                    <feMergeNode/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              <!-- Yttre cirkel (vit) -->
+              <circle cx="10" cy="10" r="7" fill="white" opacity="0.9" filter="url(#shadow-desktop)"/>
+              <!-- Inre cirkel (blå) -->
+              <circle cx="10" cy="10" r="5" fill="#3b82f6"/>
+            </svg>
+          `;
+          el.style.width = '20px';
+          el.style.height = '20px';
+        }
+        
+        el.style.pointerEvents = 'none';
+
+        userMarkerRef.current = new maplibregl.Marker({ 
+          element: el, 
+          anchor: 'center'
+        })
+          .setLngLat([longitude, latitude])
+          .addTo(map);
+      } else {
+        // Uppdatera position
+        userMarkerRef.current.setLngLat([longitude, latitude]);
+      }
+
+      // Centrera kartan på första positionen (mycket mindre zoom)
+      if (isFirstPosition) {
+        map.flyTo({
+          center: [longitude, latitude],
+          zoom: 9, // Mycket mindre zoom - översikt
+          duration: 2000
+        });
+        isFirstPosition = false;
+      }
+    };
+
+    // Starta kontinuerlig positionsspårning
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      updateUserPosition,
+      (error) => {
+        console.error('Geolocation error:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 5000
+      }
+    );
+  };
 
   // BORTTAGET: Glow-effekt (på användarens begäran)
 
@@ -997,6 +1180,46 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     <div className="relative w-full h-full">
       {/* Map Container */}
       <div ref={mapContainer} className="w-full h-full" />
+
+      {/* Custom CSS for user location marker */}
+      <style jsx global>{`
+        .user-location-marker {
+          position: relative;
+          pointer-events: none;
+        }
+        .user-location-marker svg {
+          display: block;
+        }
+        .user-location-marker .ping {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          opacity: 0;
+          animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        .user-location-marker.mobile .ping {
+          width: 40px;
+          height: 40px;
+          border: 2px solid #3b82f6;
+        }
+        .user-location-marker.desktop .ping {
+          width: 20px;
+          height: 20px;
+          border: 2px solid #3b82f6;
+        }
+        @keyframes ping {
+          75%, 100% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
+          0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
 
       {/* Info Panel */}
       <WaterBodyInfoPanel

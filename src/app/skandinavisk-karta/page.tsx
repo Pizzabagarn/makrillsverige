@@ -349,6 +349,7 @@ export default function ScandinavianMapPage() {
         <ScandinavianWaterMapGL 
           ref={mapRef}
           searchTerm={searchTerm}
+          layoutType={layoutType}
           onWaterBodySelect={(waterBody) => {
             // Förhindra att nästa search triggas
             skipNextSearchRef.current = true;
