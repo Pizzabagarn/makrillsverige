@@ -1,4 +1,4 @@
-name: Uppdatera Områdesparametrar & Strömstyrka-bilder
+name: Uppdatera Marina Bilder & Data
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:     # Möjliggör manuell körning
 
 jobs:
-  update-area-parameters:
+  build-everything:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,93 +19,113 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: 📦 Installera beroenden
+      - name: 📦 Installera Node beroenden
         run: npm ci
 
-      - name: 🌊 Kör fetchAreaParametersExtended.ts
-        env:
-          DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
-        run: npx tsx scripts/fetchAreaParametersExtended.ts
-
-      - name: 🐍 Setup Python för bildgeneration
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
       - name: 📦 Installera Python-beroenden
         run: |
-          pip install numpy matplotlib scipy shapely geojson argparse
+          pip install numpy matplotlib scipy shapely geojson pillow
 
-      - name: 🎨 Generera strömstyrka-bilder (alla 121)
-        run: |
-          python scripts/generate_current_magnitude_images.py \
-            --max-images 121 \
-            --resolution 2400 \
-            --input public/data/area-parameters-extended.json.gz \
-            --water-mask public/data/scandinavian-waters.geojson \
-            --output-dir public/data/current-magnitude-images
+      - name: 🌊 Kör MASTER BUILD - Build Everything
+        env:
+          DMI_API_KEY: ${{ secrets.DMI_API_KEY }}
+          SKIP_MANUAL_POINTS: 'true'
+        run: python scripts/build_everything.py --quality 85
 
-      - name: 📊 Kontrollera filstorlek
+      - name: 📊 Kontrollera resultat
         run: |
+          echo "🔍 Kontrollerar genererade filer..."
+          
+          # Kontrollera area-parameters data
           if [ -f "public/data/area-parameters-extended.json.gz" ]; then
             FILE_SIZE=$(stat -c%s "public/data/area-parameters-extended.json.gz")
             FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
-            echo "Komprimerad filstorlek: ${FILE_SIZE_MB}MB"
+            echo "✅ Area Parameters: ${FILE_SIZE_MB}MB"
             
             if [ $FILE_SIZE -gt 104857600 ]; then  # 100MB i bytes
               echo "❌ Fil är för stor (${FILE_SIZE_MB}MB > 100MB)"
               exit 1
-            else
-              echo "✅ Filstorlek OK (${FILE_SIZE_MB}MB)"
             fi
           else
-            echo "❌ Komprimerad fil hittades inte"
+            echo "❌ area-parameters-extended.json.gz hittades inte"
             exit 1
           fi
           
-          # Kontrollera antal genererade bilder
-          IMAGE_COUNT=$(find public/data/current-magnitude-images -name "*.png" | wc -l)
-          echo "Genererade bilder: ${IMAGE_COUNT}"
+          # Kontrollera genererade WebP bilder för alla lager
+          TOTAL_IMAGES=0
           
-          if [ $IMAGE_COUNT -lt 100 ]; then
-            echo "❌ För få bilder genererade (${IMAGE_COUNT} < 100)"
+          for DIR in current-images-mercator temperature-images-mercator salinity-images-mercator mackerel-probability-images-mercator; do
+            if [ -d "public/data/$DIR" ]; then
+              COUNT=$(find public/data/$DIR -name "*.webp" | wc -l)
+              echo "✅ $DIR: ${COUNT} WebP-bilder"
+              TOTAL_IMAGES=$((TOTAL_IMAGES + COUNT))
+            else
+              echo "⚠️ $DIR saknas"
+            fi
+          done
+          
+          echo "📊 Totalt: ${TOTAL_IMAGES} WebP-bilder genererade"
+          
+          if [ $TOTAL_IMAGES -lt 100 ]; then
+            echo "❌ För få bilder genererade (${TOTAL_IMAGES} < 100)"
             exit 1
-          else
-            echo "✅ Bildgeneration OK (${IMAGE_COUNT} bilder)"
           fi
 
       - name: 🔄 Pusha uppdaterad data och bilder
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Lägg till alla genererade filer
           git add public/data/area-parameters-extended.json.gz
-          git add public/data/current-magnitude-images/
-          git add src/lib/loadAreaParameters.ts
+          git add public/data/current-images-mercator/
+          git add public/data/temperature-images-mercator/
+          git add public/data/salinity-images-mercator/
+          git add public/data/mackerel-probability-images-mercator/
           
           # Kontrollera om det finns ändringar
           if git diff --staged --quiet; then
-            echo "Inga ändringar att commita"
+            echo "ℹ️ Inga ändringar att commita"
           else
-            git commit -m "🌊 Auto-uppdaterade områdesparametrar & strömstyrka-bilder ($(date +'%Y-%m-%d %H:%M'))"
+            git commit -m "🌊 Auto-uppdatera marina bilder & data ($(date +'%Y-%m-%d %H:%M'))"
             git push
-            echo "✅ Data och bilder uppdaterade och pushade"
+            echo "✅ Marina bilder och data uppdaterade och pushade"
           fi
 
       - name: 📝 Sammanfattning
         run: |
-          echo "## 🌊 Områdesparametrar & Strömstyrka-bilder uppdaterade" >> $GITHUB_STEP_SUMMARY
+          echo "## 🌊 Marina Bilder & Data Uppdaterade" >> $GITHUB_STEP_SUMMARY
           echo "- **Tid**: $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Data-fil**: public/data/area-parameters-extended.json.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode**: Cronjob (manuella punkter skippade)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           
+          # Data-fil info
           if [ -f "public/data/area-parameters-extended.json.gz" ]; then
             FILE_SIZE=$(stat -c%s "public/data/area-parameters-extended.json.gz")
             FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
-            echo "- **Data-storlek**: ${FILE_SIZE_MB}MB (komprimerad)" >> $GITHUB_STEP_SUMMARY
+            echo "### 📦 Data" >> $GITHUB_STEP_SUMMARY
+            echo "- **Fil**: area-parameters-extended.json.gz" >> $GITHUB_STEP_SUMMARY
+            echo "- **Storlek**: ${FILE_SIZE_MB}MB (komprimerad)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
-          # Räkna antal bilder
-          IMAGE_COUNT=$(find public/data/current-magnitude-images -name "*.png" | wc -l)
-          echo "- **Genererade bilder**: ${IMAGE_COUNT} strömstyrka-bilder (1200x1200)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Bildmapp**: public/data/current-magnitude-images/" >> $GITHUB_STEP_SUMMARY
-          
-          echo "- **Status**: ✅ Klart" >> $GITHUB_STEP_SUMMARY 
+          # Räkna WebP bilder per lager
+          echo "### 🎨 Genererade WebP-bilder" >> $GITHUB_STEP_SUMMARY
+          TOTAL=0
+          for DIR in current-images-mercator temperature-images-mercator salinity-images-mercator mackerel-probability-images-mercator; do
+            if [ -d "public/data/$DIR" ]; then
+              COUNT=$(find public/data/$DIR -name "*.webp" | wc -l)
+              echo "- **${DIR}**: ${COUNT} bilder" >> $GITHUB_STEP_SUMMARY
+              TOTAL=$((TOTAL + COUNT))
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Totalt**: ${TOTAL} WebP-bilder" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kvalitet**: 85/100 (hög kvalitet)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Status: Klart" >> $GITHUB_STEP_SUMMARY 

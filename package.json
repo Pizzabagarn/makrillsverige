@@ -10,6 +10,7 @@
     "lint": "next lint",
     "generate:grid": "ts-node scripts/generateGrid.ts",
     "fetch:area-parameters": "tsx scripts/fetchAreaParametersExtended.ts",
+    "fetch:area-parameters:no-manual": "set SKIP_MANUAL_POINTS=true&& tsx scripts/fetchAreaParametersExtended.ts",
     "optimize:images": "python scripts/convert_images_to_webp.py --remove-png",
     "optimize:images:keep-png": "python scripts/convert_images_to_webp.py",
     "optimize:images:quality": "python scripts/convert_images_to_webp.py --quality 80 --remove-png",
