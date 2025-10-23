@@ -124,6 +124,15 @@ export default function NavigationPanel({
                 </button>
               </div>
 
+              {/* Varning för direkt linje utan vägar */}
+              {route.isDirectPath && (
+                <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-2">
+                  <p className="text-xs text-yellow-200">
+                    ⚠️ Ingen gångväg hittades. Visa direkt linje med höjdprofil.
+                  </p>
+                </div>
+              )}
+
               {/* Instructions toggle */}
               {route.segments[0]?.steps && (
                 <button
@@ -244,6 +253,15 @@ export default function NavigationPanel({
               </button>
             </div>
           </div>
+
+          {/* Varning för direkt linje utan vägar */}
+          {route.isDirectPath && (
+            <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-3">
+              <p className="text-sm text-yellow-200">
+                ⚠️ Ingen gångväg hittades. Visar direkt linje med höjdprofil.
+              </p>
+            </div>
+          )}
 
           {/* Instructions */}
           {route.segments[0]?.steps && (

@@ -1389,12 +1389,12 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     };
 
     // Rensa tidigare rutter (både enkel och multimodal)
-    ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline']
+    ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline', 'route-walk-final-line']
       .forEach(id => removeIfExists('layer', id));
-    ['route', 'route-vehicle', 'route-walk']
+    ['route', 'route-vehicle', 'route-walk', 'route-walk-final']
       .forEach(id => removeIfExists('source', id));
 
-    const hasParts = !!route.partialGeometries && (!!route.partialGeometries.vehicle || !!route.partialGeometries.walk);
+    const hasParts = !!route.partialGeometries && (!!route.partialGeometries.vehicle || !!route.partialGeometries.walk || !!route.partialGeometries.walkFinal);
 
     if (hasParts) {
       // Bil/cykel-del (solid)
@@ -1487,11 +1487,39 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         });
       }
 
+      // Sista raka gång-delen (walkFinal) – rendera också prickad
+      if (route.partialGeometries?.walkFinal) {
+        map.addSource('route-walk-final', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.partialGeometries.walkFinal
+          }
+        });
+
+        map.addLayer({
+          id: 'route-walk-final-line',
+          type: 'line',
+          source: 'route-walk-final',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 3,
+            'line-opacity': 1.0,
+            'line-dasharray': [0.0001, 5]
+          }
+        });
+      }
+
       return;
     }
 
     // Fallback: enkel rutt (solid linje)
-    // Om vi bara har en gång-rutt, snappa sista punkten till närmaste kant från start
+    // Om vi bara har en gång-rutt, snappa sista punkten till närmaste kant från ruttens SLUT
     let routeGeometry = route.geometry;
     try {
       const water = selectedWaterBodyRef.current?.geometry as any;
@@ -1503,8 +1531,8 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           boundaryLine = { type: water.type, coordinates: water.coordinates } as any;
         }
         if (boundaryLine) {
-          const start = routeGeometry.coordinates[0];
-          const snapped = turf.nearestPointOnLine(boundaryLine as any, start as any) as any;
+          const endPoint = routeGeometry.coordinates[routeGeometry.coordinates.length - 1];
+          const snapped = turf.nearestPointOnLine(boundaryLine as any, endPoint as any) as any;
           if (snapped?.geometry?.coordinates) {
             const newCoords = routeGeometry.coordinates.slice();
             newCoords[newCoords.length - 1] = snapped.geometry.coordinates as [number, number];

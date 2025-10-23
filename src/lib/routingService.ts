@@ -26,6 +26,8 @@ export interface Route {
   partialGeometries?: {
     vehicle?: { type: 'LineString'; coordinates: [number, number][] };
     walk?: { type: 'LineString'; coordinates: [number, number][] };
+    // Särskild sista rak gång-del till sjöns kant när gång används som huvudläge
+    walkFinal?: { type: 'LineString'; coordinates: [number, number][] };
   };
   // Extra metadata från servern
   distanceRoadToWaterMeters?: number;
@@ -40,6 +42,7 @@ export interface Route {
     duration: number; // sekunder
   };
   bbox: [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
+  isDirectPath?: boolean; // True om detta är en direkt linje utan faktiska vägar
 }
 
 export interface RouteResponse {

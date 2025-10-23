@@ -78,19 +78,139 @@ function normalizeRouteGeometry(route: any): { type: 'LineString'; coordinates: 
   return { type: 'LineString', coordinates: [] };
 }
 
-async function snapToNetwork(
+/**
+ * PROFESSIONELL LÖSNING: Använd Overpass API (OpenStreetMap) för att hitta närmaste väg/stig
+ * Mycket snabbare och mer exakt än att testa olika riktningar
+ * @param includeFootpaths - Om true, inkludera även gång/cykelvägar och stigar
+ */
+async function findNearestRoadViaOverpass(
+  coord: [number, number], // [lng, lat]
+  maxRadiusKm: number = 50,
+  includeFootpaths: boolean = false
+): Promise<{ point: [number, number]; distance: number; wayType: string } | null> {
+  
+  const [lng, lat] = coord;
+  
+  // Testa progressivt större radier tills vi hittar en väg
+  const radii = [2, 5, 10, 20, 50];
+  
+  for (const radiusKm of radii) {
+    const pathType = includeFootpaths ? 'vägar/stigar' : 'vägar';
+    console.log(`🗺️  Söker ${pathType} i OSM inom ${radiusKm}km radie...`);
+    
+    // Beräkna bounding box
+    const latDegPerKm = 1 / 110.574;
+    const lngDegPerKm = 1 / (111.320 * Math.cos(lat * Math.PI / 180));
+    
+    const latRadius = radiusKm * latDegPerKm;
+    const lngRadius = radiusKm * lngDegPerKm;
+    
+    const bbox = {
+      south: lat - latRadius,
+      north: lat + latRadius,
+      west: lng - lngRadius,
+      east: lng + lngRadius
+    };
+    
+    // Overpass QL query - hitta körbar väg (highway) eller gångstig
+    // För gång: inkludera footway, path, track, cycleway
+    // För bil: endast körbar väg
+    const highwayTypes = includeFootpaths
+      ? "motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|footway|path|track|cycleway|steps"
+      : "motorway|trunk|primary|secondary|tertiary|unclassified|residential|service";
+    
+    const query = `
+      [out:json][timeout:10];
+      (
+        way["highway"~"^(${highwayTypes})$"]
+           (${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+      );
+      out geom;
+    `;
+    
+    try {
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`
+      });
+      
+      if (!response.ok) {
+        console.warn(`Overpass API error: ${response.status}`);
+        continue;
+      }
+      
+      const data = await response.json();
+      
+      if (!data.elements || data.elements.length === 0) {
+        console.log(`Inga ${pathType} hittades inom ${radiusKm}km`);
+        continue;
+      }
+      
+      console.log(`✅ Hittade ${data.elements.length} vägsegment i OSM`);
+      
+      // Hitta närmaste punkt på alla vägsegment
+      let nearestPoint: [number, number] | null = null;
+      let shortestDistance = Infinity;
+      let bestWayType = 'unknown';
+      
+      for (const element of data.elements) {
+        if (element.type !== 'way' || !element.geometry) continue;
+        
+        const wayType = element.tags?.highway || 'unknown';
+        
+        // Gå igenom alla punkter i vägsegmentet
+        for (const node of element.geometry) {
+          const nodeLng = node.lon;
+          const nodeLat = node.lat;
+          const distance = haversineDistanceMeters(coord, [nodeLng, nodeLat]);
+          
+          if (distance < shortestDistance) {
+            shortestDistance = distance;
+            nearestPoint = [nodeLng, nodeLat];
+            bestWayType = wayType;
+          }
+        }
+      }
+      
+      if (nearestPoint) {
+        console.log(`✅ Närmaste ${includeFootpaths ? 'väg/stig' : 'väg'}: ${Math.round(shortestDistance / 1000)}km (${bestWayType})`);
+        return {
+          point: nearestPoint,
+          distance: shortestDistance,
+          wayType: bestWayType
+        };
+      }
+      
+    } catch (error) {
+      console.error(`Overpass API fel vid ${radiusKm}km radie:`, error);
+      continue;
+    }
+  }
+  
+  console.log(`❌ Kunde inte hitta någon ${includeFootpaths ? 'väg/stig' : 'väg'} via Overpass inom 50km`);
+  return null;
+}
+
+/**
+ * Routing till den punkt vi hittade via Overpass
+ */
+async function routeToOverpassPoint(
   profile: string,
-  coord: [number, number],
-  apiKey: string,
-  radiusMeters = 30000
-): Promise<[number, number] | null> {
+  start: [number, number],
+  roadPoint: [number, number],
+  apiKey: string
+): Promise<any | null> {
+  
   try {
-    const url = `https://api.openrouteservice.org/v2/snap/${profile}/json`;
+    const url = `https://api.openrouteservice.org/v2/directions/${profile}/json`;
     const body = {
-      locations: [coord],
-      radius: [radiusMeters]
-    } as any;
-    const res = await fetch(url, {
+      coordinates: [start, roadPoint],
+      instructions: true,
+      radiuses: [-1, -1]
+    };
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': apiKey,
@@ -99,23 +219,17 @@ async function snapToNetwork(
       },
       body: JSON.stringify(body)
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Try several possible result shapes
-    if (Array.isArray(data?.locations) && data.locations[0]?.location) {
-      const [lng, lat] = data.locations[0].location;
-      return [lng, lat];
+    
+    if (!response.ok) {
+      console.error('ORS routing till Overpass-punkt misslyckades:', response.status);
+      return null;
     }
-    if (Array.isArray(data?.snapped) && data.snapped[0]?.location) {
-      const [lng, lat] = data.snapped[0].location;
-      return [lng, lat];
-    }
-    if (Array.isArray(data?.features) && data.features[0]?.geometry?.coordinates) {
-      const [lng, lat] = data.features[0].geometry.coordinates;
-      return [lng, lat];
-    }
-    return null;
-  } catch {
+    
+    const data = await response.json();
+    return data.routes?.[0] || null;
+    
+  } catch (error) {
+    console.error('Fel vid routing till Overpass-punkt:', error);
     return null;
   }
 }
@@ -223,19 +337,16 @@ export async function POST(request: NextRequest) {
     
     if (isVehicle) {
       // MULTIMODAL: Bil/cykel + gång
-      // 0. Snappa destinationen till närmaste väg för valt profil
-      const snappedEnd = await snapToNetwork(transportMode, end as [number, number], apiKey, 30000);
-      const vehicleTarget = snappedEnd || end;
-      // 1. Försök rutt till snappad punkt (eller end om snappning saknas)
+      // 1. Försök normal ORS routing först
       const vehicleUrl = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
       const vehicleBody = {
-        coordinates: [start, vehicleTarget],
+        coordinates: [start, end],
         instructions: true,
-        radiuses: [-1, 30000]
+        radiuses: [-1, -1] // Ingen snapping
       };
 
-      console.log('🚗 Vehicle routing (steg 1):', { url: vehicleUrl, mode: transportMode });
-
+      console.log('🚗 Försöker normal ORS vehicle routing...');
+      
       const vehicleResponse = await fetch(vehicleUrl, {
         method: 'POST',
         headers: {
@@ -246,63 +357,122 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(vehicleBody)
       });
 
+      let vehicleRoute = null;
+      let usedOverpass = false;
+
       if (vehicleResponse.ok) {
         const vehicleData = await vehicleResponse.json();
-
-        // Normalisera rutt-geometri (ORS JSON ger oftast encoded polyline)
-        const vehicleRoute = vehicleData.routes?.[0];
-        const vehicleGeom = vehicleRoute ? normalizeRouteGeometry(vehicleRoute) : { type: 'LineString', coordinates: [] as [number, number][] };
-
-        // Kolla om vi fick en rutt med geometri
-        if (!vehicleRoute || vehicleGeom.coordinates.length === 0) {
-          console.log('⚠️ No vehicle route found, falling back to walking only');
-          // Fallback: Försök bara gång
-          const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
-          const walkBody = {
-            coordinates: [start, end],
-            instructions: true,
-            language: 'sv',
-            radiuses: [-1, 20000]
-          };
+        vehicleRoute = vehicleData.routes?.[0];
+        console.log('✅ ORS vehicle routing lyckades');
+      } else {
+        // ORS misslyckades - försök med Overpass
+        const errorText = await vehicleResponse.text();
+        console.log('⚠️ ORS vehicle routing misslyckades:', errorText);
+        
+        if (errorText.includes('Could not find routable point')) {
+          console.log('🗺️  Använder Overpass API som fallback...');
+          const roadPoint = await findNearestRoadViaOverpass(end as [number, number], 50);
           
-          const walkResponse = await fetch(walkUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': apiKey,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(walkBody)
-          });
-          
-          if (walkResponse.ok) {
-            const walkData = await walkResponse.json();
-            // Normalisera gång-rutten innan svar
-            if (walkData?.routes?.[0]) {
-              const wr = walkData.routes[0];
-              const geometry = normalizeRouteGeometry(wr);
-              return NextResponse.json({ routes: [{ ...wr, geometry }], metadata: walkData.metadata });
-            }
-            return NextResponse.json(walkData);
-          } else {
-            return NextResponse.json(
-              { error: 'Kunde inte hitta någon rutt (varken bil eller gång)' },
-              { status: 404 }
-            );
+          if (roadPoint) {
+            console.log(`✅ OSM: ${roadPoint.wayType} ${Math.round(roadPoint.distance / 1000)}km från sjön`);
+            vehicleRoute = await routeToOverpassPoint(transportMode, start as [number, number], roadPoint.point, apiKey);
+            usedOverpass = true;
           }
         }
-
-        // 2. Sen: Beräkna gång-sträcka från vägens slut till sjön
-        const vehicleEndPoint = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1];
-        // Snappa gång-målet till gångnätet så ORS alltid kan hitta en rutt nära sjöns strand
-        const snappedWalkEnd = await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000);
-        const walkingTarget = snappedWalkEnd || end;
+      }
+      
+      if (!vehicleRoute) {
+        console.log('❌ Kunde inte hitta fordonväg - fallback till gång');
+        // Fallback till pure walking
         const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
         const walkBody = {
-          coordinates: [vehicleEndPoint, walkingTarget],
+          coordinates: [start, end],
           instructions: true,
           language: 'sv',
-          radiuses: [-1, 20000]
+          radiuses: [-1, -1],
+          elevation: true
+        };
+
+        const walkResponse = await fetch(walkUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': apiKey,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(walkBody)
+        });
+        
+        if (walkResponse.ok) {
+          const walkData = await walkResponse.json();
+          const wr = walkData.routes?.[0];
+          if (wr) {
+            const geometry = normalizeRouteGeometry(wr);
+            const terrain = await enrichElevationAndComputeTerrain(geometry, apiKey);
+            
+            let adjustedDuration = wr.summary?.duration || 0;
+            if (terrain) {
+              adjustedDuration = calculateElevationAdjustedTime(
+                wr.summary?.duration || 0,
+                terrain.elevationGainMeters,
+                terrain.elevationLossMeters
+              );
+            }
+            
+            const enriched = {
+              ...wr,
+              geometry,
+              summary: {
+                distance: wr.summary?.distance || 0,
+                duration: adjustedDuration
+              },
+              distanceRoadToWaterMeters: wr.summary?.distance,
+              walkDurationSeconds: adjustedDuration,
+              terrain
+            } as any;
+            return NextResponse.json({ routes: [enriched], metadata: walkData.metadata });
+          }
+        }
+        
+        // Ultimate fallback: straight line with elevation
+        const { geometry: straightGeom, segment } = createStraightWalkSegment(start as [number, number], end as [number, number]);
+        const terrain = await enrichElevationAndComputeTerrain(straightGeom, apiKey);
+        let adjustedDuration = segment.duration;
+        if (terrain) {
+          adjustedDuration = calculateElevationAdjustedTime(segment.duration, terrain.elevationGainMeters, terrain.elevationLossMeters);
+        }
+        
+        const bbox = computeBboxFromCoords(straightGeom.coordinates);
+        return NextResponse.json({ 
+          routes: [{
+            geometry: straightGeom,
+            segments: [{ distance: segment.distance, duration: adjustedDuration, steps: segment.steps }],
+            summary: { distance: segment.distance, duration: adjustedDuration },
+            distanceRoadToWaterMeters: segment.distance,
+            walkDurationSeconds: adjustedDuration,
+            terrain,
+            bbox
+          }], 
+          metadata: {} 
+        });
+      }
+      
+      // Nu har vi en vehicleRoute (antingen från ORS eller via Overpass)
+      
+      const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
+      console.log('🚗 Bilrutt klar, beräknar gång-sträcka...');
+
+      // 2. Beräkna gång-sträcka från vägens slut till sjön
+        const vehicleEndPoint = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1];
+      
+      // Direkt till målet utan snapping (stranden är redan rätt punkt)
+        const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
+        const walkBody = {
+        coordinates: [vehicleEndPoint, end], // Gå direkt till stranden
+          instructions: true,
+          language: 'sv',
+        radiuses: [-1, -1],
+        elevation: true // Hämta elevation-data
         };
 
         console.log('🚶 Walking routing (steg 2):', { from: vehicleEndPoint, to: end });
@@ -325,20 +495,21 @@ export async function POST(request: NextRequest) {
           const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
           const walkGeom = normalizeRouteGeometry(walkRoute);
 
-          // Terräng: beräkna höjddata för gång-delen om möjligt
-                  const terrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
-                  
-                  // Adjust walking time based on elevation if terrain data available
-                  let adjustedWalkDuration = walkRoute.summary.duration;
-                  if (terrain) {
-                    adjustedWalkDuration = calculateElevationAdjustedTime(
-                      walkRoute.summary.duration,
-                      terrain.elevationGainMeters,
-                      terrain.elevationLossMeters
-                    );
-                  }
+          // Terräng: ALLTID beräkna höjddata för gång-delen
+          const terrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+          
+          // Adjust walking time based on elevation
+          let adjustedWalkDuration = walkRoute.summary.duration;
+          if (terrain && (terrain.elevationGainMeters > 0 || terrain.elevationLossMeters > 0)) {
+            adjustedWalkDuration = calculateElevationAdjustedTime(
+              walkRoute.summary.duration,
+              terrain.elevationGainMeters,
+              terrain.elevationLossMeters
+            );
+            console.log(`⛰️ Elevation-justerad gångtid: ${walkRoute.summary.duration}s → ${adjustedWalkDuration}s (${terrain.elevationGainMeters}m upp, ${terrain.elevationLossMeters}m ner)`);
+          }
 
-                  const combinedRoute = {
+          const combinedRoute = {
             ...vehicleRoute,
             geometry: {
               type: 'LineString',
@@ -352,18 +523,18 @@ export async function POST(request: NextRequest) {
               vehicle: vehicleGeom,
               walk: walkGeom
             },
-                    segments: [
-                      ...vehicleRoute.segments,
-                      ...walkRoute.segments
-                    ],
-                    summary: {
-                      distance: vehicleRoute.summary.distance + walkRoute.summary.distance,
+            segments: [
+              ...vehicleRoute.segments,
+              ...walkRoute.segments
+            ],
+            summary: {
+              distance: vehicleRoute.summary.distance + walkRoute.summary.distance,
                       duration: vehicleRoute.summary.duration + adjustedWalkDuration
-                    },
-                    distanceRoadToWaterMeters: walkRoute.summary?.distance || haversineDistanceMeters(vehicleEndPoint as [number, number], end as [number, number]),
+            },
+            distanceRoadToWaterMeters: walkRoute.summary?.distance || haversineDistanceMeters(vehicleEndPoint as [number, number], end as [number, number]),
                     walkDurationSeconds: adjustedWalkDuration,
-                    terrain,
-                    bbox: [
+            terrain,
+            bbox: [
               Math.min(vehicleRoute.bbox[0], walkRoute.bbox[0]),
               Math.min(vehicleRoute.bbox[1], walkRoute.bbox[1]),
               Math.max(vehicleRoute.bbox[2], walkRoute.bbox[2]),
@@ -377,11 +548,24 @@ export async function POST(request: NextRequest) {
             total: combinedRoute.summary.distance
           });
 
-          return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
+          return NextResponse.json({ routes: [combinedRoute], metadata: {} });
         } else {
-          // Om gång-rutten misslyckas, skapa rak gång-linje sista biten
+          // Om gång-rutten misslyckas, skapa rak gång-linje sista biten MED elevation
           const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
-          const { geometry: straightWalkGeom, segment: straightWalkSeg } = createStraightWalkSegment(vehicleEndPoint as [number, number], end);
+          const { geometry: straightWalkGeom, segment: straightWalkSeg } = createStraightWalkSegment(vehicleEndPoint as [number, number], end as [number, number]);
+          
+          // Försök hämta elevation även för rak linje
+          const terrain = await enrichElevationAndComputeTerrain(straightWalkGeom, apiKey);
+          let adjustedWalkDuration = straightWalkSeg.duration;
+          if (terrain && (terrain.elevationGainMeters > 0 || terrain.elevationLossMeters > 0)) {
+            adjustedWalkDuration = calculateElevationAdjustedTime(
+              straightWalkSeg.duration,
+              terrain.elevationGainMeters,
+              terrain.elevationLossMeters
+            );
+            console.log(`⛰️ Straight walk elevation-justerad: ${straightWalkSeg.duration}s → ${adjustedWalkDuration}s`);
+          }
+          
           const combinedCoords = [...vehicleGeom.coordinates, ...straightWalkGeom.coordinates.slice(1)];
           const bbox = computeBboxFromCoords(combinedCoords);
           const combinedRoute: any = {
@@ -393,277 +577,185 @@ export async function POST(request: NextRequest) {
             },
             segments: [
               ...((vehicleRoute.segments as any[]) || []),
-              { distance: straightWalkSeg.distance, duration: straightWalkSeg.duration, steps: straightWalkSeg.steps }
+              { distance: straightWalkSeg.distance, duration: adjustedWalkDuration, steps: straightWalkSeg.steps }
             ],
             summary: {
               distance: (vehicleRoute.summary?.distance || 0) + straightWalkSeg.distance,
-              duration: (vehicleRoute.summary?.duration || 0) + straightWalkSeg.duration
+              duration: (vehicleRoute.summary?.duration || 0) + adjustedWalkDuration
             },
             distanceRoadToWaterMeters: straightWalkSeg.distance,
-            bbox
-          };
-          console.log('✅ Multimodal with straight walk fallback');
-          return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
-        }
-      } else {
-        const errorText = await vehicleResponse.text();
-        console.log('⚠️ Vehicle routing failed, trying snapped target or walking instead:', errorText);
-        // Second attempt: if we have a snapped end, try routing to that explicitly
-        if (snappedEnd) {
-          try {
-            const retryRes = await fetch(vehicleUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify({ coordinates: [start, snappedEnd], instructions: true, radiuses: [-1, 30000] })
-            });
-            if (retryRes.ok) {
-              const vehicleData = await retryRes.json();
-              const vehicleRoute = vehicleData.routes?.[0];
-              if (vehicleRoute) {
-                const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
-                const vehicleEndPoint = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1];
-                // Try walking from road end to original end
-                const snappedWalkEnd2 = await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000);
-                const walkingTarget2 = snappedWalkEnd2 || end;
-                const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
-                const walkBody = { coordinates: [vehicleEndPoint, walkingTarget2], instructions: true, language: 'sv', radiuses: [-1, 20000] } as any;
-                const walkResponse = await fetch(walkUrl, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': apiKey,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                  },
-                  body: JSON.stringify(walkBody)
-                });
-                if (walkResponse.ok) {
-                  const walkData = await walkResponse.json();
-                  const walkRoute = walkData.routes[0];
-                  const walkGeom = normalizeRouteGeometry(walkRoute);
-                  const terrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
-                  
-                  // Adjust walking time based on elevation
-                  let adjustedWalkDuration = walkRoute.summary?.duration || 0;
-                  if (terrain) {
-                    adjustedWalkDuration = calculateElevationAdjustedTime(
-                      walkRoute.summary?.duration || 0,
-                      terrain.elevationGainMeters,
-                      terrain.elevationLossMeters
-                    );
-                  }
-                  
-                  const combinedRoute: any = {
-                    ...vehicleRoute,
-                    geometry: { type: 'LineString', coordinates: [...vehicleGeom.coordinates, ...walkGeom.coordinates.slice(1)] },
-                    partialGeometries: { vehicle: vehicleGeom, walk: walkGeom },
-                    segments: [...((vehicleRoute.segments as any[]) || []), ...((walkRoute.segments as any[]) || [])],
-                    summary: {
-                      distance: (vehicleRoute.summary?.distance || 0) + (walkRoute.summary?.distance || 0),
-                      duration: (vehicleRoute.summary?.duration || 0) + adjustedWalkDuration
-                    },
-                    distanceRoadToWaterMeters: walkRoute.summary?.distance || haversineDistanceMeters(vehicleEndPoint as [number, number], end as [number, number]),
-                    walkDurationSeconds: adjustedWalkDuration,
+            walkDurationSeconds: adjustedWalkDuration,
                     terrain,
-                    bbox: computeBboxFromCoords([...vehicleGeom.coordinates, ...walkGeom.coordinates])
-                  };
-                  return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
-                } else {
-                  // Straight dotted last bit
-                  const { geometry: straightWalkGeom, segment: straightWalkSeg } = createStraightWalkSegment(vehicleEndPoint as [number, number], end as [number, number]);
-                  const combinedCoords = [...vehicleGeom.coordinates, ...straightWalkGeom.coordinates.slice(1)];
-                  const bbox = computeBboxFromCoords(combinedCoords);
-                  const combinedRoute: any = {
-                    ...vehicleRoute,
-                    geometry: { type: 'LineString', coordinates: combinedCoords },
-                    partialGeometries: { vehicle: vehicleGeom, walk: straightWalkGeom },
-                    segments: [...((vehicleRoute.segments as any[]) || []), { distance: straightWalkSeg.distance, duration: straightWalkSeg.duration, steps: straightWalkSeg.steps }],
-                    summary: { distance: (vehicleRoute.summary?.distance || 0) + straightWalkSeg.distance, duration: (vehicleRoute.summary?.duration || 0) + straightWalkSeg.duration },
-                    distanceRoadToWaterMeters: straightWalkSeg.distance,
-                    bbox
-                  };
-                  return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
-                }
-              }
-            }
-          } catch {}
-        }
-        
-        // Fallback: Om bil inte funkar alls, prova bara gång
-        const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
-        const snappedEndFoot = await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000);
-        const walkBody = {
-          coordinates: [start, snappedEndFoot || end],
-          instructions: true,
-          language: 'sv',
-          radiuses: [-1, 20000]
-        };
-        
-        const walkResponse = await fetch(walkUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': apiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(walkBody)
-        });
-        
-        if (walkResponse.ok) {
-          const walkData = await walkResponse.json();
-          // Normalisera och beräkna extra metadata
-          const wr = walkData.routes?.[0];
-          if (wr) {
-            const geometry = normalizeRouteGeometry(wr);
-            const terrain = await enrichElevationAndComputeTerrain(geometry, apiKey);
-            
-            // Adjust walking time for elevation
-            let adjustedDuration = wr.summary?.duration || 0;
-            if (terrain) {
-              adjustedDuration = calculateElevationAdjustedTime(
-                wr.summary?.duration || 0,
-                terrain.elevationGainMeters,
-                terrain.elevationLossMeters
-              );
-            }
-            
-            const enriched = {
-              ...wr,
-              geometry,
-              summary: {
-                distance: wr.summary?.distance || 0,
-                duration: adjustedDuration
-              },
-              distanceRoadToWaterMeters: wr.summary?.distance || haversineDistanceMeters((start as [number, number]), (end as [number, number])),
-              walkDurationSeconds: adjustedDuration,
-              terrain
-            } as any;
-            return NextResponse.json({ routes: [enriched], metadata: walkData.metadata });
-          }
-          return NextResponse.json(walkData);
-        } else {
-          // Sista fallback: rak gång-linje från start till mål
-          const { geometry: straightGeom, segment } = createStraightWalkSegment(start as [number, number], end as [number, number]);
-          const bbox = computeBboxFromCoords(straightGeom.coordinates);
-          const route: any = {
-            geometry: straightGeom,
-            segments: [{ distance: segment.distance, duration: segment.duration, steps: segment.steps }],
-            summary: { distance: segment.distance, duration: segment.duration },
-            distanceRoadToWaterMeters: segment.distance,
             bbox
           };
-          console.log('✅ Straight walking fallback created');
-          return NextResponse.json({ routes: [route], metadata: {} });
+          console.log('✅ Multimodal with straight walk fallback (with elevation)');
+          return NextResponse.json({ routes: [combinedRoute], metadata: {} });
         }
-      }
-    }
+    } // Slut på isVehicle
     
-    // För GÅNG: enkel direktrutt
-    const url = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
-    // Snappa mål till gångnätet om walking, annars använd original
-    const snappedEndForMode = transportMode === 'foot-walking' ? (await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000)) : null;
-    const body = {
-      coordinates: [start, snappedEndForMode || end],
+    // För GÅNG: EXAKT samma logik som bil/cykel
+    // 1. Försök ORS routing
+    const walkUrl = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
+    const walkBody = {
+      coordinates: [start, end],
       instructions: true,
-      radiuses: [-1, 20000]
+      radiuses: [-1, -1],
+      elevation: true
     };
 
-    console.log('🚗 Routing request:', { 
-      url, 
-      coordinates: body.coordinates, 
-      mode: transportMode,
-      apiKeyPrefix: apiKey.substring(0, 10) + '...'
-    });
+    console.log('🚶 Walking routing request...');
 
-    const response = await fetch(url, {
+    const walkResponse = await fetch(walkUrl, {
       method: 'POST',
       headers: {
         'Authorization': apiKey,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(walkBody)
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenRouteService error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText,
-        url,
-        coordinates: [start, end]
-      });
-      // Fallback: snappa mål till närmsta foot-walking nät och räkna så långt det går,
-      // annars rak sista biten – och snappa slutpunkt till sjökant hanteras i frontend.
-      const snappedEnd = await snapToNetwork('foot-walking', end as [number, number], apiKey, 30000);
-      if (snappedEnd) {
-        try {
-          const retry = await fetch(url, {
-            method: 'POST',
-            headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ coordinates: [start, snappedEnd], instructions: true, radiuses: [-1, 30000] })
-          });
-          if (retry.ok) {
-            const data2 = await retry.json();
-            if (data2?.routes?.[0]) {
-              const route = data2.routes[0];
-              const geometry = normalizeRouteGeometry(route);
-              const normalized = { ...route, geometry };
-              return NextResponse.json({ routes: [normalized], metadata: data2.metadata });
+    let walkRoute = null as any;
+
+    if (walkResponse.ok) {
+      const walkData = await walkResponse.json();
+      walkRoute = walkData.routes?.[0];
+      console.log('✅ ORS walking routing lyckades');
+
+      // Sanity-koll: om ORS slutpunkt är långt från vår verkliga destination (strand)
+      // så har ORS snappat till en felaktig punkt. Då gör vi Overpass-fallback.
+      try {
+        if (walkRoute) {
+          const geom = normalizeRouteGeometry(walkRoute);
+          const last = geom.coordinates[geom.coordinates.length - 1];
+          const endPoint = end as [number, number];
+          const endGap = haversineDistanceMeters(last, endPoint);
+          const direct = haversineDistanceMeters(start as [number, number], endPoint);
+          const orsDistance = walkRoute.summary?.distance || Infinity;
+
+          const tooFarFromEnd = endGap > 2000; // >2 km från stranden betraktas som fel snapping
+          const suspiciouslyLong = isFinite(orsDistance) && direct > 0 && (orsDistance / direct) > 5; // >5x fågelvägen
+
+          if (tooFarFromEnd || suspiciouslyLong) {
+            console.log(`⚠️ ORS walking slutpunkt ${Math.round(endGap)}m från mål eller misstänkt lång (${Math.round(orsDistance/1000)}km för ${Math.round(direct/1000)}km fågelvägen). Försöker Overpass...`);
+            const pathPoint = await findNearestRoadViaOverpass(end as [number, number], 50, true);
+            if (pathPoint) {
+              const rerouted = await routeToOverpassPoint(transportMode, start as [number, number], pathPoint.point, apiKey);
+              if (rerouted) {
+                walkRoute = rerouted; // Ersätt rutt med säkert mål nära vattnet
+              } else {
+                // Vi låter walkRoute stå kvar och hanterar rak linje nedan
+              }
             }
           }
-        } catch {}
+        }
+      } catch (e) {
+        console.warn('Sanity-koll för gång misslyckades:', e);
       }
+    } else {
+      // ORS misslyckades - försök med Overpass (SAMMA SOM BIL/CYKEL)
+      const errorText = await walkResponse.text();
+      console.log('⚠️ ORS walking routing misslyckades:', errorText);
+      
+      if (errorText.includes('Could not find routable point')) {
+        console.log('🗺️  Använder Overpass API för att hitta gångväg...');
+        const pathPoint = await findNearestRoadViaOverpass(end as [number, number], 50, true); // includeFootpaths = true
+        
+        if (pathPoint) {
+          console.log(`✅ OSM: ${pathPoint.wayType} ${Math.round(pathPoint.distance / 1000)}km från sjön`);
+          walkRoute = await routeToOverpassPoint(transportMode, start as [number, number], pathPoint.point, apiKey);
+        }
+      }
+    }
+    
+    if (!walkRoute) {
+      console.log('❌ Kunde inte hitta gångväg - fallback till rak linje');
       const { geometry: straightGeom, segment } = createStraightWalkSegment(start as [number, number], end as [number, number]);
+      const terrain = await enrichElevationAndComputeTerrain(straightGeom, apiKey);
+      let adjustedDuration = segment.duration;
+      if (terrain) {
+        adjustedDuration = calculateElevationAdjustedTime(segment.duration, terrain.elevationGainMeters, terrain.elevationLossMeters);
+      }
       const bbox = computeBboxFromCoords(straightGeom.coordinates);
       const route: any = {
         geometry: straightGeom,
-        segments: [{ distance: segment.distance, duration: segment.duration, steps: segment.steps }],
-        summary: { distance: segment.distance, duration: segment.duration },
+        segments: [{ distance: segment.distance, duration: adjustedDuration, steps: segment.steps }],
+        summary: { distance: segment.distance, duration: adjustedDuration },
         distanceRoadToWaterMeters: segment.distance,
-        bbox
+        walkDurationSeconds: adjustedDuration,
+        terrain,
+        bbox,
+        isDirectPath: true
       };
-      console.log('✅ Straight walking fallback created (direct walking mode)');
       return NextResponse.json({ routes: [route], metadata: {} });
     }
-
-    const data = await response.json();
-    console.log('Routing success:', { distance: data.routes?.[0]?.summary?.distance });
-
-    // Normalisera geometri till GeoJSON så frontend alltid kan rita linjer
-    if (data?.routes?.[0]) {
-      const route = data.routes[0];
-      const geometry = normalizeRouteGeometry(route);
-      let normalized: any = { ...route, geometry };
-      if (transportMode === 'foot-walking') {
-        const terrain = await enrichElevationAndComputeTerrain(geometry, apiKey);
-        
-        // Adjust duration for elevation
-        let adjustedDuration = route.summary?.duration || 0;
-        if (terrain) {
-          adjustedDuration = calculateElevationAdjustedTime(
-            route.summary?.duration || 0,
-            terrain.elevationGainMeters,
-            terrain.elevationLossMeters
-          );
-        }
-        
-        normalized.summary = {
-          distance: route.summary?.distance || 0,
-          duration: adjustedDuration
-        };
-        normalized.distanceRoadToWaterMeters = route.summary?.distance;
-        normalized.walkDurationSeconds = adjustedDuration;
-        normalized.terrain = terrain || undefined;
-      }
-      return NextResponse.json({ routes: [normalized], metadata: data.metadata });
+    
+    // Nu har vi en walkRoute - lägg till sista biten till sjön (SAMMA SOM BIL/CYKEL)
+    const walkGeom = normalizeRouteGeometry(walkRoute);
+    const walkEndPoint = walkGeom.coordinates[walkGeom.coordinates.length - 1];
+    
+    // Sista biten: rak linje från vägens slut till sjön
+    const { geometry: finalWalkGeom, segment: finalWalkSeg } = createStraightWalkSegment(walkEndPoint as [number, number], end as [number, number]);
+    
+    const pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+    const finalTerrain = await enrichElevationAndComputeTerrain(finalWalkGeom, apiKey);
+    
+    let adjustedPathDuration = walkRoute.summary?.duration || 0;
+    if (pathTerrain) {
+      adjustedPathDuration = calculateElevationAdjustedTime(
+        walkRoute.summary?.duration || 0,
+        pathTerrain.elevationGainMeters,
+        pathTerrain.elevationLossMeters
+      );
     }
-
-    return NextResponse.json(data);
+    
+    let adjustedFinalDuration = finalWalkSeg.duration;
+    if (finalTerrain) {
+      adjustedFinalDuration = calculateElevationAdjustedTime(
+        finalWalkSeg.duration,
+        finalTerrain.elevationGainMeters,
+        finalTerrain.elevationLossMeters
+      );
+    }
+    
+    const combinedGeom = {
+      type: 'LineString' as const,
+      coordinates: [...walkGeom.coordinates, ...finalWalkGeom.coordinates.slice(1)]
+    };
+    
+    const combinedTerrain = {
+      elevationGainMeters: (pathTerrain?.elevationGainMeters || 0) + (finalTerrain?.elevationGainMeters || 0),
+      elevationLossMeters: (pathTerrain?.elevationLossMeters || 0) + (finalTerrain?.elevationLossMeters || 0)
+    };
+    
+    const totalDuration = adjustedPathDuration + adjustedFinalDuration;
+    const totalDistance = (walkRoute.summary?.distance || 0) + finalWalkSeg.distance;
+    
+    const bbox = computeBboxFromCoords(combinedGeom.coordinates);
+    const combinedRoute: any = {
+      geometry: combinedGeom,
+      partialGeometries: {
+        walk: walkGeom,
+        walkFinal: finalWalkGeom
+      },
+      segments: [
+        ...(walkRoute.segments || []),
+        { distance: finalWalkSeg.distance, duration: adjustedFinalDuration, steps: finalWalkSeg.steps }
+      ],
+      summary: { distance: totalDistance, duration: totalDuration },
+      distanceRoadToWaterMeters: finalWalkSeg.distance,
+      walkDurationSeconds: adjustedFinalDuration,
+      terrain: combinedTerrain,
+      bbox
+    };
+    
+    console.log('✅ Walking route with final segment:', {
+      pathDistance: walkRoute.summary?.distance,
+      finalDistance: finalWalkSeg.distance,
+      total: totalDistance
+    });
+    
+    return NextResponse.json({ routes: [combinedRoute], metadata: {} });
   } catch (error) {
     console.error('Routing API error:', error);
     return NextResponse.json(
