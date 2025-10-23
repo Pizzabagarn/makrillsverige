@@ -3,6 +3,7 @@
 // Detta håller API-nyckeln säker på servern
 
 import { NextRequest, NextResponse } from 'next/server';
+import { calculateElevationAdjustedTime } from '@/lib/smartRoutingService';
 
 // Minimal polyline decoder supporting precision 5 or 6 (ORS default is 5)
 function decodeEncodedPolyline(encoded: string, precision: 5 | 6 = 5): [number, number][] {
@@ -144,6 +145,45 @@ function computeBboxFromCoords(coords: [number, number][]): [number, number, num
   return [minLng, minLat, maxLng, maxLat];
 }
 
+async function enrichElevationAndComputeTerrain(
+  line: { type: 'LineString'; coordinates: [number, number][] },
+  apiKey: string
+): Promise<{ elevationGainMeters: number; elevationLossMeters: number } | null> {
+  try {
+    if (!line.coordinates || line.coordinates.length < 2) return null;
+    const url = 'https://api.openrouteservice.org/elevation/line';
+    const body = {
+      format_in: 'geojson',
+      format_out: 'geojson',
+      geometry: line
+    } as any;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const coords = data?.geometry?.coordinates as number[][] | undefined;
+    if (!coords || coords.length < 2) return null;
+    let gain = 0;
+    let loss = 0;
+    for (let i = 1; i < coords.length; i++) {
+      const prev = coords[i - 1];
+      const curr = coords[i];
+      const dz = (curr[2] ?? 0) - (prev[2] ?? 0);
+      if (dz > 0) gain += dz; else loss += -dz;
+    }
+    return { elevationGainMeters: gain, elevationLossMeters: loss };
+  } catch {
+    return null;
+  }
+}
+
 function createStraightWalkSegment(start: [number, number], end: [number, number]) {
   const distance = haversineDistanceMeters(start, end);
   const walkingSpeedMps = 1.4; // ~5 km/h
@@ -254,9 +294,12 @@ export async function POST(request: NextRequest) {
 
         // 2. Sen: Beräkna gång-sträcka från vägens slut till sjön
         const vehicleEndPoint = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1];
+        // Snappa gång-målet till gångnätet så ORS alltid kan hitta en rutt nära sjöns strand
+        const snappedWalkEnd = await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000);
+        const walkingTarget = snappedWalkEnd || end;
         const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
         const walkBody = {
-          coordinates: [vehicleEndPoint, end],
+          coordinates: [vehicleEndPoint, walkingTarget],
           instructions: true,
           language: 'sv',
           radiuses: [-1, 20000]
@@ -282,7 +325,20 @@ export async function POST(request: NextRequest) {
           const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
           const walkGeom = normalizeRouteGeometry(walkRoute);
 
-          const combinedRoute = {
+          // Terräng: beräkna höjddata för gång-delen om möjligt
+                  const terrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+                  
+                  // Adjust walking time based on elevation if terrain data available
+                  let adjustedWalkDuration = walkRoute.summary.duration;
+                  if (terrain) {
+                    adjustedWalkDuration = calculateElevationAdjustedTime(
+                      walkRoute.summary.duration,
+                      terrain.elevationGainMeters,
+                      terrain.elevationLossMeters
+                    );
+                  }
+
+                  const combinedRoute = {
             ...vehicleRoute,
             geometry: {
               type: 'LineString',
@@ -296,15 +352,18 @@ export async function POST(request: NextRequest) {
               vehicle: vehicleGeom,
               walk: walkGeom
             },
-            segments: [
-              ...vehicleRoute.segments,
-              ...walkRoute.segments
-            ],
-            summary: {
-              distance: vehicleRoute.summary.distance + walkRoute.summary.distance,
-              duration: vehicleRoute.summary.duration + walkRoute.summary.duration
-            },
-            bbox: [
+                    segments: [
+                      ...vehicleRoute.segments,
+                      ...walkRoute.segments
+                    ],
+                    summary: {
+                      distance: vehicleRoute.summary.distance + walkRoute.summary.distance,
+                      duration: vehicleRoute.summary.duration + adjustedWalkDuration
+                    },
+                    distanceRoadToWaterMeters: walkRoute.summary?.distance || haversineDistanceMeters(vehicleEndPoint as [number, number], end as [number, number]),
+                    walkDurationSeconds: adjustedWalkDuration,
+                    terrain,
+                    bbox: [
               Math.min(vehicleRoute.bbox[0], walkRoute.bbox[0]),
               Math.min(vehicleRoute.bbox[1], walkRoute.bbox[1]),
               Math.max(vehicleRoute.bbox[2], walkRoute.bbox[2]),
@@ -340,6 +399,7 @@ export async function POST(request: NextRequest) {
               distance: (vehicleRoute.summary?.distance || 0) + straightWalkSeg.distance,
               duration: (vehicleRoute.summary?.duration || 0) + straightWalkSeg.duration
             },
+            distanceRoadToWaterMeters: straightWalkSeg.distance,
             bbox
           };
           console.log('✅ Multimodal with straight walk fallback');
@@ -367,8 +427,10 @@ export async function POST(request: NextRequest) {
                 const vehicleGeom = normalizeRouteGeometry(vehicleRoute);
                 const vehicleEndPoint = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1];
                 // Try walking from road end to original end
+                const snappedWalkEnd2 = await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000);
+                const walkingTarget2 = snappedWalkEnd2 || end;
                 const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
-                const walkBody = { coordinates: [vehicleEndPoint, end], instructions: true, language: 'sv', radiuses: [-1, 20000] } as any;
+                const walkBody = { coordinates: [vehicleEndPoint, walkingTarget2], instructions: true, language: 'sv', radiuses: [-1, 20000] } as any;
                 const walkResponse = await fetch(walkUrl, {
                   method: 'POST',
                   headers: {
@@ -382,6 +444,18 @@ export async function POST(request: NextRequest) {
                   const walkData = await walkResponse.json();
                   const walkRoute = walkData.routes[0];
                   const walkGeom = normalizeRouteGeometry(walkRoute);
+                  const terrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+                  
+                  // Adjust walking time based on elevation
+                  let adjustedWalkDuration = walkRoute.summary?.duration || 0;
+                  if (terrain) {
+                    adjustedWalkDuration = calculateElevationAdjustedTime(
+                      walkRoute.summary?.duration || 0,
+                      terrain.elevationGainMeters,
+                      terrain.elevationLossMeters
+                    );
+                  }
+                  
                   const combinedRoute: any = {
                     ...vehicleRoute,
                     geometry: { type: 'LineString', coordinates: [...vehicleGeom.coordinates, ...walkGeom.coordinates.slice(1)] },
@@ -389,8 +463,11 @@ export async function POST(request: NextRequest) {
                     segments: [...((vehicleRoute.segments as any[]) || []), ...((walkRoute.segments as any[]) || [])],
                     summary: {
                       distance: (vehicleRoute.summary?.distance || 0) + (walkRoute.summary?.distance || 0),
-                      duration: (vehicleRoute.summary?.duration || 0) + (walkRoute.summary?.duration || 0)
+                      duration: (vehicleRoute.summary?.duration || 0) + adjustedWalkDuration
                     },
+                    distanceRoadToWaterMeters: walkRoute.summary?.distance || haversineDistanceMeters(vehicleEndPoint as [number, number], end as [number, number]),
+                    walkDurationSeconds: adjustedWalkDuration,
+                    terrain,
                     bbox: computeBboxFromCoords([...vehicleGeom.coordinates, ...walkGeom.coordinates])
                   };
                   return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
@@ -405,6 +482,7 @@ export async function POST(request: NextRequest) {
                     partialGeometries: { vehicle: vehicleGeom, walk: straightWalkGeom },
                     segments: [...((vehicleRoute.segments as any[]) || []), { distance: straightWalkSeg.distance, duration: straightWalkSeg.duration, steps: straightWalkSeg.steps }],
                     summary: { distance: (vehicleRoute.summary?.distance || 0) + straightWalkSeg.distance, duration: (vehicleRoute.summary?.duration || 0) + straightWalkSeg.duration },
+                    distanceRoadToWaterMeters: straightWalkSeg.distance,
                     bbox
                   };
                   return NextResponse.json({ routes: [combinedRoute], metadata: vehicleData.metadata });
@@ -416,8 +494,9 @@ export async function POST(request: NextRequest) {
         
         // Fallback: Om bil inte funkar alls, prova bara gång
         const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
+        const snappedEndFoot = await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000);
         const walkBody = {
-          coordinates: [start, end],
+          coordinates: [start, snappedEndFoot || end],
           instructions: true,
           language: 'sv',
           radiuses: [-1, 20000]
@@ -435,7 +514,35 @@ export async function POST(request: NextRequest) {
         
         if (walkResponse.ok) {
           const walkData = await walkResponse.json();
-          console.log('✅ Walking route found instead');
+          // Normalisera och beräkna extra metadata
+          const wr = walkData.routes?.[0];
+          if (wr) {
+            const geometry = normalizeRouteGeometry(wr);
+            const terrain = await enrichElevationAndComputeTerrain(geometry, apiKey);
+            
+            // Adjust walking time for elevation
+            let adjustedDuration = wr.summary?.duration || 0;
+            if (terrain) {
+              adjustedDuration = calculateElevationAdjustedTime(
+                wr.summary?.duration || 0,
+                terrain.elevationGainMeters,
+                terrain.elevationLossMeters
+              );
+            }
+            
+            const enriched = {
+              ...wr,
+              geometry,
+              summary: {
+                distance: wr.summary?.distance || 0,
+                duration: adjustedDuration
+              },
+              distanceRoadToWaterMeters: wr.summary?.distance || haversineDistanceMeters((start as [number, number]), (end as [number, number])),
+              walkDurationSeconds: adjustedDuration,
+              terrain
+            } as any;
+            return NextResponse.json({ routes: [enriched], metadata: walkData.metadata });
+          }
           return NextResponse.json(walkData);
         } else {
           // Sista fallback: rak gång-linje från start till mål
@@ -445,6 +552,7 @@ export async function POST(request: NextRequest) {
             geometry: straightGeom,
             segments: [{ distance: segment.distance, duration: segment.duration, steps: segment.steps }],
             summary: { distance: segment.distance, duration: segment.duration },
+            distanceRoadToWaterMeters: segment.distance,
             bbox
           };
           console.log('✅ Straight walking fallback created');
@@ -455,8 +563,10 @@ export async function POST(request: NextRequest) {
     
     // För GÅNG: enkel direktrutt
     const url = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
+    // Snappa mål till gångnätet om walking, annars använd original
+    const snappedEndForMode = transportMode === 'foot-walking' ? (await snapToNetwork('foot-walking', end as [number, number], apiKey, 50000)) : null;
     const body = {
-      coordinates: [start, end],
+      coordinates: [start, snappedEndForMode || end],
       instructions: true,
       radiuses: [-1, 20000]
     };
@@ -514,6 +624,7 @@ export async function POST(request: NextRequest) {
         geometry: straightGeom,
         segments: [{ distance: segment.distance, duration: segment.duration, steps: segment.steps }],
         summary: { distance: segment.distance, duration: segment.duration },
+        distanceRoadToWaterMeters: segment.distance,
         bbox
       };
       console.log('✅ Straight walking fallback created (direct walking mode)');
@@ -527,7 +638,28 @@ export async function POST(request: NextRequest) {
     if (data?.routes?.[0]) {
       const route = data.routes[0];
       const geometry = normalizeRouteGeometry(route);
-      const normalized = { ...route, geometry };
+      let normalized: any = { ...route, geometry };
+      if (transportMode === 'foot-walking') {
+        const terrain = await enrichElevationAndComputeTerrain(geometry, apiKey);
+        
+        // Adjust duration for elevation
+        let adjustedDuration = route.summary?.duration || 0;
+        if (terrain) {
+          adjustedDuration = calculateElevationAdjustedTime(
+            route.summary?.duration || 0,
+            terrain.elevationGainMeters,
+            terrain.elevationLossMeters
+          );
+        }
+        
+        normalized.summary = {
+          distance: route.summary?.distance || 0,
+          duration: adjustedDuration
+        };
+        normalized.distanceRoadToWaterMeters = route.summary?.distance;
+        normalized.walkDurationSeconds = adjustedDuration;
+        normalized.terrain = terrain || undefined;
+      }
       return NextResponse.json({ routes: [normalized], metadata: data.metadata });
     }
 

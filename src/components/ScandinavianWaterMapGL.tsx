@@ -26,6 +26,7 @@ import {
 
 // Import routing services
 import { Route, TransportMode, getRoute, formatDistance, formatDuration } from '@/lib/routingService';
+import { findNearestShorePoint } from '@/lib/smartRoutingService';
 
 // FEATURE FLAG: Use new system with place names
 const USE_PLACES_SYSTEM = true;
@@ -133,6 +134,16 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                   <div className="text-xs text-slate-300">
                     {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
                   </div>
+                  {typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
+                    <div className="text-cyan-300 text-[11px] mt-1">
+                      🚶 Gå sista: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
+                    </div>
+                  )}
+                  {route.terrain && (
+                    <div className="text-[11px] text-slate-400">
+                      Höjd: +{Math.round(route.terrain.elevationGainMeters)} m / -{Math.round(route.terrain.elevationLossMeters)} m
+                    </div>
+                  )}
                   {onTransportChange && currentMode && (
                     <div className="flex space-x-1">
                       <button onClick={() => onTransportChange('driving-car')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Car className="w-3 h-3 inline mr-1"/>Bil</button>
@@ -328,18 +339,33 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                 <span className="ml-3 text-sm text-slate-300">Beräknar rutt...</span>
               </div>
             )}
-            {route && !routeLoading && (
-              <>
-                <div className="text-sm text-slate-300">
-                  {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
-                </div>
-                {onTransportChange && currentMode && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => onTransportChange('driving-car')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Car className="w-4 h-4 inline mr-1"/>Bil</button>
-                    <button onClick={() => onTransportChange('cycling-regular')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='cycling-regular'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Bike className="w-4 h-4 inline mr-1"/>Cykel</button>
-                    <button onClick={() => onTransportChange('foot-walking')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='foot-walking'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><User className="w-4 h-4 inline mr-1"/>Gång</button>
+              {route && !routeLoading && (
+                <>
+                  <div className="text-sm text-slate-300">
+                    {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
                   </div>
-                )}
+                  {typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
+                    <div className="text-cyan-300 text-sm">
+                      🚶 Gå sista: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
+                    </div>
+                  )}
+                  {route.terrain && (route.terrain.elevationGainMeters > 5 || route.terrain.elevationLossMeters > 5) && (
+                    <div className="text-xs text-slate-400 bg-slate-800/50 rounded p-2 mt-2">
+                      <div className="font-medium text-white mb-1">⛰️ Terräng</div>
+                      <div>Uppför: +{Math.round(route.terrain.elevationGainMeters)} m</div>
+                      <div>Nedför: -{Math.round(route.terrain.elevationLossMeters)} m</div>
+                      {route.terrain.elevationGainMeters > 100 && (
+                        <div className="text-yellow-400 mt-1">⚠️ Brant terräng - extra tid inräknad</div>
+                      )}
+                    </div>
+                  )}
+                  {onTransportChange && currentMode && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <button onClick={() => onTransportChange('driving-car')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Car className="w-4 h-4 inline mr-1"/>Bil</button>
+                      <button onClick={() => onTransportChange('cycling-regular')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='cycling-regular'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Bike className="w-4 h-4 inline mr-1"/>Cykel</button>
+                      <button onClick={() => onTransportChange('foot-walking')} className={`py-2 px-2 rounded-lg text-sm ${currentMode==='foot-walking'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><User className="w-4 h-4 inline mr-1"/>Gång</button>
+                    </div>
+                  )}
                 {/* Steps list */}
                 {allSteps.length > 0 && (
                   <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl bg-slate-800/50 p-3">
@@ -1304,25 +1330,22 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     }
   };
 
-  // Hantera navigation till vattendrag - visa valen först
+  // Hantera navigation till vattendrag
   const handleNavigate = async () => {
     if (!selectedWaterBody || !userPosition || !mapRef.current) {
       console.error('Saknar användarposition eller destination');
       return;
     }
 
-    // Visa navigation-panelen direkt med transportval (som Google Maps)
     setRouteLoading(true);
-    setCurrentRoute(null); // Visa panelen men ingen rutt än
+    setCurrentRoute(null);
     
-    // Beräkna första rutten (default: bil)
     try {
-      const destination: [number, number] = [
-        selectedWaterBody.coordinates[1], // lng
-        selectedWaterBody.coordinates[0]  // lat
-      ];
+      // Hitta närmaste strandpunkt (inte centrum)
+      const shorePoint = findNearestShorePoint(selectedWaterBody, userPosition);
+      console.log('🏖️ Routing till närmaste strand:', shorePoint);
 
-      const route = await getRoute(userPosition, destination, navigationMode);
+      const route = await getRoute(userPosition, shorePoint, navigationMode);
       
       if (route) {
         setCurrentRoute(route);
@@ -1560,16 +1583,14 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       setRouteLoading(true);
       
       try {
-        const destination: [number, number] = [
-          selectedWaterBody.coordinates[1],
-          selectedWaterBody.coordinates[0]
-        ];
-
-        const route = await getRoute(userPosition, destination, mode);
+        // Hitta närmaste strandpunkt
+        const shorePoint = findNearestShorePoint(selectedWaterBody, userPosition);
+        const route = await getRoute(userPosition, shorePoint, mode);
         
         if (route) {
           setCurrentRoute(route);
           drawRouteOnMap(route);
+          
           // Zooma kartan för att visa hela rutten
           if (mapRef.current) {
             if (route.bbox) {

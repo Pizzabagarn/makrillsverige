@@ -27,6 +27,13 @@ export interface Route {
     vehicle?: { type: 'LineString'; coordinates: [number, number][] };
     walk?: { type: 'LineString'; coordinates: [number, number][] };
   };
+  // Extra metadata från servern
+  distanceRoadToWaterMeters?: number;
+  walkDurationSeconds?: number; // Gångtid i sekunder (med elevation justerad)
+  terrain?: {
+    elevationGainMeters: number;
+    elevationLossMeters: number;
+  } | null;
   segments: RouteSegment[];
   summary: {
     distance: number; // meter
