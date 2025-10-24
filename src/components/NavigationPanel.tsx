@@ -32,8 +32,7 @@ export default function NavigationPanel({
 }: NavigationPanelProps) {
   const [showInstructions, setShowInstructions] = useState(false);
 
-  // Visa panelen även om vi inte har rutt än (Google Maps-stil)
-  // if (!route && !loading) return null;
+  // Keep panel visible even before route is ready
 
   const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
 
@@ -52,6 +51,7 @@ export default function NavigationPanel({
                   <div>
                     <p className="text-xs text-slate-300">
                       {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                      {(route.segments.length > 1 && currentMode !== 'foot-walking') ? ' totalt' : ''}
                     </p>
                     {route.segments.length > 1 && currentMode !== 'foot-walking' && (
                       <p className="text-[10px] text-slate-400">
@@ -179,6 +179,7 @@ export default function NavigationPanel({
                   <div>
                     <p className="text-sm text-cyan-300">
                       {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                      {(route.segments.length > 1 && currentMode !== 'foot-walking') ? ' totalt' : ''}
                     </p>
                     {route.segments.length > 1 && currentMode !== 'foot-walking' && (
                       <p className="text-xs text-slate-400 mt-0.5">

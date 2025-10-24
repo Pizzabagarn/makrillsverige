@@ -133,10 +133,11 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                 <>
                   <div className="text-xs text-slate-300">
                     {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                    {(currentMode !== 'foot-walking' && typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0) ? ' totalt' : ''}
                   </div>
-                  {typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
+                  {currentMode !== 'foot-walking' && typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
                     <div className="text-cyan-300 text-[11px] mt-1">
-                      🚶 Gå sista: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
+                      Sista biten till fots: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
                     </div>
                   )}
                   {route.terrain && (
@@ -343,10 +344,11 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                 <>
                   <div className="text-sm text-slate-300">
                     {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
+                    {(currentMode !== 'foot-walking' && typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0) ? ' totalt' : ''}
                   </div>
-                  {typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
+                  {currentMode !== 'foot-walking' && typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
                     <div className="text-cyan-300 text-sm">
-                      🚶 Gå sista: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
+                      Sista biten till fots: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
                     </div>
                   )}
                   {route.terrain && (route.terrain.elevationGainMeters > 5 || route.terrain.elevationLossMeters > 5) && (
@@ -858,7 +860,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const loadPopularFishingWaters = async () => {
     try {
       // TEMPORÄRT INAKTIVERAD - implementera SMHI-version senare om behövs
-      console.log('Popular fishing waters loading temporarily disabled for SMHI');
+      // Silenced noisy log
       setVisibleWaterBodies([]);
     } catch (error) {
       console.error('Fel vid laddning av populära fiskevatten:', error);
@@ -1343,7 +1345,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     try {
       // Hitta närmaste strandpunkt (inte centrum)
       const shorePoint = findNearestShorePoint(selectedWaterBody, userPosition);
-      console.log('🏖️ Routing till närmaste strand:', shorePoint);
+      // Silenced noisy log
 
       const route = await getRoute(userPosition, shorePoint, navigationMode);
       
@@ -1397,14 +1399,43 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     const hasParts = !!route.partialGeometries && (!!route.partialGeometries.vehicle || !!route.partialGeometries.walk || !!route.partialGeometries.walkFinal);
 
     if (hasParts) {
+      // Förbered geometrier: trimma fordon till där gång börjar och snappa mötespunkten
+      let vehicleGeometryForRender = route.partialGeometries?.vehicle;
+      let walkGeometryForRender = route.partialGeometries?.walk;
+
+      try {
+        if (vehicleGeometryForRender && walkGeometryForRender &&
+            Array.isArray(vehicleGeometryForRender.coordinates) && vehicleGeometryForRender.coordinates.length >= 2 &&
+            Array.isArray(walkGeometryForRender.coordinates) && walkGeometryForRender.coordinates.length >= 2) {
+          const walkStart = walkGeometryForRender.coordinates[0];
+          // Trimma bil-linjen så den slutar exakt vid gångens start
+          const line = turf.lineString(vehicleGeometryForRender.coordinates as any);
+          const snappedOnVehicle = turf.nearestPointOnLine(line as any, walkStart as any) as any;
+          const idx = (snappedOnVehicle?.properties?.index ?? vehicleGeometryForRender.coordinates.length - 1) as number;
+          const trimmed = vehicleGeometryForRender.coordinates.slice(0, Math.max(1, idx + 1));
+          // Sätt sista punkten till den snappade punkten för exakt sammanfogning
+          if (snappedOnVehicle?.geometry?.coordinates) {
+            trimmed[trimmed.length - 1] = snappedOnVehicle.geometry.coordinates as [number, number];
+          }
+          vehicleGeometryForRender = { type: 'LineString', coordinates: trimmed } as any;
+
+          // Snappa gång-starten till exakt samma mötespunkt för pixelperfekt join
+          const walkCoords = walkGeometryForRender.coordinates.slice();
+          if (snappedOnVehicle?.geometry?.coordinates) {
+            walkCoords[0] = snappedOnVehicle.geometry.coordinates as [number, number];
+          }
+          walkGeometryForRender = { type: 'LineString', coordinates: walkCoords } as any;
+        }
+      } catch {}
+
       // Bil/cykel-del (solid)
-      if (route.partialGeometries?.vehicle) {
+      if (vehicleGeometryForRender) {
         map.addSource('route-vehicle', {
           type: 'geojson',
           data: {
             type: 'Feature',
             properties: {},
-            geometry: route.partialGeometries.vehicle
+            geometry: vehicleGeometryForRender
           }
         });
 
@@ -1435,10 +1466,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         });
       }
 
-      // Gång-del (prickad) – snappa sista punkten till NÄRMASTE kant från vägslutet
-      if (route.partialGeometries?.walk) {
-        let walkGeometry = route.partialGeometries.walk;
-        const vehicleEnd = route.partialGeometries?.vehicle?.coordinates?.[route.partialGeometries?.vehicle?.coordinates.length - 1];
+      // Gång-del (prickad) – snappa endast SLUT mot vattenkanten
+      if (walkGeometryForRender) {
+        let walkGeometry = walkGeometryForRender;
         try {
           const water = selectedWaterBodyRef.current?.geometry as any;
           if (water && walkGeometry?.coordinates?.length >= 2) {
@@ -1449,13 +1479,14 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
               boundaryLine = { type: water.type, coordinates: water.coordinates } as any;
             }
             if (boundaryLine) {
-              const referencePoint = vehicleEnd || walkGeometry.coordinates[0];
-              const snapped = turf.nearestPointOnLine(boundaryLine as any, referencePoint as any) as any;
+              // Snappa SLUTPUNKTEN mot närmaste kant baserat på gångens egna slutpunkt
+              const walkEndRef = walkGeometry.coordinates[walkGeometry.coordinates.length - 1];
+              const snapped = turf.nearestPointOnLine(boundaryLine as any, walkEndRef as any) as any;
+              const newCoords = walkGeometry.coordinates.slice();
               if (snapped?.geometry?.coordinates) {
-                const newCoords = walkGeometry.coordinates.slice();
                 newCoords[newCoords.length - 1] = snapped.geometry.coordinates as [number, number];
-                walkGeometry = { type: 'LineString', coordinates: newCoords } as any;
               }
+              walkGeometry = { type: 'LineString', coordinates: newCoords } as any;
             }
           }
         } catch {}
@@ -1482,7 +1513,8 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             'line-color': '#3b82f6',
             'line-width': 3,
             'line-opacity': 1.0,
-            'line-dasharray': [0.0001, 5] // tydligare separerade "prickar" även vid utzoomning
+            // Starta med en synlig dash för att undvika glapp vid segmentstart
+            'line-dasharray': [2, 5]
           }
         });
       }

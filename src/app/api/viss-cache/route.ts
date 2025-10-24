@@ -8,6 +8,8 @@ const CACHE_HEADERS = {
   'Vercel-CDN-Cache-Control': 'max-age=2592000', // 30 dagar Vercel
 };
 
+const isDebug = process.env.LOG_LEVEL === 'debug';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
       { lat: parseFloat(lat), lon: parseFloat(lon) } : 
       undefined;
 
-    console.log(`🔍 VISS CDN Cache: Hämtar data för "${waterBodyName}"`);
+    if (isDebug) console.log(`🔍 VISS CDN Cache: Hämtar data för "${waterBodyName}"`);
 
     const fetcher = new WaterBodyDataFetcher();
     const vissData = await fetcher.fetchWaterBodyDataWithValidation(
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`✅ VISS CDN Cache: Hittade data för "${waterBodyName}"`);
+    if (isDebug) console.log(`✅ VISS CDN Cache: Hittade data för "${waterBodyName}"`);
 
     return NextResponse.json(
       {
