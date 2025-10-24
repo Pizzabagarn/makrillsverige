@@ -62,6 +62,36 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
     return formatWaterType(swedishType);
   };
 
+  // Höjdprofil mini-graf (används i både mobil och desktop)
+  const ElevationMiniChart = ({ profile }: { profile: any[] }) => {
+    if (!profile || profile.length < 2) return null;
+    const width = 220; const height = 60; const padL = 24; const padR = 10; const padT = 6; const padB = 16;
+    const maxD = profile[profile.length - 1].d || 1; // meter
+    let minZ = Number.POSITIVE_INFINITY, maxZ = Number.NEGATIVE_INFINITY;
+    for (const p of profile) { if (typeof p.z === 'number') { minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z); } }
+    if (!isFinite(minZ) || !isFinite(maxZ) || minZ === maxZ) { minZ = minZ || 0; maxZ = (maxZ || 0) + 1; }
+    const xScale = (d: number) => padL + (Math.max(0, d) / Math.max(1, maxD)) * (width - padL - padR);
+    const yScale = (z: number) => padT + (1 - (z - minZ) / Math.max(1, maxZ - minZ)) * (height - padT - padB);
+    const segments: { x1:number; y1:number; x2:number; y2:number; cls:0|1|2 }[] = [];
+    for (let i = 1; i < profile.length; i++) {
+      const a = profile[i-1]; const b = profile[i];
+      const g = Math.abs((a.g + b.g) / 2);
+      const cls = (g <= 4 ? 0 : (g <= 10 ? 1 : 2)) as 0|1|2;
+      segments.push({ x1: xScale(a.d), y1: yScale(a.z), x2: xScale(b.d), y2: yScale(b.z), cls });
+    }
+    const kmLabel = (maxD/1000).toFixed(1);
+    return (
+      <svg width={width} height={height} className="block">
+        <line x1={padL} y1={height-padB} x2={width-padR} y2={height-padB} stroke="#475569" strokeWidth={1} />
+        <text x={width-padR} y={height-2} textAnchor="end" fontSize="9" fill="#94a3b8">{kmLabel} km</text>
+        {segments.map((s, idx) => (
+          <line key={idx} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
+            stroke={s.cls===0 ? '#10b981' : s.cls===1 ? '#f59e0b' : '#ef4444'} strokeWidth={2} />
+        ))}
+      </svg>
+    );
+  };
+
     // Mobile: Same as desktop but smaller and more compact
   const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
   const navActive = !!route || !!routeLoading;
@@ -143,6 +173,24 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                   {route.terrain && (
                     <div className="text-[11px] text-slate-400">
                       Höjd: +{Math.round(route.terrain.elevationGainMeters)} m / -{Math.round(route.terrain.elevationLossMeters)} m
+                    </div>
+                  )}
+                  {route.terrain?.profile && route.terrain.profile.length > 1 && (
+                    <div className="mt-1">
+                      <ElevationMiniChart profile={route.terrain.profile} />
+                      <div className="flex items-center justify-between mt-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="w-3 h-1.5 bg-[#10b981] inline-block rounded-sm" />
+                          <span className="text-[10px] text-slate-400">0–4%</span>
+                          <span className="w-3 h-1.5 bg-[#f59e0b] inline-block rounded-sm" />
+                          <span className="text-[10px] text-slate-400">4–10%</span>
+                          <span className="w-3 h-1.5 bg-[#ef4444] inline-block rounded-sm" />
+                          <span className="text-[10px] text-slate-400">&gt;10%</span>
+                        </div>
+                        {typeof route?.terrain?.maxGradePercent === 'number' && route.terrain.maxGradePercent >= 20 && (
+                          <span className="text-[10px] text-yellow-400">⚠️ Mycket brant</span>
+                        )}
+                      </div>
                     </div>
                   )}
                   {onTransportChange && currentMode && (
@@ -352,11 +400,13 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                     </div>
                   )}
                   {route.terrain && (
-                    <div className="text-xs text-slate-400 bg-slate-800/50 rounded p-2 mt-2">
-                      {route.terrain.isSteepTerrain && (
+                    <div className="text-xs text-slate-300 bg-slate-800/50 rounded p-2 mt-2">
+                      {typeof route.terrain?.maxGradePercent === 'number' && route.terrain.maxGradePercent >= 30 ? (
+                        <div className="text-red-400 font-medium mb-1">⚠️ Extremt brant – klättringsutrustning kan krävas</div>
+                      ) : route.terrain.isSteepTerrain ? (
                         <div className="text-yellow-400 font-medium mb-1">⚠️ Brant terräng</div>
-                      )}
-                      <div className="space-y-0.5">
+                      ) : null}
+                      <div className="space-y-0.5 text-slate-400">
                         <div>Distans {formatDistance(route.distanceRoadToWaterMeters || 0)}</div>
                         <div>Stigning +{Math.round(route.terrain.netAscentMeters ?? route.terrain.elevationGainMeters)} m</div>
                         <div>Fall −{Math.round(route.terrain.elevationLossMeters)} m</div>
@@ -364,6 +414,21 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                           <div>Maxlutning {Math.round(route.terrain.maxGradePercent)}%</div>
                         )}
                       </div>
+                      {route.terrain.profile && route.terrain.profile.length > 1 && (
+                        <div className="mt-2">
+                          <ElevationMiniChart profile={route.terrain.profile} />
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center space-x-3">
+                              <span className="flex items-center space-x-1"><span className="w-3 h-1.5 bg-[#10b981] inline-block rounded-sm" /><span className="text-[11px] text-slate-400">0–4%</span></span>
+                              <span className="flex items-center space-x-1"><span className="w-3 h-1.5 bg-[#f59e0b] inline-block rounded-sm" /><span className="text-[11px] text-slate-400">4–10%</span></span>
+                              <span className="flex items-center space-x-1"><span className="w-3 h-1.5 bg-[#ef4444] inline-block rounded-sm" /><span className="text-[11px] text-slate-400">&gt;10%</span></span>
+                            </div>
+                            {typeof route.terrain?.maxGradePercent === 'number' && route.terrain.maxGradePercent >= 20 && (
+                              <span className="text-[11px] text-yellow-400">⚠️ Branta partier</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {onTransportChange && currentMode && (
@@ -530,6 +595,10 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const mapRef = useRef<maplibregl.Map | null>(null);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const walkPopupRef = useRef<maplibregl.Popup | null>(null);
+  const walkHoverMoveRef = useRef<((e: any) => void) | null>(null);
+  const walkHoverEnterRef = useRef<(() => void) | null>(null);
+  const walkHoverLeaveRef = useRef<(() => void) | null>(null);
   
   // Layout detection for responsive design
   const [layoutType, setLayoutType] = useState<LayoutType>(propLayoutType || 'desktop');
@@ -1395,11 +1464,36 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       if (type === 'source' && map.getSource(id)) map.removeSource(id);
     };
 
-    // Rensa tidigare rutter (både enkel och multimodal)
-    ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline', 'route-walk-final-line', 'route-walk-graded-line', 'route-walk-dash-line']
-      .forEach(id => removeIfExists('layer', id));
-    ['route', 'route-vehicle', 'route-walk', 'route-walk-final', 'route-walk-graded', 'route-walk-dash']
-      .forEach(id => removeIfExists('source', id));
+    // Rensa tidigare rutter (både enkel och multimodal), lager först i beroende-ordning
+    [
+      'route-walk-dots',
+      'route-walk-segments',
+      'route-walk-core',
+      'route-walk-outline',
+      'route-walk-steep-overlay',
+      'route-walk-graded-line',
+      'route-walk-dash-line',
+      'route-walk-final-line',
+      'route-walk-line',
+      'route-vehicle-line',
+      'route-vehicle-outline',
+      'route-outline',
+      'route-line',
+      'route-steep-markers'
+    ].forEach(id => removeIfExists('layer', id));
+    // Källor efteråt
+    [
+      'route-walk-segments',
+      'route-walk-core',
+      'route-walk-steep-overlay',
+      'route-walk-graded',
+      'route-walk-dash',
+      'route-walk-final',
+      'route-walk',
+      'route-vehicle',
+      'route',
+      'route-steep-markers'
+    ].forEach(id => removeIfExists('source', id));
 
     const hasParts = !!route.partialGeometries && (!!route.partialGeometries.vehicle || !!route.partialGeometries.walk || !!route.partialGeometries.walkFinal);
 
@@ -1495,90 +1589,131 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
 
         // Bygg gradersatta segment (0:grön 0–4%, 1:gul 4–10%, 2:röd >10%)
         const coords = walkGeometry.coordinates as [number, number][];
-        const segments: any[] = [];
+        const gradientStops: Array<[number, string]> = [];
+        const steepSegments: any[] = [];
+        const cum: number[] = [0];
         if (coords.length >= 2) {
           // Cumulativ distans längs gång-linjen
-          const cum: number[] = [0];
           for (let i = 1; i < coords.length; i++) {
             const d = turf.distance([coords[i - 1][0], coords[i - 1][1]], [coords[i][0], coords[i][1]], { units: 'kilometers' }) * 1000;
             cum.push(cum[i - 1] + d);
           }
-          // Hämta profil om finns
+        }
+        let profile: { d: number; g: number }[] = [];
+        {
           const terrain: any = (route as any).terrain || null;
-          const profile: { d: number; g: number }[] = Array.isArray(terrain?.profile) ? terrain.profile : [];
-          const gradeAt = (dist: number) => {
-            if (profile.length < 2) return 0;
-            // hitta närmaste profil-punkt (linjärt)
-            let lo = 0, hi = profile.length - 1;
-            while (hi - lo > 1) {
-              const mid = (lo + hi) >> 1;
-              if (profile[mid].d < dist) lo = mid; else hi = mid;
+          if (Array.isArray(terrain?.profile)) profile = terrain.profile as any;
+        }
+        const gradeAt = (dist: number) => {
+          if (profile.length < 2) return 0;
+          let lo = 0, hi = profile.length - 1;
+          while (hi - lo > 1) {
+            const mid = (lo + hi) >> 1;
+            if (profile[mid].d < dist) lo = mid; else hi = mid;
+          }
+          const a = profile[lo]; const b = profile[hi];
+          const t = Math.max(0, Math.min(1, (dist - a.d) / Math.max(b.d - a.d, 1e-6)));
+          return a.g + t * (b.g - a.g);
+        };
+        const total = cum[cum.length - 1] || 1;
+        const colorForAbs = (abs: number) => abs <= 4 ? '#10b981' : (abs <= 10 ? '#f59e0b' : '#ef4444');
+        gradientStops.push([0, colorForAbs(Math.abs(gradeAt(0)))]);
+        const steepThresholdMeters = 80;
+        let runStartIndex: number | null = null;
+        for (let i = 1; i < coords.length; i++) {
+          const dMid = (cum[i - 1] + cum[i]) / 2;
+          const abs = Math.abs(gradeAt(dMid));
+          const progress = Math.max(0, Math.min(1, dMid / total));
+          gradientStops.push([progress, colorForAbs(abs)]);
+          const isSteep = abs > 10;
+          if (isSteep && runStartIndex == null) runStartIndex = i - 1;
+          if ((!isSteep || i === coords.length - 1) && runStartIndex != null) {
+            const startD = cum[runStartIndex];
+            const endD = cum[Math.min(i, coords.length - 1)];
+            if (endD - startD >= steepThresholdMeters) {
+              const segCoords = coords.slice(runStartIndex, Math.min(i + 1, coords.length));
+              steepSegments.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: segCoords } });
             }
-            const a = profile[lo]; const b = profile[hi];
-            const t = Math.max(0, Math.min(1, (dist - a.d) / Math.max(b.d - a.d, 1e-6)));
-            const g = a.g + t * (b.g - a.g);
-            return g;
-          };
-          for (let i = 1; i < coords.length; i++) {
-            const dMid = (cum[i - 1] + cum[i]) / 2;
-            const g = gradeAt(dMid);
-            const abs = Math.abs(g);
-            const cls = abs <= 4 ? 0 : abs <= 10 ? 1 : 2;
-            segments.push({
-              type: 'Feature',
-              properties: { gradeClass: cls },
-              geometry: {
-                type: 'LineString',
-                coordinates: [coords[i - 1], coords[i]]
-              }
-            });
+            runStartIndex = null;
           }
         }
+        gradientStops.push([1, colorForAbs(Math.abs(gradeAt(total)))]);
 
-        // Base dashed layer for consistent dash spacing along entire walk, offset så den syns ovanför blå linje
-        map.addSource('route-walk-dash', {
-          type: 'geojson',
-          data: { type: 'Feature', properties: {}, geometry: walkGeometry }
-        });
+        // Modern "Meta/Apple" walking look: white soft outline + gradient core line + subtle dot rhythm
+        map.addSource('route-walk-core', { type: 'geojson', lineMetrics: true, data: { type: 'Feature', properties: {}, geometry: walkGeometry } });
+        // Outline
+        map.addLayer({ id: 'route-walk-outline', type: 'line', source: 'route-walk-core', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.5 } });
+        // Gradient core by slope along the path
+        const gradientExpr: any = ['interpolate', ['linear'], ['line-progress']];
+        for (const [p, c] of gradientStops) gradientExpr.push(p, c);
+        map.addLayer({ id: 'route-walk-core', type: 'line', source: 'route-walk-core', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-width': 4, 'line-opacity': 1.0, 'line-gradient': gradientExpr as any } });
+        // Elegant rhythmic dots traveling along the line to signal "walking" without harsh dashes
         map.addLayer({
-          id: 'route-walk-dash-line',
+          id: 'route-walk-dots',
           type: 'line',
-          source: 'route-walk-dash',
+          source: 'route-walk-core',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-width': 3,
-            'line-color': '#94a3b8',
-            'line-opacity': 0.6,
-            'line-dasharray': [2, 5],
-            'line-translate': [0, -2]
+            'line-color': '#ffffff',
+            'line-opacity': 0.3,
+            'line-width': 4,
+            'line-dasharray': [1.5, 5.0],
+            'line-blur': 0.2
           }
         });
 
-        // Colored segments on top (solid)
-        map.addSource('route-walk-graded', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: segments }
-        });
-
+        // 2) Colored slope segments on top (for hover + legend consistency)
+        const segmentFeatures = [] as any[];
+        for (let i = 1; i < coords.length; i++) {
+          const dMid = (i - 0.5);
+          // approximate via cum array
+          const dMeters = ((i < cum.length) ? (cum[i - 1] + cum[i]) / 2 : cum[i - 1]);
+          const abs = Math.abs(gradeAt(dMeters));
+          const gradeClass = abs <= 4 ? 0 : abs <= 10 ? 1 : 2;
+          segmentFeatures.push({ type: 'Feature', properties: { grade: abs, gradeClass, idx: i }, geometry: { type: 'LineString', coordinates: [coords[i - 1], coords[i]] } });
+        }
+        map.addSource('route-walk-segments', { type: 'geojson', data: { type: 'FeatureCollection', features: segmentFeatures } });
         map.addLayer({
-          id: 'route-walk-graded-line',
+          id: 'route-walk-segments',
           type: 'line',
-          source: 'route-walk-graded',
+          source: 'route-walk-segments',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-width': 3,
-            'line-opacity': 1.0,
-            'line-dasharray': [2, 5],
-            'line-color': [
-              'match', ['get', 'gradeClass'],
-              0, '#10b981',
-              1, '#f59e0b',
-              2, '#ef4444',
-              '#3b82f6'
-            ],
-            'line-translate': [0, -2]
+            'line-width': 4,
+            'line-dasharray': [1.5, 5.0],
+            'line-color': [ 'match', ['get', 'gradeClass'], 0, '#10b981', 1, '#f59e0b', 2, '#ef4444', '#3b82f6' ]
           }
         });
+
+        // Hover tooltip events for slope per segment
+        if (map && !walkHoverEnterRef.current) {
+          walkHoverEnterRef.current = () => { map.getCanvas().style.cursor = 'pointer'; };
+          walkHoverLeaveRef.current = () => { map.getCanvas().style.cursor = 'default'; if (walkPopupRef.current) { walkPopupRef.current.remove(); walkPopupRef.current = null; } };
+          walkHoverMoveRef.current = (e: any) => {
+            if (!e.features || e.features.length === 0) return;
+            const f = e.features[0];
+            const grade = typeof f.properties?.grade === 'number' ? f.properties.grade : null;
+            const cls = f.properties?.gradeClass;
+            const color = cls === 0 ? '#10b981' : cls === 1 ? '#f59e0b' : '#ef4444';
+            const lngLat = e.lngLat;
+            const html = (
+              '<div style="color:#e5e7eb;background:linear-gradient(180deg,rgba(15,23,42,0.9),rgba(15,23,42,0.88));' +
+              'backdrop-filter:blur(8px);border:1px solid rgba(148,163,184,0.25);box-shadow:0 8px 20px rgba(0,0,0,0.45);' +
+              'padding:8px 10px;border-radius:12px;font-size:12px;line-height:1.25;display:flex;align-items:center;gap:8px;">' +
+              '<span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:' + color + '"></span>' +
+              '<span style="font-weight:600;letter-spacing:0.2px;">' + (grade !== null ? (grade.toFixed(1) + '%') : 'Okänd lutning') + '</span>' +
+              '</div>'
+            );
+            if (!walkPopupRef.current) {
+              walkPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 }).setLngLat(lngLat).setHTML(html).addTo(map);
+            } else {
+              walkPopupRef.current.setLngLat(lngLat).setHTML(html);
+            }
+          };
+          map.on('mouseenter', 'route-walk-segments', walkHoverEnterRef.current);
+          map.on('mouseleave', 'route-walk-segments', walkHoverLeaveRef.current);
+          map.on('mousemove', 'route-walk-segments', walkHoverMoveRef.current as any);
+        }
       }
 
       // Sista raka gång-delen (walkFinal) – rendera också prickad
@@ -1684,9 +1819,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         if (type === 'layer' && map.getLayer(id)) map.removeLayer(id);
         if (type === 'source' && map.getSource(id)) map.removeSource(id);
       };
-      ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline', 'route-walk-graded-line', 'route-walk-final-line']
+      ['route-walk-dots', 'route-walk-segments', 'route-walk-core', 'route-walk-outline', 'route-walk-steep-overlay', 'route-walk-graded-line', 'route-walk-dash-line', 'route-walk-final-line', 'route-walk-line', 'route-vehicle-line', 'route-vehicle-outline', 'route-outline', 'route-line', 'route-steep-markers']
         .forEach(id => removeIfExists('layer', id));
-      ['route', 'route-vehicle', 'route-walk', 'route-walk-graded', 'route-walk-final']
+      ['route-walk-segments', 'route-walk-core', 'route-walk-steep-overlay', 'route-walk-graded', 'route-walk-dash', 'route-walk-final', 'route-walk', 'route-vehicle', 'route', 'route-steep-markers']
         .forEach(id => removeIfExists('source', id));
     }
   };
