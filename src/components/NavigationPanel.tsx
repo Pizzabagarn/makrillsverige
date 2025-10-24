@@ -36,6 +36,32 @@ export default function NavigationPanel({
 
   const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
 
+  // Mini höjdprofil (sparkline)
+  const ElevationSparkline = ({ profile }: { profile: { d: number; z: number; g?: number }[] }) => {
+    if (!profile || profile.length < 2) return null;
+    const width = 240;
+    const height = 40;
+    const pad = 2;
+    const maxD = Math.max(profile[profile.length - 1].d, 1);
+    let minZ = Infinity, maxZ = -Infinity;
+    for (const p of profile) { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; }
+    const spanZ = Math.max(maxZ - minZ, 1);
+    const toX = (d: number) => pad + (d / maxD) * (width - 2 * pad);
+    const toY = (z: number) => pad + (1 - (z - minZ) / spanZ) * (height - 2 * pad);
+    const points = profile.map(p => `${toX(p.d)},${toY(p.z)}`).join(' ');
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="40" className="block">
+        <defs>
+          <linearGradient id="elevStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22d3ee"/>
+            <stop offset="100%" stopColor="#38bdf8"/>
+          </linearGradient>
+        </defs>
+        <polyline points={points} fill="none" stroke="url(#elevStroke)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  };
+
   // Mobile: Compact bottom panel
   if (isMobile) {
     return (
@@ -49,14 +75,22 @@ export default function NavigationPanel({
                 <h3 className="text-sm font-bold text-white truncate">{destinationName}</h3>
                 {route && (
                   <div>
-                    <p className="text-xs text-slate-300">
-                      {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
-                      {(route.segments.length > 1 && currentMode !== 'foot-walking') ? ' totalt' : ''}
+                    {/* Total restid som primärt värde */}
+                    <p className="text-base font-semibold text-white leading-tight">
+                      {formatDuration(route.summary.duration)}
                     </p>
-                    {route.segments.length > 1 && currentMode !== 'foot-walking' && (
-                      <p className="text-[10px] text-slate-400">
-                        {currentMode === 'driving-car' ? '🚗+🚶' : '🚴+🚶'}
-                      </p>
+                    {/* Chips för bil/gång */}
+                    {currentMode !== 'foot-walking' && (
+                      <div className="mt-0.5 flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-700/60 text-slate-200 border border-slate-600/50">
+                          Bil {route?.partialGeometries?.vehicle ? '' : '(n/a)'}{route?.partialGeometries?.vehicle && route?.segments?.length ? ` ${formatDuration((route.summary.duration - (route.walkDurationSeconds||0)) || 0)}` : ''}
+                        </span>
+                        {typeof route.walkDurationSeconds === 'number' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-700/60 text-slate-200 border border-slate-600/50">
+                            Gång {formatDuration(route.walkDurationSeconds)}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -133,7 +167,41 @@ export default function NavigationPanel({
                 </div>
               )}
 
-              {/* Instructions toggle */}
+              {/* Gång till vattnet - sammanfattning */}
+              {currentMode !== 'foot-walking' && typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
+                <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-2">
+                  <div className="text-[11px] text-slate-200 font-medium mb-1">Gång till vattnet</div>
+                  <div className="text-[11px] text-slate-300">
+                    Distans {formatDistance(route.distanceRoadToWaterMeters)}
+                    {route.terrain && (
+                      <>
+                        {' '}• Stigning +{Math.round(route.terrain.netAscentMeters ?? route.terrain.elevationGainMeters)} m
+                        {' '}• Fall −{Math.round(route.terrain.elevationLossMeters)} m
+                        {typeof route.terrain.maxGradePercent === 'number' && (
+                          <> {' '}• Maxlutning {Math.round(route.terrain.maxGradePercent)}%</>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {typeof route.walkDurationSeconds === 'number' && (
+                    <div className="text-[11px] text-slate-400 mt-1">Beräknad gångtid: {formatDuration(route.walkDurationSeconds)} (Naismith)</div>
+                  )}
+                  {/* Sparkline */}
+                  {route.terrain?.profile && (
+                    <div className="mt-2">
+                      <ElevationSparkline profile={route.terrain.profile as any} />
+                    </div>
+                  )}
+                  {route.terrain?.isSteepTerrain && (
+                    <div className="text-[11px] text-yellow-300 mt-1">⚠️ Brant terräng</div>
+                  )}
+                  {route.terrain?.elevationSource === 'eudem' && (
+                    <div className="text-[10px] text-slate-400 mt-1">Datakvalitet: EU‑DEM 25m</div>
+                  )}
+                </div>
+              )}
+
+              {/* Instructions toggle (default collapsed) */}
               {route.segments[0]?.steps && (
                 <button
                   onClick={() => setShowInstructions(!showInstructions)}
@@ -179,12 +247,25 @@ export default function NavigationPanel({
                   <div>
                     <p className="text-sm text-cyan-300">
                       {formatDistance(route.summary.distance)} • {formatDuration(route.summary.duration)}
-                      {(route.segments.length > 1 && currentMode !== 'foot-walking') ? ' totalt' : ''}
+                      {(route.partialGeometries?.vehicle && currentMode !== 'foot-walking') ? ' totalt' : ''}
                     </p>
-                    {route.segments.length > 1 && currentMode !== 'foot-walking' && (
+                    {route.partialGeometries?.vehicle && currentMode !== 'foot-walking' && (
                       <p className="text-xs text-slate-400 mt-0.5">
                         {currentMode === 'driving-car' ? '🚗' : '🚴'} + 🚶 Multimodal
                       </p>
+                    )}
+                    {route.partialGeometries?.vehicle && currentMode !== 'foot-walking' && typeof route.distanceRoadToWaterMeters === 'number' && route.distanceRoadToWaterMeters > 0 && (
+                      <div className="mt-1">
+                        <p className="text-sm text-cyan-300">
+                          Sista biten: {formatDistance(route.distanceRoadToWaterMeters)}
+                          {typeof route.walkDurationSeconds === 'number' && route.walkDurationSeconds > 0 && (
+                            <> • {formatDuration(route.walkDurationSeconds)}</>
+                          )}
+                        </p>
+                        {route.terrain && route.terrain.elevationGainMeters > 100 && (
+                          <div className="text-sm text-yellow-300">⚠️ Brant terräng</div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

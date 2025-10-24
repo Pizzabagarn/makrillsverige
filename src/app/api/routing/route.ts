@@ -7,6 +7,8 @@ import { calculateElevationAdjustedTime } from '@/lib/smartRoutingService';
 
 // Gate verbose logs behind LOG_LEVEL=debug
 const isDebug = process.env.LOG_LEVEL === 'debug';
+const JOIN_TRIM_THRESHOLD_M = 5; // much stricter: only join if segments virtually touch
+const ELEV_NOISE_M = 1.5; // ignore tiny vertical jitter per step
 
 // Minimal polyline decoder supporting precision 5 or 6 (ORS default is 5)
 function decodeEncodedPolyline(encoded: string, precision: 5 | 6 = 5): [number, number][] {
@@ -297,40 +299,112 @@ function computeBboxFromCoords(coords: [number, number][]): [number, number, num
   return [minLng, minLat, maxLng, maxLat];
 }
 
+type TerrainProfilePoint = { d: number; z: number; g: number };
+
 async function enrichElevationAndComputeTerrain(
   line: { type: 'LineString'; coordinates: [number, number][] },
   apiKey: string
-): Promise<{ elevationGainMeters: number; elevationLossMeters: number } | null> {
+): Promise<{
+  elevationGainMeters: number;
+  elevationLossMeters: number;
+  netAscentMeters: number;
+  maxGradePercent: number;
+  profile: TerrainProfilePoint[];
+  elevationSource: 'ors' | 'eudem';
+  isSteepTerrain: boolean;
+} | null> {
   try {
     if (!line.coordinates || line.coordinates.length < 2) return null;
-    const url = 'https://api.openrouteservice.org/elevation/line';
-    const body = {
-      format_in: 'geojson',
-      format_out: 'geojson',
-      geometry: line
-    } as any;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const coords = data?.geometry?.coordinates as number[][] | undefined;
-    if (!coords || coords.length < 2) return null;
-    let gain = 0;
-    let loss = 0;
-    for (let i = 1; i < coords.length; i++) {
-      const prev = coords[i - 1];
-      const curr = coords[i];
-      const dz = (curr[2] ?? 0) - (prev[2] ?? 0);
-      if (dz > 0) gain += dz; else loss += -dz;
+    // Try ORS elevation first
+    try {
+      const orsUrl = 'https://api.openrouteservice.org/elevation/line';
+      const body = { format_in: 'geojson', format_out: 'geojson', geometry: line } as any;
+      const res = await fetch(orsUrl, {
+        method: 'POST',
+        headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const coords = data?.geometry?.coordinates as number[][] | undefined;
+        if (coords && coords.length >= 2) {
+          let gain = 0; let loss = 0; let maxGrade = 0; let cum = 0;
+          const profile: TerrainProfilePoint[] = [];
+          // seed
+          profile.push({ d: 0, z: coords[0][2] ?? 0, g: 0 });
+          for (let i = 1; i < coords.length; i++) {
+            const prev = coords[i - 1];
+            const curr = coords[i];
+            const dzRaw = (curr[2] ?? 0) - (prev[2] ?? 0);
+            const dz = Math.abs(dzRaw) < ELEV_NOISE_M ? 0 : dzRaw;
+            const dx = haversineDistanceMeters([prev[0], prev[1]], [curr[0], curr[1]]);
+            cum += dx;
+            const grade = dx > 0 ? (dz / dx) * 100 : 0;
+            maxGrade = Math.max(maxGrade, Math.abs(grade));
+            if (dz > 0) gain += dz; else if (dz < 0) loss += -dz;
+            profile.push({ d: cum, z: (curr[2] ?? 0), g: grade });
+          }
+          const distKm = Math.max(cum / 1000, 0.0001);
+          const ascentPerKm = gain / distKm;
+          const isSteep = (maxGrade >= 20) || (ascentPerKm >= 80) || ((gain - loss) >= 250);
+          return {
+            elevationGainMeters: gain,
+            elevationLossMeters: loss,
+            netAscentMeters: (profile[profile.length - 1].z - profile[0].z),
+            maxGradePercent: maxGrade,
+            profile,
+            elevationSource: 'ors',
+            isSteepTerrain: isSteep
+          };
+        }
+      }
+    } catch {}
+
+    // Fallback: OpenTopoData EU-DEM 25m (no key). Sample along the line (≤100 points)
+    const coords = line.coordinates as [number, number][];
+    const maxSamples = 80;
+    const step = Math.max(1, Math.floor(coords.length / maxSamples));
+    const sampled: [number, number][] = [];
+    for (let i = 0; i < coords.length; i += step) sampled.push(coords[i]);
+    if (sampled[sampled.length - 1] !== coords[coords.length - 1]) sampled.push(coords[coords.length - 1]);
+    const locParam = sampled.map(([lng, lat]) => `${lat},${lng}`).join('|');
+    const otdUrl = `https://api.opentopodata.org/v1/eudem25m?locations=${encodeURIComponent(locParam)}`;
+    const otdRes = await fetch(otdUrl, { method: 'GET' });
+    if (!otdRes.ok) return null;
+    const otd = await otdRes.json();
+    const results = Array.isArray(otd?.results) ? otd.results : [];
+    if (results.length < 2) return null;
+    let gain = 0; let loss = 0; let maxGrade = 0; let cum = 0;
+    const profile: TerrainProfilePoint[] = [];
+    profile.push({ d: 0, z: results[0]?.elevation ?? 0, g: 0 });
+    for (let i = 1; i < results.length; i++) {
+      const prevZ = results[i - 1]?.elevation ?? null;
+      const currZ = results[i]?.elevation ?? null;
+      if (prevZ == null || currZ == null) continue;
+      // approximate distance along source polyline between sampled points
+      const a = sampled[i - 1];
+      const b = sampled[i];
+      const dx = haversineDistanceMeters(a as [number, number], b as [number, number]);
+      cum += dx;
+      const dzRaw = currZ - prevZ;
+      const dz = Math.abs(dzRaw) < ELEV_NOISE_M ? 0 : dzRaw;
+      const grade = dx > 0 ? (dz / dx) * 100 : 0;
+      maxGrade = Math.max(maxGrade, Math.abs(grade));
+      if (dz > 0) gain += dz; else if (dz < 0) loss += -dz;
+      profile.push({ d: cum, z: currZ, g: grade });
     }
-    return { elevationGainMeters: gain, elevationLossMeters: loss };
+    const distKm = Math.max(cum / 1000, 0.0001);
+    const ascentPerKm = gain / distKm;
+    const isSteep = (maxGrade >= 20) || (ascentPerKm >= 80) || ((gain - loss) >= 250);
+    return {
+      elevationGainMeters: gain,
+      elevationLossMeters: loss,
+      netAscentMeters: (profile[profile.length - 1].z - profile[0].z),
+      maxGradePercent: maxGrade,
+      profile,
+      elevationSource: 'eudem',
+      isSteepTerrain: isSteep
+    };
   } catch {
     return null;
   }
@@ -348,7 +422,7 @@ function createStraightWalkSegment(start: [number, number], end: [number, number
 
 export async function POST(request: NextRequest) {
   try {
-    const { start, end, mode } = await request.json();
+    const { start, end, mode, optimizeAccess } = await request.json();
 
     if (!start || !end || !Array.isArray(start) || !Array.isArray(end)) {
       return NextResponse.json(
@@ -374,6 +448,213 @@ export async function POST(request: NextRequest) {
     const isVehicle = transportMode === 'driving-car' || transportMode === 'cycling-regular';
     
     if (isVehicle) {
+      const enableOptimize = process.env.ROUTING_OPTIMIZE_ACCESS === '1' && optimizeAccess === true;
+      // OPTIMIZED ACCESS PIPELINE (optional): evaluate multiple trailhead/parking candidates
+      if (enableOptimize) {
+        try {
+          if (isDebug) console.log('🧭 Optimize access: fetching trail/path candidates via Overpass');
+
+          async function findTrailCandidatesViaOverpass(
+            coord: [number, number],
+            maxRadiusKm: number = 10,
+            maxCandidates: number = 20
+          ): Promise<[number, number][]> {
+            const [lng, lat] = coord;
+            const latDegPerKm = 1 / 110.574;
+            const lngDegPerKm = 1 / (111.320 * Math.cos(lat * Math.PI / 180));
+            const r = Math.min(maxRadiusKm, 20);
+            const bbox = {
+              south: lat - r * latDegPerKm,
+              north: lat + r * latDegPerKm,
+              west: lng - r * lngDegPerKm,
+              east: lng + r * lngDegPerKm
+            };
+
+            const endpoints = [
+              'https://overpass-api.de/api/interpreter',
+              'https://overpass.kumi.systems/api/interpreter',
+              'https://overpass.openstreetmap.fr/api/interpreter'
+            ];
+
+            const query = `
+              [out:json][timeout:15];
+              (
+                way["highway"~"^(path|footway|track)$"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+                node["highway"="trailhead"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+                node["amenity"~"^(parking|parking_entrance)$"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+              );
+              out geom;
+            `;
+
+            let data: any = null;
+            for (const ep of endpoints) {
+              try {
+                const controller = new AbortController();
+                const to = setTimeout(() => controller.abort(), 12000);
+                const res = await fetch(ep, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: `data=${encodeURIComponent(query)}`,
+                  signal: controller.signal
+                });
+                clearTimeout(to);
+                if (!res.ok) {
+                  if (isDebug) console.warn(`Overpass candidates error @${ep}: ${res.status}`);
+                  continue;
+                }
+                data = await res.json();
+                break;
+              } catch (e) {
+                if (isDebug) console.warn('Overpass candidates endpoint failed:', e);
+              }
+            }
+            if (!data || !Array.isArray(data.elements)) return [];
+
+            const candidates: [number, number][] = [];
+
+            for (const el of data.elements) {
+              if (el.type === 'way' && Array.isArray(el.geometry)) {
+                const geom = el.geometry as Array<{ lat: number; lon: number }>;
+                // Sample approximately every ~300m by taking every Nth point (heuristic)
+                const step = Math.max(1, Math.floor(geom.length / 10));
+                for (let i = 0; i < geom.length; i += step) {
+                  const p = geom[i];
+                  candidates.push([p.lon, p.lat]);
+                  if (candidates.length >= maxCandidates) break;
+                }
+              } else if (el.type === 'node' && typeof el.lat === 'number' && typeof el.lon === 'number') {
+                candidates.push([el.lon, el.lat]);
+              }
+              if (candidates.length >= maxCandidates) break;
+            }
+
+            // Deduplicate by ~30m grid
+            const seen = new Set<string>();
+            const deduped: [number, number][] = [];
+            for (const [cx, cy] of candidates) {
+              const k = `${(cx*1000)|0},${(cy*1000)|0}`;
+              if (!seen.has(k)) {
+                seen.add(k);
+                deduped.push([cx, cy]);
+              }
+            }
+            return deduped.slice(0, maxCandidates);
+          }
+
+          const candidatePoints = await findTrailCandidatesViaOverpass(end as [number, number], 10, 20);
+          if (isDebug) console.log(`Optimize access: ${candidatePoints.length} candidates`);
+
+          // Find a walking target near the water on an actual path/footway
+          let walkTargetForEnd: [number, number] = end as [number, number];
+          try {
+            const destPath = await findNearestRoadViaOverpass(end as [number, number], 150, true);
+            if (destPath?.point) {
+              walkTargetForEnd = destPath.point as [number, number];
+            }
+          } catch {}
+
+          type EvalResult = {
+            candidate: [number, number];
+            vehicleRoute: any | null;
+            walkRoute: any | null;
+            walkGeom: { type: 'LineString'; coordinates: [number, number][] } | null;
+            walkTerrain: { elevationGainMeters: number; elevationLossMeters: number } | null;
+            totalDuration: number; // seconds
+          };
+
+          const evals: EvalResult[] = [];
+
+          for (const cand of candidatePoints) {
+            try {
+              // 1) Vehicle leg
+              const vehUrl = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
+              const vehBody = { coordinates: [start, cand], instructions: true, radiuses: [-1, -1] };
+              const vehRes = await fetch(vehUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(vehBody) });
+              if (!vehRes.ok) continue;
+              const vehData = await vehRes.json();
+              const vehRoute = vehData.routes?.[0];
+              if (!vehRoute) continue;
+
+              // 2) Walk leg (from candidate to end)
+              const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
+              const walkBody = { coordinates: [cand, walkTargetForEnd], instructions: true, language: 'sv', radiuses: [-1, -1] };
+              const walkRes = await fetch(walkUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(walkBody) });
+              if (!walkRes.ok) continue;
+              const walkData = await walkRes.json();
+              const walkRoute = walkData.routes?.[0];
+              if (!walkRoute) continue;
+
+              let walkGeom = normalizeRouteGeometry(walkRoute);
+              // Sanity: ensure walk end is close to water target; if far, try Overpass reroute
+              try {
+                const walkEnd = walkGeom.coordinates[walkGeom.coordinates.length - 1];
+                const endGap = haversineDistanceMeters(walkEnd as [number, number], end as [number, number]);
+                const dirDist = haversineDistanceMeters(cand as [number, number], end as [number, number]);
+                const orsDist = walkRoute.summary?.distance || Infinity;
+                if (endGap > 2000 || (isFinite(orsDist) && dirDist > 0 && (orsDist / dirDist) > 5)) {
+                  const pathPoint = await findNearestRoadViaOverpass(end as [number, number], 50, true);
+                  if (pathPoint) {
+                    const rer = await routeToOverpassPoint('foot-walking', cand as [number, number], pathPoint.point, apiKey);
+                    if (rer) walkGeom = normalizeRouteGeometry(rer);
+                  }
+                }
+              } catch {}
+              const walkTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+              const baseWalk = walkRoute.summary?.duration || 0;
+              const adjustedWalk = walkTerrain ? calculateElevationAdjustedTime(baseWalk, walkTerrain.elevationGainMeters, walkTerrain.elevationLossMeters) : baseWalk;
+              const total = (vehRoute.summary?.duration || 0) + adjustedWalk;
+
+              evals.push({ candidate: cand, vehicleRoute: vehRoute, walkRoute, walkGeom, walkTerrain, totalDuration: total });
+            } catch {}
+            if (evals.length >= 10) break; // hard limit to control cost
+          }
+
+          if (evals.length > 0) {
+            evals.sort((a, b) => a.totalDuration - b.totalDuration);
+            const best = evals[0];
+
+            // Trim vehicle to meet walk start
+            let vehicleGeom = normalizeRouteGeometry(best.vehicleRoute);
+            try {
+              const joinPoint = best.walkGeom!.coordinates[0];
+              let idxBest = vehicleGeom.coordinates.length - 1;
+              let bestD = Infinity;
+              for (let i = 0; i < vehicleGeom.coordinates.length; i++) {
+                const d = haversineDistanceMeters(vehicleGeom.coordinates[i] as [number, number], joinPoint as [number, number]);
+                if (d < bestD) { bestD = d; idxBest = i; }
+              }
+              if (bestD <= JOIN_TRIM_THRESHOLD_M) {
+                const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
+                trimmed[trimmed.length - 1] = joinPoint as [number, number];
+                vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
+              }
+            } catch {}
+
+            const combinedCoords = [...vehicleGeom.coordinates, ...best.walkGeom!.coordinates.slice(1)];
+            const bbox = computeBboxFromCoords(combinedCoords);
+            const combinedRoute: any = {
+              ...best.vehicleRoute,
+              geometry: { type: 'LineString', coordinates: combinedCoords },
+              partialGeometries: { vehicle: vehicleGeom, walk: best.walkGeom },
+              segments: [
+                ...((best.vehicleRoute.segments as any[]) || []),
+                ...((best.walkRoute.segments as any[]) || [])
+              ],
+              summary: {
+                distance: (best.vehicleRoute.summary?.distance || 0) + (best.walkRoute.summary?.distance || 0),
+                duration: (best.vehicleRoute.summary?.duration || 0) + (best.totalDuration - (best.vehicleRoute.summary?.duration || 0))
+              },
+              distanceRoadToWaterMeters: best.walkRoute.summary?.distance || 0,
+              walkDurationSeconds: best.totalDuration - (best.vehicleRoute.summary?.duration || 0),
+              terrain: best.walkTerrain,
+              bbox
+            };
+            return NextResponse.json({ routes: [combinedRoute], metadata: {} });
+          }
+        } catch (e) {
+          if (isDebug) console.warn('Optimize access pipeline failed, falling back:', e);
+        }
+      }
       // MULTIMODAL: Bil/cykel + gång
       // 0. Förbered: hitta närmaste gångväg och körbar accesspunkt nära målet
       let preparedWalkTarget: [number, number] = end as [number, number];
@@ -585,7 +866,7 @@ export async function POST(request: NextRequest) {
             }
           } catch {}
 
-          // 3. Trimma bil-delen så att den slutar exakt där gång-delen börjar (ingen förlängning)
+          // 3. Trimma bil-delen till gångens start ENDAST om gapet är litet
           let vehicleGeom = normalizeRouteGeometry(vehicleRoute);
           const walkGeom = normalizeRouteGeometry(walkRoute);
           const walkStart = walkGeom.coordinates[0];
@@ -597,10 +878,54 @@ export async function POST(request: NextRequest) {
               const d = haversineDistanceMeters(vehicleGeom.coordinates[i] as [number, number], walkStart as [number, number]);
               if (d < best) { best = d; idxBest = i; }
             }
-            const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
-            trimmed[trimmed.length - 1] = walkStart as [number, number];
-            vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
-            vehicleRoute = { ...vehicleRoute, geometry: vehicleGeom };
+            if (best <= JOIN_TRIM_THRESHOLD_M) {
+              const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
+              trimmed[trimmed.length - 1] = walkStart as [number, number];
+              vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
+              vehicleRoute = { ...vehicleRoute, geometry: vehicleGeom };
+            } else {
+              // Beräkna access-walk från vehicle end till walk start via ORS foot-walking
+              try {
+                const vehEnd = vehicleGeom.coordinates[vehicleGeom.coordinates.length - 1] as [number, number];
+                const awUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
+                const awBody = { coordinates: [vehEnd, walkStart], instructions: true, language: 'sv', radiuses: [-1, -1] };
+                const awRes = await fetch(awUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(awBody) });
+                if (awRes.ok) {
+                  const awData = await awRes.json();
+                  const awRoute = awData.routes?.[0];
+                  if (awRoute) {
+                    const awGeom = normalizeRouteGeometry(awRoute);
+                    // Kombinera: vehicle + access-walk + main-walk
+                    const combinedCoords = [...vehicleGeom.coordinates, ...awGeom.coordinates.slice(1), ...walkGeom.coordinates.slice(1)];
+                    const bbox = computeBboxFromCoords(combinedCoords);
+                    const pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+                    let adjustedWalkDuration = walkRoute.summary.duration;
+                    if (pathTerrain) {
+                      adjustedWalkDuration = calculateElevationAdjustedTime(adjustedWalkDuration, pathTerrain.elevationGainMeters, pathTerrain.elevationLossMeters);
+                    }
+                    const combinedRoute: any = {
+                      ...vehicleRoute,
+                      geometry: { type: 'LineString', coordinates: combinedCoords },
+                      partialGeometries: { vehicle: vehicleGeom, walk: walkGeom },
+                      segments: [
+                        ...((vehicleRoute.segments as any[]) || []),
+                        ...((awRoute.segments as any[]) || []),
+                        ...((walkRoute.segments as any[]) || [])
+                      ],
+                      summary: {
+                        distance: (vehicleRoute.summary?.distance || 0) + (awRoute.summary?.distance || 0) + (walkRoute.summary?.distance || 0),
+                        duration: (vehicleRoute.summary?.duration || 0) + (awRoute.summary?.duration || 0) + adjustedWalkDuration
+                      },
+                      distanceRoadToWaterMeters: (awRoute.summary?.distance || 0) + (walkRoute.summary?.distance || 0),
+                      walkDurationSeconds: (awRoute.summary?.duration || 0) + adjustedWalkDuration,
+                      terrain: pathTerrain,
+                      bbox
+                    };
+                    return NextResponse.json({ routes: [combinedRoute], metadata: {} });
+                  }
+                }
+              } catch {}
+            }
           } catch {}
 
           // Terräng för huvudsakliga gång-delen
@@ -676,7 +1001,7 @@ export async function POST(request: NextRequest) {
                 } catch {}
               }
               let walkGeom = normalizeRouteGeometry(walkToPath);
-              // Trim vehicle to walking start for this fallback branch too
+              // Try trim only if the gap is tiny; otherwise keep separate
               try {
                 const joinPoint = walkGeom.coordinates[0];
                 let idxBest = vehicleGeom.coordinates.length - 1;
@@ -685,9 +1010,11 @@ export async function POST(request: NextRequest) {
                   const d = haversineDistanceMeters(vehicleGeom.coordinates[i] as [number, number], joinPoint as [number, number]);
                   if (d < best) { best = d; idxBest = i; }
                 }
-                const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
-                trimmed[trimmed.length - 1] = joinPoint as [number, number];
-                vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
+                if (best <= JOIN_TRIM_THRESHOLD_M) {
+                  const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
+                  trimmed[trimmed.length - 1] = joinPoint as [number, number];
+                  vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
+                }
               } catch {}
               const pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
               let adjustedWalkDur = walkToPath.summary?.duration || 0;
@@ -730,7 +1057,7 @@ export async function POST(request: NextRequest) {
               terrain.elevationLossMeters
             );
           }
-          // Trimma bilgeometrin till gångens start
+          // Only trim if virtually touching
           try {
             const joinPoint = straightWalkGeom.coordinates[0];
             let idxBest = vehicleGeom.coordinates.length - 1;
@@ -739,9 +1066,11 @@ export async function POST(request: NextRequest) {
               const d = haversineDistanceMeters(vehicleGeom.coordinates[i] as [number, number], joinPoint as [number, number]);
               if (d < best) { best = d; idxBest = i; }
             }
-            const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
-            trimmed[trimmed.length - 1] = joinPoint as [number, number];
-            vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
+            if (best <= JOIN_TRIM_THRESHOLD_M) {
+              const trimmed = vehicleGeom.coordinates.slice(0, Math.max(1, idxBest + 1));
+              trimmed[trimmed.length - 1] = joinPoint as [number, number];
+              vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
+            }
           } catch {}
           const combinedCoords = [...vehicleGeom.coordinates, ...straightWalkGeom.coordinates.slice(1)];
           const bbox = computeBboxFromCoords(combinedCoords);

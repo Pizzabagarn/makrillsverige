@@ -351,14 +351,19 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                       Sista biten till fots: {formatDistance(route.distanceRoadToWaterMeters)} • {formatDuration(route.walkDurationSeconds || route.distanceRoadToWaterMeters / 1.4)}
                     </div>
                   )}
-                  {route.terrain && (route.terrain.elevationGainMeters > 5 || route.terrain.elevationLossMeters > 5) && (
+                  {route.terrain && (
                     <div className="text-xs text-slate-400 bg-slate-800/50 rounded p-2 mt-2">
-                      <div className="font-medium text-white mb-1">⛰️ Terräng</div>
-                      <div>Uppför: +{Math.round(route.terrain.elevationGainMeters)} m</div>
-                      <div>Nedför: -{Math.round(route.terrain.elevationLossMeters)} m</div>
-                      {route.terrain.elevationGainMeters > 100 && (
-                        <div className="text-yellow-400 mt-1">⚠️ Brant terräng - extra tid inräknad</div>
+                      {route.terrain.isSteepTerrain && (
+                        <div className="text-yellow-400 font-medium mb-1">⚠️ Brant terräng</div>
                       )}
+                      <div className="space-y-0.5">
+                        <div>Distans {formatDistance(route.distanceRoadToWaterMeters || 0)}</div>
+                        <div>Stigning +{Math.round(route.terrain.netAscentMeters ?? route.terrain.elevationGainMeters)} m</div>
+                        <div>Fall −{Math.round(route.terrain.elevationLossMeters)} m</div>
+                        {typeof route.terrain.maxGradePercent === 'number' && (
+                          <div>Maxlutning {Math.round(route.terrain.maxGradePercent)}%</div>
+                        )}
+                      </div>
                     </div>
                   )}
                   {onTransportChange && currentMode && (
@@ -1391,14 +1396,14 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     };
 
     // Rensa tidigare rutter (både enkel och multimodal)
-    ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline', 'route-walk-final-line']
+    ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline', 'route-walk-final-line', 'route-walk-graded-line', 'route-walk-dash-line']
       .forEach(id => removeIfExists('layer', id));
-    ['route', 'route-vehicle', 'route-walk', 'route-walk-final']
+    ['route', 'route-vehicle', 'route-walk', 'route-walk-final', 'route-walk-graded', 'route-walk-dash']
       .forEach(id => removeIfExists('source', id));
 
     const hasParts = !!route.partialGeometries && (!!route.partialGeometries.vehicle || !!route.partialGeometries.walk || !!route.partialGeometries.walkFinal);
 
-    if (hasParts) {
+      if (hasParts) {
       // Förbered geometrier: trimma fordon till där gång börjar och snappa mötespunkten
       let vehicleGeometryForRender = route.partialGeometries?.vehicle;
       let walkGeometryForRender = route.partialGeometries?.walk;
@@ -1408,23 +1413,21 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             Array.isArray(vehicleGeometryForRender.coordinates) && vehicleGeometryForRender.coordinates.length >= 2 &&
             Array.isArray(walkGeometryForRender.coordinates) && walkGeometryForRender.coordinates.length >= 2) {
           const walkStart = walkGeometryForRender.coordinates[0];
-          // Trimma bil-linjen så den slutar exakt vid gångens start
+          // Snappa/trimma ENDAST om avståndet är mycket litet (≤5m). Annars lämna separata.
           const line = turf.lineString(vehicleGeometryForRender.coordinates as any);
           const snappedOnVehicle = turf.nearestPointOnLine(line as any, walkStart as any) as any;
-          const idx = (snappedOnVehicle?.properties?.index ?? vehicleGeometryForRender.coordinates.length - 1) as number;
-          const trimmed = vehicleGeometryForRender.coordinates.slice(0, Math.max(1, idx + 1));
-          // Sätt sista punkten till den snappade punkten för exakt sammanfogning
-          if (snappedOnVehicle?.geometry?.coordinates) {
-            trimmed[trimmed.length - 1] = snappedOnVehicle.geometry.coordinates as [number, number];
-          }
-          vehicleGeometryForRender = { type: 'LineString', coordinates: trimmed } as any;
+          const join = snappedOnVehicle?.geometry?.coordinates as [number, number] | undefined;
+          const joinDistM = join ? turf.distance(walkStart as any, join as any, { units: 'kilometers' }) * 1000 : Infinity;
+          if (join && isFinite(joinDistM) && joinDistM <= 5) {
+            const idx = (snappedOnVehicle?.properties?.index ?? vehicleGeometryForRender.coordinates.length - 1) as number;
+            const trimmed = vehicleGeometryForRender.coordinates.slice(0, Math.max(1, idx + 1));
+            trimmed[trimmed.length - 1] = join;
+            vehicleGeometryForRender = { type: 'LineString', coordinates: trimmed } as any;
 
-          // Snappa gång-starten till exakt samma mötespunkt för pixelperfekt join
-          const walkCoords = walkGeometryForRender.coordinates.slice();
-          if (snappedOnVehicle?.geometry?.coordinates) {
-            walkCoords[0] = snappedOnVehicle.geometry.coordinates as [number, number];
+            const walkCoords = walkGeometryForRender.coordinates.slice();
+            walkCoords[0] = join;
+            walkGeometryForRender = { type: 'LineString', coordinates: walkCoords } as any;
           }
-          walkGeometryForRender = { type: 'LineString', coordinates: walkCoords } as any;
         }
       } catch {}
 
@@ -1466,7 +1469,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         });
       }
 
-      // Gång-del (prickad) – snappa endast SLUT mot vattenkanten
+      // Gång-del färgkodad efter lutning – snappa endast SLUT mot vattenkanten
       if (walkGeometryForRender) {
         let walkGeometry = walkGeometryForRender;
         try {
@@ -1479,7 +1482,6 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
               boundaryLine = { type: water.type, coordinates: water.coordinates } as any;
             }
             if (boundaryLine) {
-              // Snappa SLUTPUNKTEN mot närmaste kant baserat på gångens egna slutpunkt
               const walkEndRef = walkGeometry.coordinates[walkGeometry.coordinates.length - 1];
               const snapped = turf.nearestPointOnLine(boundaryLine as any, walkEndRef as any) as any;
               const newCoords = walkGeometry.coordinates.slice();
@@ -1490,31 +1492,91 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             }
           }
         } catch {}
-        map.addSource('route-walk', {
+
+        // Bygg gradersatta segment (0:grön 0–4%, 1:gul 4–10%, 2:röd >10%)
+        const coords = walkGeometry.coordinates as [number, number][];
+        const segments: any[] = [];
+        if (coords.length >= 2) {
+          // Cumulativ distans längs gång-linjen
+          const cum: number[] = [0];
+          for (let i = 1; i < coords.length; i++) {
+            const d = turf.distance([coords[i - 1][0], coords[i - 1][1]], [coords[i][0], coords[i][1]], { units: 'kilometers' }) * 1000;
+            cum.push(cum[i - 1] + d);
+          }
+          // Hämta profil om finns
+          const terrain: any = (route as any).terrain || null;
+          const profile: { d: number; g: number }[] = Array.isArray(terrain?.profile) ? terrain.profile : [];
+          const gradeAt = (dist: number) => {
+            if (profile.length < 2) return 0;
+            // hitta närmaste profil-punkt (linjärt)
+            let lo = 0, hi = profile.length - 1;
+            while (hi - lo > 1) {
+              const mid = (lo + hi) >> 1;
+              if (profile[mid].d < dist) lo = mid; else hi = mid;
+            }
+            const a = profile[lo]; const b = profile[hi];
+            const t = Math.max(0, Math.min(1, (dist - a.d) / Math.max(b.d - a.d, 1e-6)));
+            const g = a.g + t * (b.g - a.g);
+            return g;
+          };
+          for (let i = 1; i < coords.length; i++) {
+            const dMid = (cum[i - 1] + cum[i]) / 2;
+            const g = gradeAt(dMid);
+            const abs = Math.abs(g);
+            const cls = abs <= 4 ? 0 : abs <= 10 ? 1 : 2;
+            segments.push({
+              type: 'Feature',
+              properties: { gradeClass: cls },
+              geometry: {
+                type: 'LineString',
+                coordinates: [coords[i - 1], coords[i]]
+              }
+            });
+          }
+        }
+
+        // Base dashed layer for consistent dash spacing along entire walk, offset så den syns ovanför blå linje
+        map.addSource('route-walk-dash', {
           type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: walkGeometry
+          data: { type: 'Feature', properties: {}, geometry: walkGeometry }
+        });
+        map.addLayer({
+          id: 'route-walk-dash-line',
+          type: 'line',
+          source: 'route-walk-dash',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-width': 3,
+            'line-color': '#94a3b8',
+            'line-opacity': 0.6,
+            'line-dasharray': [2, 5],
+            'line-translate': [0, -2]
           }
         });
 
-        // Ingen vit outline för gång-delen så prickar syns bättre
+        // Colored segments on top (solid)
+        map.addSource('route-walk-graded', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: segments }
+        });
 
         map.addLayer({
-          id: 'route-walk-line',
+          id: 'route-walk-graded-line',
           type: 'line',
-          source: 'route-walk',
-          layout: {
-            'line-cap': 'round',
-            'line-join': 'round'
-          },
+          source: 'route-walk-graded',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-color': '#3b82f6',
             'line-width': 3,
             'line-opacity': 1.0,
-            // Starta med en synlig dash för att undvika glapp vid segmentstart
-            'line-dasharray': [2, 5]
+            'line-dasharray': [2, 5],
+            'line-color': [
+              'match', ['get', 'gradeClass'],
+              0, '#10b981',
+              1, '#f59e0b',
+              2, '#ef4444',
+              '#3b82f6'
+            ],
+            'line-translate': [0, -2]
           }
         });
       }
@@ -1622,9 +1684,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         if (type === 'layer' && map.getLayer(id)) map.removeLayer(id);
         if (type === 'source' && map.getSource(id)) map.removeSource(id);
       };
-      ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline']
+      ['route-line', 'route-outline', 'route-vehicle-line', 'route-vehicle-outline', 'route-walk-line', 'route-walk-outline', 'route-walk-graded-line', 'route-walk-final-line']
         .forEach(id => removeIfExists('layer', id));
-      ['route', 'route-vehicle', 'route-walk']
+      ['route', 'route-vehicle', 'route-walk', 'route-walk-graded', 'route-walk-final']
         .forEach(id => removeIfExists('source', id));
     }
   };

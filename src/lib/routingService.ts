@@ -35,6 +35,11 @@ export interface Route {
   terrain?: {
     elevationGainMeters: number;
     elevationLossMeters: number;
+    netAscentMeters?: number;
+    maxGradePercent?: number;
+    elevationSource?: 'ors' | 'eudem';
+    isSteepTerrain?: boolean;
+    profile?: { d: number; z: number; g: number }[];
   } | null;
   segments: RouteSegment[];
   summary: {
