@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateElevationAdjustedTime } from '@/lib/smartRoutingService';
+import * as turf from '@turf/turf';
 
 // Gate verbose logs behind LOG_LEVEL=debug
 const isDebug = process.env.LOG_LEVEL === 'debug';
@@ -91,6 +92,27 @@ function normalizeRouteGeometry(route: any): { type: 'LineString'; coordinates: 
 // Simple in-memory cache for Overpass lookups to speed up repeated queries
 const overpassCache = new Map<string, { ts: number; value: { point: [number, number]; distance: number; wayType: string } | null }>();
 const OVERPASS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Short-TTL cache for ORS directions to reduce duplicate requests
+const orsCache = new Map<string, { ts: number; value: any }>();
+const ORS_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
+async function fetchWithRetry(url: string, init: RequestInit, retries = 1, backoffMs = 300): Promise<Response> {
+  try {
+    const res = await fetch(url, init);
+    if (!res.ok && retries > 0 && (res.status >= 500 || res.status === 429)) {
+      await new Promise(r => setTimeout(r, backoffMs));
+      return fetchWithRetry(url, init, retries - 1, backoffMs * 2);
+    }
+    return res;
+  } catch (e) {
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, backoffMs));
+      return fetchWithRetry(url, init, retries - 1, backoffMs * 2);
+    }
+    throw e;
+  }
+}
 
 async function findNearestRoadViaOverpass(
   coord: [number, number], // [lng, lat]
@@ -185,28 +207,29 @@ async function findNearestRoadViaOverpass(
       
       if (isDebug) console.log(`✅ Hittade ${data.elements.length} vägsegment i OSM`);
       
-      // Hitta närmaste punkt på alla vägsegment
+      // Hitta närmaste punkt på alla vägsegment (projektion på linestring, inte bara närmaste nod)
       let nearestPoint: [number, number] | null = null;
       let shortestDistance = Infinity;
       let bestWayType = 'unknown';
-      
+
+      const userPt = turf.point([lng, lat]);
       for (const element of data.elements) {
-        if (element.type !== 'way' || !element.geometry) continue;
-        
+        if (element.type !== 'way' || !Array.isArray(element.geometry)) continue;
         const wayType = element.tags?.highway || 'unknown';
-        
-        // Gå igenom alla punkter i vägsegmentet
-        for (const node of element.geometry) {
-          const nodeLng = node.lon;
-          const nodeLat = node.lat;
-          const distance = haversineDistanceMeters(coord, [nodeLng, nodeLat]);
-          
-          if (distance < shortestDistance) {
-            shortestDistance = distance;
-            nearestPoint = [nodeLng, nodeLat];
+        const lineCoords: [number, number][] = element.geometry.map((n: any) => [n.lon, n.lat]);
+        if (lineCoords.length < 2) continue;
+        try {
+          const line = turf.lineString(lineCoords as any);
+          const snapped: any = turf.nearestPointOnLine(line as any, userPt as any, { units: 'meters' } as any);
+          const snappedCoord = snapped?.geometry?.coordinates as [number, number] | undefined;
+          if (!snappedCoord) continue;
+          const dist = haversineDistanceMeters(coord, snappedCoord as [number, number]);
+          if (dist < shortestDistance) {
+            shortestDistance = dist;
+            nearestPoint = snappedCoord as [number, number];
             bestWayType = wayType;
           }
-        }
+        } catch {}
       }
       
       if (nearestPoint) {
@@ -315,6 +338,40 @@ async function enrichElevationAndComputeTerrain(
 } | null> {
   try {
     if (!line.coordinates || line.coordinates.length < 2) return null;
+    // If incoming geometry already has elevation (z), compute directly without external calls
+    try {
+      const c0: any = line.coordinates[0] as any;
+      if (Array.isArray(c0) && c0.length >= 3) {
+        const coords = line.coordinates as unknown as number[][];
+        let gain = 0; let loss = 0; let maxGrade = 0; let cum = 0;
+        const profile: TerrainProfilePoint[] = [];
+        profile.push({ d: 0, z: coords[0][2] ?? 0, g: 0 });
+        for (let i = 1; i < coords.length; i++) {
+          const prev = coords[i - 1];
+          const curr = coords[i];
+          const dzRaw = (curr[2] ?? 0) - (prev[2] ?? 0);
+          const dz = Math.abs(dzRaw) < ELEV_NOISE_M ? 0 : dzRaw;
+          const dx = haversineDistanceMeters([prev[0], prev[1]], [curr[0], curr[1]]);
+          cum += dx;
+          const grade = dx > 0 ? (dz / dx) * 100 : 0;
+          maxGrade = Math.max(maxGrade, Math.abs(grade));
+          if (dz > 0) gain += dz; else if (dz < 0) loss += -dz;
+          profile.push({ d: cum, z: (curr[2] ?? 0), g: grade });
+        }
+        const distKm = Math.max(cum / 1000, 0.0001);
+        const ascentPerKm = gain / distKm;
+        const isSteep = (maxGrade >= 20) || (ascentPerKm >= 80) || ((gain - loss) >= 250);
+        return {
+          elevationGainMeters: gain,
+          elevationLossMeters: loss,
+          netAscentMeters: (profile[profile.length - 1].z - profile[0].z),
+          maxGradePercent: maxGrade,
+          profile,
+          elevationSource: 'ors',
+          isSteepTerrain: isSteep
+        };
+      }
+    } catch {}
     // Try ORS elevation first
     try {
       const orsUrl = 'https://api.openrouteservice.org/elevation/line';
@@ -569,18 +626,30 @@ export async function POST(request: NextRequest) {
               // 1) Vehicle leg
               const vehUrl = `https://api.openrouteservice.org/v2/directions/${transportMode}/json`;
               const vehBody = { coordinates: [start, cand], instructions: true, radiuses: [-1, -1] };
-              const vehRes = await fetch(vehUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(vehBody) });
-              if (!vehRes.ok) continue;
-              const vehData = await vehRes.json();
+      const vehKey = `veh:${transportMode}:${start[0].toFixed(5)},${start[1].toFixed(5)}->${cand[0].toFixed(5)},${cand[1].toFixed(5)}`;
+      let vehData: any = orsCache.get(vehKey)?.value;
+      let vehRes: Response | null = null;
+      if (!vehData) {
+        vehRes = await fetchWithRetry(vehUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(vehBody) });
+        if (!vehRes.ok) continue;
+        vehData = await vehRes.json();
+        orsCache.set(vehKey, { ts: Date.now(), value: vehData });
+      }
               const vehRoute = vehData.routes?.[0];
               if (!vehRoute) continue;
 
               // 2) Walk leg (from candidate to end)
               const walkUrl = 'https://api.openrouteservice.org/v2/directions/foot-walking/json';
               const walkBody = { coordinates: [cand, walkTargetForEnd], instructions: true, language: 'sv', radiuses: [-1, -1] };
-              const walkRes = await fetch(walkUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(walkBody) });
-              if (!walkRes.ok) continue;
-              const walkData = await walkRes.json();
+      const walkKey = `walk:${cand[0].toFixed(5)},${cand[1].toFixed(5)}->${walkTargetForEnd[0].toFixed(5)},${walkTargetForEnd[1].toFixed(5)}`;
+      let walkData: any = orsCache.get(walkKey)?.value;
+      let walkRes: Response | null = null;
+      if (!walkData) {
+        walkRes = await fetchWithRetry(walkUrl, { method: 'POST', headers: { 'Authorization': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(walkBody) });
+        if (!walkRes.ok) continue;
+        walkData = await walkRes.json();
+        orsCache.set(walkKey, { ts: Date.now(), value: walkData });
+      }
               const walkRoute = walkData.routes?.[0];
               if (!walkRoute) continue;
 
@@ -679,7 +748,16 @@ export async function POST(request: NextRequest) {
 
       if (isDebug) console.log('🚗 Försöker normal ORS vehicle routing...');
       
-      const vehicleResponse = await fetch(vehicleUrl, {
+      // ORS short cache key
+      const vehicleCacheKey = `veh:${transportMode}:${start[0].toFixed(5)},${start[1].toFixed(5)}->${vehicleTargetPoint[0].toFixed(5)},${vehicleTargetPoint[1].toFixed(5)}`;
+      const nowTs = Date.now();
+      const cachedVeh = orsCache.get(vehicleCacheKey);
+      let vehicleRoute: any = null;
+      let vehicleResponse: Response | null = null;
+      if (cachedVeh && (nowTs - cachedVeh.ts) < ORS_CACHE_TTL_MS) {
+        vehicleRoute = cachedVeh.value?.routes?.[0] ?? null;
+      } else {
+        vehicleResponse = await fetchWithRetry(vehicleUrl, {
         method: 'POST',
         headers: {
           'Authorization': apiKey,
@@ -687,18 +765,21 @@ export async function POST(request: NextRequest) {
           'Accept': 'application/json'
         },
         body: JSON.stringify(vehicleBody)
-      });
+        });
+      }
 
-      let vehicleRoute = null;
       let usedOverpass = false;
 
-      if (vehicleResponse.ok) {
+      if (vehicleRoute) {
+        if (isDebug) console.log('✅ ORS vehicle routing (cache) lyckades');
+      } else if (vehicleResponse && vehicleResponse.ok) {
         const vehicleData = await vehicleResponse.json();
         vehicleRoute = vehicleData.routes?.[0];
+        orsCache.set(vehicleCacheKey, { ts: nowTs, value: vehicleData });
         if (isDebug) console.log('✅ ORS vehicle routing lyckades');
       } else {
         // ORS misslyckades - försök med Overpass
-        const errorText = await vehicleResponse.text();
+        const errorText = vehicleResponse ? await vehicleResponse.text() : 'cache-miss-and-no-response';
         if (isDebug) console.log('⚠️ ORS vehicle routing misslyckades:', errorText);
         
         if (errorText.includes('Could not find routable point')) {
@@ -733,7 +814,11 @@ export async function POST(request: NextRequest) {
           elevation: true
         };
 
-        const walkResponse = await fetch(walkUrl, {
+        const walkCacheKey = `walk:${(start as number[]).map(v=>v.toFixed(5)).join(',')}->${(end as number[]).map(v=>v.toFixed(5)).join(',')}`;
+        const cachedWalk = orsCache.get(walkCacheKey);
+        let walkResponse: Response | null = null;
+        if (!cachedWalk) {
+          walkResponse = await fetchWithRetry(walkUrl, {
           method: 'POST',
           headers: {
             'Authorization': apiKey,
@@ -741,10 +826,12 @@ export async function POST(request: NextRequest) {
             'Accept': 'application/json'
           },
           body: JSON.stringify(walkBody)
-        });
+          });
+        }
         
-        if (walkResponse.ok) {
-          const walkData = await walkResponse.json();
+        if (cachedWalk || (walkResponse && walkResponse.ok)) {
+          const walkData = cachedWalk ? cachedWalk.value : await walkResponse!.json();
+          if (!cachedWalk) orsCache.set(walkCacheKey, { ts: Date.now(), value: walkData });
           const wr = walkData.routes?.[0];
           if (wr) {
             const geometry = normalizeRouteGeometry(wr);

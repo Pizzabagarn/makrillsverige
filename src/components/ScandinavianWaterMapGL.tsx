@@ -126,7 +126,8 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             ) : onNavigate ? (
               <button
                 onClick={onNavigate}
-                className="p-1 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 transition-all duration-200"
+                disabled={!!routeLoading}
+                className={`p-1 rounded-md ${routeLoading?'text-slate-500':'text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50'} transition-all duration-200`}
                 title="Navigera"
               >
                 <Navigation className="w-3.5 h-3.5" />
@@ -195,9 +196,9 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                   )}
                   {onTransportChange && currentMode && (
                     <div className="flex space-x-1">
-                      <button onClick={() => onTransportChange('driving-car')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Car className="w-3 h-3 inline mr-1"/>Bil</button>
-                      <button onClick={() => onTransportChange('cycling-regular')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='cycling-regular'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><Bike className="w-3 h-3 inline mr-1"/>Cykel</button>
-                      <button onClick={() => onTransportChange('foot-walking')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='foot-walking'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'}`}><User className="w-3 h-3 inline mr-1"/>Gång</button>
+                      <button disabled={!!routeLoading} onClick={() => onTransportChange('driving-car')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='driving-car'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'} ${routeLoading?'opacity-60 cursor-not-allowed':''}`}><Car className="w-3 h-3 inline mr-1"/>Bil</button>
+                      <button disabled={!!routeLoading} onClick={() => onTransportChange('cycling-regular')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='cycling-regular'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'} ${routeLoading?'opacity-60 cursor-not-allowed':''}`}><Bike className="w-3 h-3 inline mr-1"/>Cykel</button>
+                      <button disabled={!!routeLoading} onClick={() => onTransportChange('foot-walking')} className={`flex-1 py-1 rounded text-[11px] ${currentMode==='foot-walking'?'bg-cyan-600 text-white':'bg-slate-700/50 text-slate-300'} ${routeLoading?'opacity-60 cursor-not-allowed':''}`}><User className="w-3 h-3 inline mr-1"/>Gång</button>
                     </div>
                   )}
                   {/* Toggle for steps (mobile) */}
@@ -351,16 +352,17 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
               <ChevronLeft className="w-4 h-4" />
               <span className="text-sm font-medium">Tillbaka</span>
             </button>
-          ) : onNavigate ? (
-            <button
-              onClick={onNavigate}
-              className="px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50"
-              title="Navigera"
-            >
-              <Navigation className="w-4 h-4" />
-              <span className="text-sm font-medium">Navigera</span>
-            </button>
-          ) : null}
+                  ) : onNavigate ? (
+              <button
+                onClick={onNavigate}
+                disabled={!!routeLoading}
+                className={`px-3 py-1.5 rounded-lg ${routeLoading?'bg-slate-700/30 text-slate-400 cursor-not-allowed':'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white'} transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50`}
+                title="Navigera"
+              >
+                <Navigation className="w-4 h-4" />
+                <span className="text-sm font-medium">{routeLoading ? 'Beräknar...' : 'Navigera'}</span>
+              </button>
+            ) : null}
           <button
             onClick={onClose}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200"
@@ -1431,17 +1433,23 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         
         // Zooma kartan för att visa hela rutten
         if (mapRef.current) {
-          if (route.bbox) {
-            const [minLng, minLat, maxLng, maxLat] = route.bbox;
-            mapRef.current.fitBounds(
-              [[minLng, minLat], [maxLng, maxLat]],
-              { padding: 50, duration: 1000 }
-            );
-          } else if (route.geometry?.coordinates?.length) {
-            try {
-              const bbox = turf.bbox({ type: 'LineString', coordinates: route.geometry.coordinates } as any);
-              mapRef.current.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1000 });
-            } catch {}
+          const fitRoute = (r: Route) => {
+            if (r.bbox) {
+              const [minLng, minLat, maxLng, maxLat] = r.bbox;
+              mapRef.current!.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50, duration: 1000 });
+              return;
+            }
+            if (r.geometry?.coordinates?.length) {
+              try {
+                const bbox = turf.bbox({ type: 'LineString', coordinates: r.geometry.coordinates } as any);
+                mapRef.current!.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1000 });
+              } catch {}
+            }
+          };
+          fitRoute(route);
+          // Markera direktlinje fall-back i UI via flagga
+          if ((route as any).isDirectPath) {
+            // Could show a toast/banner in UI panel; kept minimal here
           }
         }
       }
@@ -1521,6 +1529,13 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             const walkCoords = walkGeometryForRender.coordinates.slice();
             walkCoords[0] = join;
             walkGeometryForRender = { type: 'LineString', coordinates: walkCoords } as any;
+          } else if (join && isFinite(joinDistM) && joinDistM > 5 && joinDistM <= 12) {
+            // Lägg till diskret connector-stub mellan fordonsslut och gångstart för läsbarhet
+            const connectorId = 'route-connector';
+            removeIfExists('layer', connectorId);
+            removeIfExists('source', connectorId);
+            map.addSource(connectorId, { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [join, walkStart] } } as any });
+            map.addLayer({ id: connectorId, type: 'line', source: connectorId, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#94a3b8', 'line-width': 2, 'line-opacity': 0.6, 'line-dasharray': [0.6, 2.4] } });
           }
         }
       } catch {}
@@ -1616,7 +1631,9 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           return a.g + t * (b.g - a.g);
         };
         const total = cum[cum.length - 1] || 1;
-        const colorForAbs = (abs: number) => abs <= 4 ? '#10b981' : (abs <= 10 ? '#f59e0b' : '#ef4444');
+        const SLOPE_GREEN_MAX = 4; // %
+        const SLOPE_YELLOW_MAX = 10; // %
+        const colorForAbs = (abs: number) => abs <= SLOPE_GREEN_MAX ? '#10b981' : (abs <= SLOPE_YELLOW_MAX ? '#f59e0b' : '#ef4444');
         gradientStops.push([0, colorForAbs(Math.abs(gradeAt(0)))]);
         const steepThresholdMeters = 80;
         let runStartIndex: number | null = null;
@@ -1669,7 +1686,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           // approximate via cum array
           const dMeters = ((i < cum.length) ? (cum[i - 1] + cum[i]) / 2 : cum[i - 1]);
           const abs = Math.abs(gradeAt(dMeters));
-          const gradeClass = abs <= 4 ? 0 : abs <= 10 ? 1 : 2;
+          const gradeClass = abs <= SLOPE_GREEN_MAX ? 0 : abs <= SLOPE_YELLOW_MAX ? 1 : 2;
           segmentFeatures.push({ type: 'Feature', properties: { grade: abs, gradeClass, idx: i }, geometry: { type: 'LineString', coordinates: [coords[i - 1], coords[i]] } });
         }
         map.addSource('route-walk-segments', { type: 'geojson', data: { type: 'FeatureCollection', features: segmentFeatures } });
