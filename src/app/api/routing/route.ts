@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateElevationAdjustedTime } from '@/lib/smartRoutingService';
+import { computeUniversalRoute } from '@/server/routing/routeController';
 import * as turf from '@turf/turf';
 
 // Gate verbose logs behind LOG_LEVEL=debug
@@ -117,7 +118,8 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 1, backo
 async function findNearestRoadViaOverpass(
   coord: [number, number], // [lng, lat]
   maxRadiusKm: number = 50,
-  includeFootpaths: boolean = false
+  includeFootpaths: boolean = false,
+  allowTracks: boolean = false
 ): Promise<{ point: [number, number]; distance: number; wayType: string } | null> {
   
   const [lng, lat] = coord;
@@ -158,10 +160,13 @@ async function findNearestRoadViaOverpass(
     
     // Overpass QL query - hitta körbar väg (highway) eller gångstig
     // För gång: inkludera footway, path, track, cycleway
-    // För bil: endast körbar väg
+    // För bil: körbara vägar; i glesbygd kan track tillåtas
+    const vehicleSet = allowTracks
+      ? "motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|track"
+      : "motorway|trunk|primary|secondary|tertiary|unclassified|residential|service";
     const highwayTypes = includeFootpaths
       ? "motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|footway|path|track|cycleway|steps"
-      : "motorway|trunk|primary|secondary|tertiary|unclassified|residential|service";
+      : vehicleSet;
     
     const query = `
       [out:json][timeout:8];
@@ -309,6 +314,86 @@ function haversineDistanceMeters(a: [number, number], b: [number, number]): numb
   const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   return R * c;
+}
+
+// --- Validation helpers (adaptive thresholds and overlap checks) ---
+function lineLength(coords: [number, number][]): number {
+  let sum = 0; for (let i = 1; i < coords.length; i++) sum += haversineDistanceMeters(coords[i - 1] as any, coords[i] as any); return sum;
+}
+
+function overlapShareFirst2km(walk: [number, number][], vehicle: [number, number][], bufferMeters = 8): number {
+  if (!walk || walk.length < 2 || !vehicle || vehicle.length < 2) return 0;
+  const targetLen = 2000;
+  const sliced: [number, number][] = [walk[0]] as any;
+  let cum = 0;
+  for (let i = 1; i < walk.length && cum < targetLen; i++) {
+    const d = haversineDistanceMeters(walk[i - 1] as any, walk[i] as any);
+    cum += d; sliced.push(walk[i] as any);
+  }
+  if (sliced.length < 2) return 0;
+  const vehLine = turf.lineString(vehicle as any);
+  // sample every ~25m
+  const step = 25; const samples: [number, number][] = [] as any;
+  let acc = 0; samples.push(sliced[0]);
+  for (let i = 1; i < sliced.length; i++) {
+    const seg = haversineDistanceMeters(sliced[i - 1] as any, sliced[i] as any);
+    let remain = seg; let from = sliced[i - 1];
+    while (acc + remain >= step) {
+      const t = (step - acc) / seg; const x = from[0] + (sliced[i][0] - from[0]) * t; const y = from[1] + (sliced[i][1] - from[1]) * t;
+      samples.push([x, y] as any); remain = acc + remain - step; acc = 0; from = [x, y] as any;
+    }
+    acc += remain;
+  }
+  let close = 0;
+  for (const p of samples) {
+    const snapped: any = turf.nearestPointOnLine(vehLine as any, turf.point(p) as any, { units: 'meters' } as any);
+    const d = snapped?.properties?.dist ?? turf.distance(turf.point(p) as any, snapped as any, { units: 'meters' } as any);
+    if (typeof d === 'number' && d <= bufferMeters) close++;
+  }
+  return samples.length > 0 ? close / samples.length : 0;
+}
+
+function averageHeadingToGoalFirstKm(walk: [number, number][], goal: [number, number], distLimit = 2000): number {
+  if (!walk || walk.length < 2) return 1;
+  const goalVec = [goal[0] - walk[0][0], goal[1] - walk[0][1]];
+  const goalLen = Math.hypot(goalVec[0], goalVec[1]) || 1;
+  const ux = goalVec[0] / goalLen; const uy = goalVec[1] / goalLen;
+  let cum = 0; let projSum = 0; let count = 0;
+  for (let i = 1; i < walk.length && cum < distLimit; i++) {
+    const step = [walk[i][0] - walk[i - 1][0], walk[i][1] - walk[i - 1][1]];
+    const stepLenM = haversineDistanceMeters(walk[i - 1] as any, walk[i] as any);
+    cum += stepLenM;
+    const stepLen = Math.hypot(step[0], step[1]) || 1;
+    const sx = step[0] / stepLen; const sy = step[1] / stepLen;
+    projSum += (sx * ux + sy * uy);
+    count++;
+  }
+  return count ? projSum / count : 1;
+}
+
+function adaptiveThresholds(start: [number, number], end: [number, number], context: 'urban' | 'semi' | 'mountain' | 'trail') {
+  const crow = haversineDistanceMeters(start, end);
+  const endGap = Math.max(1000, 0.2 * crow);
+  const lengthRatio = crow > 15000 ? 2.5 : 2.0;
+  const overlapShare = context === 'trail' ? 0.6 : (context === 'mountain' ? 0.35 : 0.45);
+  const overlapDistM = context === 'urban' ? 12 : 8;
+  return { endGap, lengthRatio, overlapShare, overlapDistM };
+}
+
+function isWalkInvalidWithContext(walk: [number, number][], vehicle: [number, number][], goal: [number, number], thr: { endGap: number; lengthRatio: number; overlapShare: number; overlapDistM: number }) {
+  if (!walk || walk.length < 2) return { invalid: true, reason: 'walk_empty' } as const;
+  const endGap = haversineDistanceMeters(walk[walk.length - 1] as any, goal);
+  if (endGap > thr.endGap) return { invalid: true, reason: 'end_gap_adaptive' } as const;
+  const direct = haversineDistanceMeters((vehicle[vehicle.length - 1] || walk[0]) as any, goal);
+  const wlen = lineLength(walk);
+  if (direct > 0 && (wlen / direct) > thr.lengthRatio) return { invalid: true, reason: 'walk_length_adaptive' } as const;
+  if (vehicle && vehicle.length >= 2) {
+    const share = overlapShareFirst2km(walk, vehicle, thr.overlapDistM);
+    if (share > thr.overlapShare) return { invalid: true, reason: 'overlap_adaptive' } as const;
+  }
+  const heading = averageHeadingToGoalFirstKm(walk, goal, 2000);
+  if (heading < 0) return { invalid: true, reason: 'heading_away' } as const;
+  return { invalid: false, reason: '' } as const;
 }
 
 function computeBboxFromCoords(coords: [number, number][]): [number, number, number, number] {
@@ -499,6 +584,18 @@ export async function POST(request: NextRequest) {
     }
 
     const transportMode = mode || 'driving-car';
+
+    // Feature flag to enable universal routing pipeline described in the technical document
+    const useUniversal = process.env.UNIVERSAL_ROUTING === '1';
+    if (useUniversal) {
+      try {
+        const result = await computeUniversalRoute(start as [number, number], end as [number, number], apiKey);
+        // Preserve legacy shape by embedding universal output under metadata.universal and returning a dummy route
+        return NextResponse.json({ routes: [], metadata: { universal: result } });
+      } catch (e) {
+        // fall through to existing pipeline if universal fails
+      }
+    }
     
     // För BIL/CYKEL: hitta närmaste väg, sen beräkna gång-sträcka automatiskt
     // För GÅNG: direkt till destinationen
@@ -653,7 +750,7 @@ export async function POST(request: NextRequest) {
               const walkRoute = walkData.routes?.[0];
               if (!walkRoute) continue;
 
-              let walkGeom = normalizeRouteGeometry(walkRoute);
+          let walkGeom = normalizeRouteGeometry(walkRoute);
               // Sanity: ensure walk end is close to water target; if far, try Overpass reroute
               try {
                 const walkEnd = walkGeom.coordinates[walkGeom.coordinates.length - 1];
@@ -669,9 +766,26 @@ export async function POST(request: NextRequest) {
                 }
               } catch {}
               const walkTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+              // Penalize overlap: if initial walking segment backtracks along the vehicle end, add time penalty
+              let overlapPenalty = 0;
+              try {
+                const vehGeom = normalizeRouteGeometry(vehRoute);
+                const vehEnd = vehGeom.coordinates.slice(Math.max(0, vehGeom.coordinates.length - 20));
+                const walkStart = walkGeom.coordinates.slice(0, Math.min(20, walkGeom.coordinates.length));
+                if (vehEnd.length >= 2 && walkStart.length >= 2) {
+                  const vehLine = turf.lineString(vehEnd as any);
+                  const walkLine = turf.lineString(walkStart as any);
+                  const buf = turf.buffer(vehLine as any, 8, { units: 'meters' } as any); // 8 m corridor
+                  const inter = turf.lineIntersect(walkLine as any, buf as any);
+                  if ((inter?.features?.length || 0) > 0) {
+                    // Add small penalty (~30s) to discourage drive-past-then-walk-back
+                    overlapPenalty = 30;
+                  }
+                }
+              } catch {}
               const baseWalk = walkRoute.summary?.duration || 0;
               const adjustedWalk = walkTerrain ? calculateElevationAdjustedTime(baseWalk, walkTerrain.elevationGainMeters, walkTerrain.elevationLossMeters) : baseWalk;
-              const total = (vehRoute.summary?.duration || 0) + adjustedWalk;
+              const total = (vehRoute.summary?.duration || 0) + adjustedWalk + overlapPenalty;
 
               evals.push({ candidate: cand, vehicleRoute: vehRoute, walkRoute, walkGeom, walkTerrain, totalDuration: total });
             } catch {}
@@ -729,10 +843,12 @@ export async function POST(request: NextRequest) {
       let preparedWalkTarget: [number, number] = end as [number, number];
       let preparedAccessPoint: [number, number] | null = null;
       try {
-        const destPathPrep = await findNearestRoadViaOverpass(end as [number, number], 150, true);
+        // Rural heuristic: allow tracks north of ~60° lat, and always allow for walk lookups
+        const allowTracks = (Array.isArray(end) && typeof end[1] === 'number' && end[1] >= 60.0);
+        const destPathPrep = await findNearestRoadViaOverpass(end as [number, number], 150, true, allowTracks);
         if (destPathPrep) {
           preparedWalkTarget = destPathPrep.point as [number, number];
-          const roadAccPrep = await findNearestRoadViaOverpass(preparedWalkTarget, 10, false);
+          const roadAccPrep = await findNearestRoadViaOverpass(preparedWalkTarget, 10, false, allowTracks);
           if (roadAccPrep) preparedAccessPoint = roadAccPrep.point as [number, number];
         }
       } catch {}
@@ -955,7 +1071,7 @@ export async function POST(request: NextRequest) {
 
           // 3. Trimma bil-delen till gångens start ENDAST om gapet är litet
           let vehicleGeom = normalizeRouteGeometry(vehicleRoute);
-          const walkGeom = normalizeRouteGeometry(walkRoute);
+          let walkGeom = normalizeRouteGeometry(walkRoute);
           const walkStart = walkGeom.coordinates[0];
           try {
             // Hitta närmaste punkt i bil-geometrin till gångens start
@@ -1016,9 +1132,21 @@ export async function POST(request: NextRequest) {
           } catch {}
 
           // Terräng för huvudsakliga gång-delen
-          const pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+          // Validate walk; adaptive thresholds for semi
+          const thr = adaptiveThresholds(start as any, end as any, 'semi');
+          const invalid = isWalkInvalidWithContext(walkGeom.coordinates as any, vehicleGeom.coordinates as any, end as any, thr);
+          let pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
           let adjustedWalkDuration = walkRoute.summary.duration;
-          if (pathTerrain && (pathTerrain.elevationGainMeters > 0 || pathTerrain.elevationLossMeters > 0)) {
+          if (invalid.invalid) {
+            const straight = createStraightWalkSegment(walkGeom.coordinates[0] as any, end as any);
+            walkGeom = straight.geometry as any;
+            pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+            adjustedWalkDuration = calculateElevationAdjustedTime(
+              straight.segment.duration,
+              pathTerrain?.elevationGainMeters || 0,
+              pathTerrain?.elevationLossMeters || 0
+            );
+          } else if (pathTerrain && (pathTerrain.elevationGainMeters > 0 || pathTerrain.elevationLossMeters > 0)) {
             adjustedWalkDuration = calculateElevationAdjustedTime(
               walkRoute.summary.duration,
               pathTerrain.elevationGainMeters,
@@ -1103,9 +1231,16 @@ export async function POST(request: NextRequest) {
                   vehicleGeom = { type: 'LineString', coordinates: trimmed } as any;
                 }
               } catch {}
-              const pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+              const thr2 = adaptiveThresholds(start as any, end as any, 'semi');
+              const inv2 = isWalkInvalidWithContext(walkGeom.coordinates as any, vehicleGeom.coordinates as any, end as any, thr2);
+              let pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
               let adjustedWalkDur = walkToPath.summary?.duration || 0;
-              if (pathTerrain) {
+              if (inv2.invalid) {
+                const straight2 = createStraightWalkSegment(walkGeom.coordinates[0] as any, end as any);
+                walkGeom = straight2.geometry as any;
+                pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+                adjustedWalkDur = calculateElevationAdjustedTime(straight2.segment.duration, pathTerrain?.elevationGainMeters || 0, pathTerrain?.elevationLossMeters || 0);
+              } else if (pathTerrain) {
                 adjustedWalkDur = calculateElevationAdjustedTime(adjustedWalkDur, pathTerrain.elevationGainMeters, pathTerrain.elevationLossMeters);
               }
               const coords = [...vehicleGeom.coordinates, ...walkGeom.coordinates.slice(1)];
@@ -1281,9 +1416,17 @@ export async function POST(request: NextRequest) {
     }
     
     // Nu har vi en walkRoute – använd den direkt utan rak slutbit
-    const walkGeom = normalizeRouteGeometry(walkRoute);
-    const pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+    let walkGeom = normalizeRouteGeometry(walkRoute);
+    const thr3 = adaptiveThresholds(start as any, end as any, 'semi');
+    const inv3 = isWalkInvalidWithContext(walkGeom.coordinates as any, [] as any, end as any, thr3);
+    let pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
     let adjustedPathDuration = walkRoute.summary?.duration || 0;
+    if (inv3.invalid) {
+      const straight3 = createStraightWalkSegment(walkGeom.coordinates[0] as any, end as any);
+      walkGeom = straight3.geometry as any;
+      pathTerrain = await enrichElevationAndComputeTerrain(walkGeom, apiKey);
+      adjustedPathDuration = calculateElevationAdjustedTime(straight3.segment.duration, pathTerrain?.elevationGainMeters || 0, pathTerrain?.elevationLossMeters || 0);
+    }
     if (pathTerrain) {
       adjustedPathDuration = calculateElevationAdjustedTime(
         walkRoute.summary?.duration || 0,

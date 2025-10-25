@@ -352,17 +352,17 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
               <ChevronLeft className="w-4 h-4" />
               <span className="text-sm font-medium">Tillbaka</span>
             </button>
-                  ) : onNavigate ? (
-              <button
-                onClick={onNavigate}
+          ) : onNavigate ? (
+            <button
+              onClick={onNavigate}
                 disabled={!!routeLoading}
                 className={`px-3 py-1.5 rounded-lg ${routeLoading?'bg-slate-700/30 text-slate-400 cursor-not-allowed':'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white'} transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50`}
-                title="Navigera"
-              >
-                <Navigation className="w-4 h-4" />
+              title="Navigera"
+            >
+              <Navigation className="w-4 h-4" />
                 <span className="text-sm font-medium">{routeLoading ? 'Beräknar...' : 'Navigera'}</span>
-              </button>
-            ) : null}
+            </button>
+          ) : null}
           <button
             onClick={onClose}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600/50 transition-all duration-200"
@@ -594,6 +594,8 @@ interface Props {
 
 const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterBodySelect, layoutType: propLayoutType }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const svgHandlersRef = useRef<Array<[string, any]>>([]);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -810,6 +812,19 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     if (!mapRef.current || !navigator.geolocation) return;
 
     const map = mapRef.current;
+
+    // Clean up previous SVG handlers and overlay content before drawing new route
+    try {
+      if (svgHandlersRef.current && svgHandlersRef.current.length && map) {
+        for (const [ev, fn] of svgHandlersRef.current) {
+          try { map.off(ev as any, fn); } catch {}
+        }
+        svgHandlersRef.current = [];
+      }
+      if (svgRef.current) {
+        svgRef.current.innerHTML = '';
+      }
+    } catch {}
     let isFirstPosition = true;
     const isMobile = layoutType === 'mobilePortrait' || layoutType === 'mobileLandscape';
 
@@ -1443,7 +1458,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
               try {
                 const bbox = turf.bbox({ type: 'LineString', coordinates: r.geometry.coordinates } as any);
                 mapRef.current!.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1000 });
-              } catch {}
+            } catch {}
             }
           };
           fitRoute(route);
@@ -1474,7 +1489,12 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
 
     // Rensa tidigare rutter (både enkel och multimodal), lager först i beroende-ordning
     [
+      'route-walk-dots-circle',
       'route-walk-dots',
+      'route-walk-open-outline',
+      'route-walk-open',
+      'route-walk-overlap-outline',
+      'route-walk-overlap',
       'route-walk-segments',
       'route-walk-core',
       'route-walk-outline',
@@ -1483,6 +1503,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       'route-walk-dash-line',
       'route-walk-final-line',
       'route-walk-line',
+      'route-connector',
       'route-vehicle-line',
       'route-vehicle-outline',
       'route-outline',
@@ -1491,6 +1512,12 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     ].forEach(id => removeIfExists('layer', id));
     // Källor efteråt
     [
+      'route-walk-dots-circle',
+      'route-walk-dots',
+      'route-walk-open',
+      'route-walk-open-outline',
+      'route-walk-overlap',
+      'route-walk-overlap-outline',
       'route-walk-segments',
       'route-walk-core',
       'route-walk-steep-overlay',
@@ -1498,6 +1525,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
       'route-walk-dash',
       'route-walk-final',
       'route-walk',
+      'route-connector',
       'route-vehicle',
       'route',
       'route-steep-markers'
@@ -1578,7 +1606,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         });
       }
 
-      // Gång-del färgkodad efter lutning – snappa endast SLUT mot vattenkanten
+      // Gång-del färgkodad efter lutning (heldragen linje) – snappa endast SLUT mot vattenkanten
       if (walkGeometryForRender) {
         let walkGeometry = walkGeometryForRender;
         try {
@@ -1602,17 +1630,13 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           }
         } catch {}
 
-        // Bygg gradersatta segment (0:grön 0–4%, 1:gul 4–10%, 2:röd >10%)
+        // Bygg heldragen linje färgad per lutningsklass, med offset vid överlapp
+        // 1) Förbered data: cumulativ längd och lutningsprofil
         const coords = walkGeometry.coordinates as [number, number][];
-        const gradientStops: Array<[number, string]> = [];
-        const steepSegments: any[] = [];
         const cum: number[] = [0];
-        if (coords.length >= 2) {
-          // Cumulativ distans längs gång-linjen
-          for (let i = 1; i < coords.length; i++) {
-            const d = turf.distance([coords[i - 1][0], coords[i - 1][1]], [coords[i][0], coords[i][1]], { units: 'kilometers' }) * 1000;
-            cum.push(cum[i - 1] + d);
-          }
+        for (let i = 1; i < coords.length; i++) {
+          const d = turf.distance(coords[i - 1] as any, coords[i] as any, { units: 'kilometers' }) * 1000;
+          cum.push(cum[i - 1] + d);
         }
         let profile: { d: number; g: number }[] = [];
         {
@@ -1630,111 +1654,116 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           const t = Math.max(0, Math.min(1, (dist - a.d) / Math.max(b.d - a.d, 1e-6)));
           return a.g + t * (b.g - a.g);
         };
-        const total = cum[cum.length - 1] || 1;
-        const SLOPE_GREEN_MAX = 4; // %
-        const SLOPE_YELLOW_MAX = 10; // %
-        const colorForAbs = (abs: number) => abs <= SLOPE_GREEN_MAX ? '#10b981' : (abs <= SLOPE_YELLOW_MAX ? '#f59e0b' : '#ef4444');
-        gradientStops.push([0, colorForAbs(Math.abs(gradeAt(0)))]);
-        const steepThresholdMeters = 80;
-        let runStartIndex: number | null = null;
-        for (let i = 1; i < coords.length; i++) {
-          const dMid = (cum[i - 1] + cum[i]) / 2;
-          const abs = Math.abs(gradeAt(dMid));
-          const progress = Math.max(0, Math.min(1, dMid / total));
-          gradientStops.push([progress, colorForAbs(abs)]);
-          const isSteep = abs > 10;
-          if (isSteep && runStartIndex == null) runStartIndex = i - 1;
-          if ((!isSteep || i === coords.length - 1) && runStartIndex != null) {
-            const startD = cum[runStartIndex];
-            const endD = cum[Math.min(i, coords.length - 1)];
-            if (endD - startD >= steepThresholdMeters) {
-              const segCoords = coords.slice(runStartIndex, Math.min(i + 1, coords.length));
-              steepSegments.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: segCoords } });
-            }
-            runStartIndex = null;
+        // 2) Overlap-detektion mot fordon (för offset)
+        let vehBuf: any = null;
+        try {
+          if (vehicleGeometryForRender && vehicleGeometryForRender.coordinates?.length >= 2) {
+            const vehLine = turf.lineString(vehicleGeometryForRender.coordinates as any);
+            vehBuf = turf.buffer(vehLine as any, 3, { units: 'meters' } as any);
           }
+        } catch {}
+        const isOverlapSeg = (a: [number, number], b: [number, number]) => {
+          if (!vehBuf) return false;
+          try {
+            const seg = turf.lineString([a, b] as any);
+            return turf.booleanIntersects(vehBuf as any, seg as any);
+          } catch { return false; }
+        };
+        // 3) Klassificera segment och gruppera till runs (samma klass + offset)
+        const colorForClass = (cls: 0|1|2|3|4) => (
+          cls === 0 ? '#22c55e' : // grön 0-4
+          cls === 1 ? '#eab308' : // gul 4-10
+          cls === 2 ? '#f97316' : // orange 10-20
+          cls === 3 ? '#ef4444' : // röd 20-35
+          '#a855f7'               // lila >35
+        );
+        const classForAbs = (abs: number): 0|1|2|3|4 => (
+          abs <= 4 ? 0 : abs <= 10 ? 1 : abs <= 20 ? 2 : abs <= 35 ? 3 : 4
+        );
+        type Run = { start: number; end: number; color: string; offset: number };
+        const runs: Run[] = [];
+        if (coords.length >= 2) {
+          const segInfo = (i: number) => {
+            const dMid = (cum[i - 1] + cum[i]) / 2;
+            const abs = Math.abs(gradeAt(dMid));
+            const cls = classForAbs(abs);
+            const color = colorForClass(cls);
+            const over = isOverlapSeg(coords[i - 1], coords[i]);
+            const offset = over ? 3 : 0;
+            return { color, offset };
+          };
+          let { color: c0, offset: o0 } = segInfo(1);
+          let run: Run = { start: 0, end: 1, color: c0, offset: o0 };
+          for (let i = 2; i < coords.length; i++) {
+            const { color, offset } = segInfo(i);
+            if (color === run.color && offset === run.offset) {
+              run.end = i;
+            } else {
+              runs.push(run);
+              run = { start: i - 1, end: i, color, offset };
+            }
+          }
+          runs.push(run);
         }
-        gradientStops.push([1, colorForAbs(Math.abs(gradeAt(total)))]);
-
-        // Modern "Meta/Apple" walking look: white soft outline + gradient core line + subtle dot rhythm
-        map.addSource('route-walk-core', { type: 'geojson', lineMetrics: true, data: { type: 'Feature', properties: {}, geometry: walkGeometry } });
-        // Outline
-        map.addLayer({ id: 'route-walk-outline', type: 'line', source: 'route-walk-core', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.5 } });
-        // Gradient core by slope along the path
-        const gradientExpr: any = ['interpolate', ['linear'], ['line-progress']];
-        for (const [p, c] of gradientStops) gradientExpr.push(p, c);
-        map.addLayer({ id: 'route-walk-core', type: 'line', source: 'route-walk-core', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-width': 4, 'line-opacity': 1.0, 'line-gradient': gradientExpr as any } });
-        // Elegant rhythmic dots traveling along the line to signal "walking" without harsh dashes
+        // 4) Bygg feature collection
+        const features = runs
+          .filter(r => r.end > r.start)
+          .map(r => ({
+            type: 'Feature',
+            properties: { color: r.color, offset: r.offset },
+            geometry: { type: 'LineString', coordinates: coords.slice(r.start, r.end + 1) }
+          }));
+        removeIfExists('layer', 'route-walk-core');
+        removeIfExists('layer', 'route-walk-outline');
+        removeIfExists('source', 'route-walk-core');
+        map.addSource('route-walk-core', { type: 'geojson', data: { type: 'FeatureCollection', features } as any });
         map.addLayer({
-          id: 'route-walk-dots',
+          id: 'route-walk-outline',
           type: 'line',
           source: 'route-walk-core',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
             'line-color': '#ffffff',
-            'line-opacity': 0.3,
-            'line-width': 4,
-            'line-dasharray': [1.5, 5.0],
-            'line-blur': 0.2
+            'line-width': 5,
+            'line-opacity': 0.9,
+            'line-offset': ['coalesce', ['get', 'offset'], 0]
           }
         });
-
-        // 2) Colored slope segments on top (for hover + legend consistency)
-        const segmentFeatures = [] as any[];
-        for (let i = 1; i < coords.length; i++) {
-          const dMid = (i - 0.5);
-          // approximate via cum array
-          const dMeters = ((i < cum.length) ? (cum[i - 1] + cum[i]) / 2 : cum[i - 1]);
-          const abs = Math.abs(gradeAt(dMeters));
-          const gradeClass = abs <= SLOPE_GREEN_MAX ? 0 : abs <= SLOPE_YELLOW_MAX ? 1 : 2;
-          segmentFeatures.push({ type: 'Feature', properties: { grade: abs, gradeClass, idx: i }, geometry: { type: 'LineString', coordinates: [coords[i - 1], coords[i]] } });
-        }
-        map.addSource('route-walk-segments', { type: 'geojson', data: { type: 'FeatureCollection', features: segmentFeatures } });
         map.addLayer({
-          id: 'route-walk-segments',
+          id: 'route-walk-core',
           type: 'line',
-          source: 'route-walk-segments',
+          source: 'route-walk-core',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-width': 4,
-            'line-dasharray': [1.5, 5.0],
-            'line-color': [ 'match', ['get', 'gradeClass'], 0, '#10b981', 1, '#f59e0b', 2, '#ef4444', '#3b82f6' ]
+            'line-color': ['get', 'color'],
+            'line-width': 3,
+            'line-opacity': 1.0,
+            'line-offset': ['coalesce', ['get', 'offset'], 0]
           }
         });
-
-        // Hover tooltip events for slope per segment
-        if (map && !walkHoverEnterRef.current) {
-          walkHoverEnterRef.current = () => { map.getCanvas().style.cursor = 'pointer'; };
-          walkHoverLeaveRef.current = () => { map.getCanvas().style.cursor = 'default'; if (walkPopupRef.current) { walkPopupRef.current.remove(); walkPopupRef.current = null; } };
-          walkHoverMoveRef.current = (e: any) => {
-            if (!e.features || e.features.length === 0) return;
-            const f = e.features[0];
-            const grade = typeof f.properties?.grade === 'number' ? f.properties.grade : null;
-            const cls = f.properties?.gradeClass;
-            const color = cls === 0 ? '#10b981' : cls === 1 ? '#f59e0b' : '#ef4444';
-            const lngLat = e.lngLat;
-            const html = (
-              '<div style="color:#e5e7eb;background:linear-gradient(180deg,rgba(15,23,42,0.9),rgba(15,23,42,0.88));' +
-              'backdrop-filter:blur(8px);border:1px solid rgba(148,163,184,0.25);box-shadow:0 8px 20px rgba(0,0,0,0.45);' +
-              'padding:8px 10px;border-radius:12px;font-size:12px;line-height:1.25;display:flex;align-items:center;gap:8px;">' +
-              '<span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:' + color + '"></span>' +
-              '<span style="font-weight:600;letter-spacing:0.2px;">' + (grade !== null ? (grade.toFixed(1) + '%') : 'Okänd lutning') + '</span>' +
-              '</div>'
-            );
-            if (!walkPopupRef.current) {
-              walkPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 }).setLngLat(lngLat).setHTML(html).addTo(map);
-            } else {
-              walkPopupRef.current.setLngLat(lngLat).setHTML(html);
-            }
-          };
-          map.on('mouseenter', 'route-walk-segments', walkHoverEnterRef.current);
-          map.on('mouseleave', 'route-walk-segments', walkHoverLeaveRef.current);
-          map.on('mousemove', 'route-walk-segments', walkHoverMoveRef.current as any);
-        }
+        // Stäng av ev. SVG-overlay om det skulle finnas kvar
+        try {
+          if (svgHandlersRef.current && svgHandlersRef.current.length && map) {
+            for (const [ev, fn] of svgHandlersRef.current) { try { map.off(ev as any, fn); } catch {} }
+            svgHandlersRef.current = [];
+          }
+          if (svgRef.current) svgRef.current.innerHTML = '';
+        } catch {}
       }
 
       // Sista raka gång-delen (walkFinal) – rendera också prickad
       if (route.partialGeometries?.walkFinal) {
+        // Offset endast om denna del överlappar fordonets slut
+        let walkOffsetFinal = 0;
+        try {
+          if (vehicleGeometryForRender && route.partialGeometries.walkFinal?.coordinates?.length >= 2) {
+            const vehLine = turf.lineString(vehicleGeometryForRender.coordinates as any);
+            const walkLine = turf.lineString(route.partialGeometries.walkFinal.coordinates as any);
+            const vehBuf = turf.buffer(vehLine as any, 3, { units: 'meters' } as any);
+            const overlaps = turf.booleanIntersects(vehBuf as any, walkLine as any);
+            if (overlaps) walkOffsetFinal = 3;
+          }
+        } catch {}
         map.addSource('route-walk-final', {
           type: 'geojson',
           data: {
@@ -1756,7 +1785,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             'line-color': '#3b82f6',
             'line-width': 3,
             'line-opacity': 1.0,
-            'line-dasharray': [0.0001, 5]
+            'line-offset': walkOffsetFinal
           }
         });
       }
@@ -1836,11 +1865,22 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
         if (type === 'layer' && map.getLayer(id)) map.removeLayer(id);
         if (type === 'source' && map.getSource(id)) map.removeSource(id);
       };
-      ['route-walk-dots', 'route-walk-segments', 'route-walk-core', 'route-walk-outline', 'route-walk-steep-overlay', 'route-walk-graded-line', 'route-walk-dash-line', 'route-walk-final-line', 'route-walk-line', 'route-vehicle-line', 'route-vehicle-outline', 'route-outline', 'route-line', 'route-steep-markers']
+      ['route-walk-dots', 'route-walk-segments', 'route-walk-core', 'route-walk-outline', 'route-walk-steep-overlay', 'route-walk-graded-line', 'route-walk-dash-line', 'route-walk-final-line', 'route-walk-line', 'route-walk-open-outline', 'route-walk-open', 'route-walk-overlap-outline', 'route-walk-overlap', 'route-vehicle-line', 'route-vehicle-outline', 'route-outline', 'route-line', 'route-steep-markers']
         .forEach(id => removeIfExists('layer', id));
-      ['route-walk-segments', 'route-walk-core', 'route-walk-steep-overlay', 'route-walk-graded', 'route-walk-dash', 'route-walk-final', 'route-walk', 'route-vehicle', 'route', 'route-steep-markers']
+      ['route-walk-segments', 'route-walk-core', 'route-walk-steep-overlay', 'route-walk-graded', 'route-walk-dash', 'route-walk-final', 'route-walk', 'route-walk-open', 'route-walk-overlap', 'route-vehicle', 'route', 'route-steep-markers']
         .forEach(id => removeIfExists('source', id));
     }
+    // Clear SVG overlay and handlers
+    try {
+      if (svgHandlersRef.current && svgHandlersRef.current.length && mapRef.current) {
+        const map = mapRef.current;
+        for (const [ev, fn] of svgHandlersRef.current) { try { map.off(ev as any, fn); } catch {} }
+        svgHandlersRef.current = [];
+      }
+      if (svgRef.current) {
+        svgRef.current.innerHTML = '';
+      }
+    } catch {}
   };
 
   // Tillbaka från navigation: visa info-panel igen och ta bort rutt från karta
@@ -1935,6 +1975,8 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     <div className="relative w-full h-full">
       {/* Map Container */}
       <div ref={mapContainer} className="w-full h-full" />
+      {/* SVG overlay for custom dashed walking path */}
+      <svg ref={svgRef} className="pointer-events-none absolute inset-0 w-full h-full z-[900]" />
 
       {/* Custom CSS for user location marker */}
       <style jsx global>{`
