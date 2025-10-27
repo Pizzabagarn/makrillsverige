@@ -6,7 +6,7 @@ import { Source, Layer, Popup } from 'react-map-gl/maplibre';
 import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import { useManualPoints } from '../context/ManualPointsContext';
-import { getColorForValue } from '../../lib/colormap-utils';
+import { getColorForValue, getTemperatureColorForValue } from '../../lib/colormap-utils';
 import PopupPreloadManager from '../../lib/popupPreloadManager';
 import { permanentPlaceNameCache } from '../../lib/permanentPlaceNameCache';
 
@@ -430,6 +430,32 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [popupPosition, setPopupPosition] = useState<{x: number, y: number} | null>(null);
+  const [tempRange, setTempRange] = useState<[number, number] | null>(null);
+
+  // Läs in säsongens temperaturintervall från metadata (låst per build-run)
+  useEffect(() => {
+    let cancelled = false;
+    const anyWindow = typeof window !== 'undefined' ? (window as any) : undefined;
+    const cached = anyWindow?.__TEMP_COLOR_RANGE as [number, number] | undefined;
+    if (cached && Array.isArray(cached) && cached.length === 2) {
+      setTempRange([cached[0], cached[1]]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch('/data/temperature-images-mercator/metadata.json');
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          if (data?.color_range && Array.isArray(data.color_range) && data.color_range.length === 2) {
+            const range: [number, number] = [data.color_range[0], data.color_range[1]];
+            setTempRange(range);
+            if (anyWindow) anyWindow.__TEMP_COLOR_RANGE = range;
+          }
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
   
   // 📡 Radar animation för pin
   const radarAnimation = useRadarAnimation(showPopup && pinLocation !== null, pinLocation);
@@ -1209,7 +1235,7 @@ const MapPin: React.FC<MapPinProps> = ({ visible = true }) => {
                       <div className="text-right">
                         <div 
                           className="text-xs xs:text-xs sm:text-sm font-bold text-outlined"
-                          style={{ color: getColorForValue('temperature', pinData.temperature) }}
+                          style={{ color: tempRange ? getTemperatureColorForValue(pinData.temperature, tempRange[0], tempRange[1]) : getColorForValue('temperature', pinData.temperature) }}
                         >
                           {pinData.temperature.toFixed(1)}°C
                         </div>

@@ -226,6 +226,36 @@ export function getDataRange(colormap: ColorMapEntry[]): { min: number; max: num
 }
 
 /**
+ * Temperaturfärg med säsongsintervall: mappa värde till färg givet vmin/vmax
+ * Använder den hårdkodade temperaturpaletten och linjär normalisering som i rendering
+ */
+export function getTemperatureColorForValue(value: number, vmin: number, vmax: number): string {
+  const stops = COLORMAP_DATA.temperature; // 19 steg
+  if (!Number.isFinite(value) || !Number.isFinite(vmin) || !Number.isFinite(vmax) || vmax <= vmin) {
+    return stops[0].color;
+  }
+
+  // Normalisera värde 0..1 relativt säsongens intervall
+  const t = Math.max(0, Math.min(1, (value - vmin) / (vmax - vmin)));
+
+  // Beräkna kolormapens normerade positionsstopp (0..1) utifrån dess egna min/max (6.974..20.980)
+  const cmMin = stops[0].value;
+  const cmMax = stops[stops.length - 1].value;
+  const cmStops = stops.map(s => ({ pos: (s.value - cmMin) / (cmMax - cmMin), color: s.color }));
+
+  // Hitta segment där t ligger
+  for (let i = 0; i < cmStops.length - 1; i++) {
+    const a = cmStops[i];
+    const b = cmStops[i + 1];
+    if (t >= a.pos && t <= b.pos) {
+      // Returnera närmaste stop (enkel, billig approximation; färgerna är täta)
+      return (t - a.pos) <= (b.pos - t) ? a.color : b.color;
+    }
+  }
+  return t <= 0 ? cmStops[0].color : cmStops[cmStops.length - 1].color;
+}
+
+/**
  * Skapa CSS gradient från färgskala
  */
 export function createGradientStyle(colormap: ColorMapEntry[]): { background: string } {

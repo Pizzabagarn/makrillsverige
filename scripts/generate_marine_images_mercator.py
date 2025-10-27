@@ -33,7 +33,6 @@ import math
 import colorcet as cc
 import time
 import re
-import hashlib
 
 # Tysta alla warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -275,6 +274,33 @@ def create_parameter_colormap(parameter):
     print(f"   🎨 {parameter.title()} colormap (LinearSegmented+gamma): {len(colormap_data)} färgsteg ({min_val:.3f} - {max_val:.3f})")
     
     return cmap, min_val, max_val
+
+def get_season_from_iso_timestamp(ts: str) -> str:
+    """Returnera säsong baserat på UTC-timestamp (ISO med Z)"""
+    try:
+        dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+        m = dt.month
+        # Säsonger (svenska havet):
+        # Vinter: Dec–Mar
+        # Vår: Apr–Maj
+        # Sommar: Jun–Sep (inkl. september)
+        # Höst: Oct–Nov
+        if m in (12, 1, 2, 3):
+            return 'winter'
+        if m in (4, 5):
+            return 'spring'
+        if m in (6, 7, 8, 9):
+            return 'summer'
+        return 'fall'
+    except Exception:
+        return 'summer'
+
+SEASONAL_TEMPERATURE_RANGES = {
+    'winter': (0.0, 11.0),   # Dec–Mar
+    'spring': (3.0, 17.0),   # Apr–Maj
+    'summer': (7.0, 25.0),   # Jun–Sep
+    'fall':   (4.0, 17.0),   # Oct–Nov
+}
 
 def create_mackerel_colormap():
     """Skapa ultra-mjuk makrill colormap med förbättrade övergångar"""
@@ -721,61 +747,6 @@ def create_water_mask_grid_mercator(water_polygons, mercator_bbox, grid_resoluti
     print(f"✅ Mercator vattenmask: {water_pixels}/{total_pixels} pixlar ({100*water_pixels/total_pixels:.1f}%)")
     return water_mask
 
-def _safe_mkdirs(path: Path):
-    try:
-        path.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        print(f"⚠️ Kunde inte skapa katalog {path}: {e}")
-
-def _hash_file_sha1(file_path: Path) -> str:
-    """Beräkna sha1-hash för en fil (streamad för att hantera stora filer)."""
-    sha1 = hashlib.sha1()
-    try:
-        with open(file_path, 'rb') as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b''):
-                sha1.update(chunk)
-        return sha1.hexdigest()
-    except Exception as e:
-        print(f"⚠️ Kunde inte hasha {file_path}: {e}")
-        # Fallback till mtime+size om läsning misslyckas
-        try:
-            stat = file_path.stat()
-            return hashlib.sha1(f"{stat.st_mtime_ns}:{stat.st_size}".encode()).hexdigest()
-        except Exception:
-            # Sista fallback: konstant sträng så att cachen inte krockar
-            return "nohash"
-
-def _make_water_mask_cache_key(resolution: int, mercator_bbox: tuple, geojson_hash: str) -> str:
-    x_min, x_max, y_min, y_max = mercator_bbox
-    # Runda bbox för stabila filnamn (Mercator meterprecision är hög, runda till 0.1 km)
-    def r(v):
-        return int(round(v / 100.0))  # 100 meter
-    bbox_part = f"{r(x_min)}_{r(x_max)}_{r(y_min)}_{r(y_max)}"
-    return f"mercator_mask_res{resolution}_{bbox_part}_{geojson_hash[:12]}"
-
-def load_water_mask_grid_from_cache(cache_dir: Path, key: str):
-    npz_path = cache_dir / f"{key}.npz"
-    if not npz_path.exists():
-        return None
-    try:
-        print(f"💾 Läser vattenmask från cache: {npz_path}")
-        data = np.load(npz_path, allow_pickle=False)
-        grid = data['water_mask']
-        return grid
-    except Exception as e:
-        print(f"⚠️ Kunde inte läsa cache {npz_path}: {e}")
-        return None
-
-def save_water_mask_grid_to_cache(cache_dir: Path, key: str, grid: np.ndarray):
-    try:
-        _safe_mkdirs(cache_dir)
-        npz_path = cache_dir / f"{key}.npz"
-        # Spara komprimerat
-        np.savez_compressed(npz_path, water_mask=grid)
-        print(f"✅ Sparade vattenmask till cache: {npz_path}")
-    except Exception as e:
-        print(f"⚠️ Kunde inte spara cache ({cache_dir}): {e}")
-
 def create_edge_enhancement_points_mercator(lons, lats, values, mercator_bbox, wgs84_to_mercator):
     """
     Skapa kantpunkter i Mercator-koordinater med IDENTISK logik som original scriptet
@@ -884,7 +855,8 @@ def improved_traditional_interpolation(xs, ys, values, x_mesh, y_mesh, parameter
 
 def create_interpolated_image_mercator(
     lons, lats, values, water_mask_grid, output_path, timestamp, 
-    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False, quality=85, all_mackerel_data=None
+    wgs84_bbox, mercator_bbox, wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values=False, quality=85, all_mackerel_data=None,
+    temperature_range_override=None
 ):
     """
     Skapa interpolerad PNG-bild i Mercator-projektion
@@ -962,7 +934,17 @@ def create_interpolated_image_mercator(
             print(f"      Pixlar: {len(valid_values)}")
         
         # Skapa bild
-        cmap, vmin, vmax = create_parameter_colormap(parameter)
+        cmap, base_vmin, base_vmax = create_parameter_colormap(parameter)
+
+        # Temperatur: använd batchens säsongsintervall om angivet, annars fallback till timestamp-baserat
+        vmin, vmax = base_vmin, base_vmax
+        if parameter == 'temperature':
+            if temperature_range_override is not None:
+                vmin, vmax = temperature_range_override
+            else:
+                season = get_season_from_iso_timestamp(timestamp)
+                season_vmin, season_vmax = SEASONAL_TEMPERATURE_RANGES.get(season, (7.0, 25.0))
+                vmin, vmax = season_vmin, season_vmax
         print(f"   🎨 Colormap: {vmin:.2f} - {vmax:.2f} {unit}")
         
         # Beräkna aspektförhållande baserat på Mercator-region
@@ -1189,12 +1171,42 @@ def generate_parameter_images_mercator(
     if parameter == 'mackerel' and not skip_values:
         all_mackerel_data = {
             'parameter': 'mackerel_probability',
-            'generated_at': datetime.now().isoformat() + 'Z',
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
             'total_timestamps': len(timestamps),
             'wgs84_bbox': list(wgs84_bbox),
             'timestamps': {}  # Här samlas data för varje timestamp
         }
+
+    # Rensa föråldrade bilder som inte finns i nya timestamps (om vi inte forcerar allt)
+    expected_filenames = set()
+    for ts in timestamps:
+        safe_ts = ts.replace(':', '-').replace('+', 'plus')
+        expected_filenames.add(f"{config['name_en']}_{safe_ts}.webp")
+    if not force:
+        # Standard: flytta föråldrade till arkiv i stället för att ta bort
+        try:
+            archive_obsolete_images(output_dir, expected_filenames, config['output_dir'])
+        except Exception as e:
+            print(f"⚠️ Arkivering misslyckades, försöker ta bort istället: {e}")
+            purge_obsolete_images(output_dir, expected_filenames)
+
+    # Förbered referenstid för datamängden (fetchedAt) för att identifiera gamla filer
+    dataset_fetched_at = None
+    try:
+        fetched_at_str = area_data.get('metadata', {}).get('fetchedAt')
+        if fetched_at_str:
+            dataset_fetched_at = datetime.fromisoformat(fetched_at_str.replace('Z', '+00:00')).timestamp()
+    except Exception as e:
+        print(f"⚠️ Kunde inte tolka fetchedAt från metadata: {e}")
     
+    # Lås säsongsintervall per körning (build-date season) för TEMPERATUR
+    build_generated_at = datetime.utcnow().isoformat() + 'Z'
+    temperature_range_for_run = None
+    if parameter == 'temperature':
+        # Använd säsong vid byggtillfället (inte per-bild) enligt önskemål
+        build_season = get_season_from_iso_timestamp(build_generated_at)
+        temperature_range_for_run = SEASONAL_TEMPERATURE_RANGES.get(build_season, (7.0, 25.0))
+
     for i, timestamp in enumerate(timestamps):
         image_start_time = time.time()
         print(f"\n📸 Mercator {param_name.title()} {i+1}/{len(timestamps)}: {timestamp}")
@@ -1205,9 +1217,17 @@ def generate_parameter_images_mercator(
         output_path = output_dir / f"{config['name_en']}_{safe_timestamp}.webp"
         
         if output_path.exists() and not force:
-            print(f"⏭️ Hoppar över befintlig Mercator-fil")
-            successful_count += 1
-            continue
+            # Hoppa endast över om filen inte är äldre än den nya datamängden
+            try:
+                file_mtime = output_path.stat().st_mtime
+                if dataset_fetched_at is not None and file_mtime < dataset_fetched_at:
+                    print("🔄 Befintlig fil är äldre än fetchedAt → regenererar")
+                else:
+                    print(f"⏭️ Hoppar över befintlig Mercator-fil (redan ny)")
+                    successful_count += 1
+                    continue
+            except Exception as e:
+                print(f"⚠️ Kunde inte läsa filens mtime, regenererar: {e}")
         
         try:
             # Extrahera data med progress reporting
@@ -1221,7 +1241,8 @@ def generate_parameter_images_mercator(
                 success = create_interpolated_image_mercator(
                     lons, lats, values, water_mask_grid,
                     output_path, timestamp, wgs84_bbox, mercator_bbox,
-                    wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values, quality, all_mackerel_data
+                    wgs84_to_mercator, mercator_to_wgs84, parameter, skip_values, quality, all_mackerel_data,
+                    temperature_range_override=temperature_range_for_run
                 )
                 if success:
                     successful_count += 1
@@ -1250,7 +1271,7 @@ def generate_parameter_images_mercator(
     webp_files = list(output_dir.glob('*.webp'))
     metadata = {
         'parameter': parameter,
-        'generated_at': datetime.now().isoformat(),
+        'generated_at': datetime.utcnow().isoformat() + 'Z',
         'resolution': f"{resolution}x{resolution}",  # Använd input-resolution
         'wgs84_bbox': list(wgs84_bbox),
         'mercator_bbox': list(mercator_bbox),
@@ -1271,11 +1292,17 @@ def generate_parameter_images_mercator(
             time_part = filename_timestamp[11:]  # 18-00-00.000Z (ändra till kolon)
             timestamp = date_part + 'T' + time_part.replace('-', ':')
             
+            # Säsongsintervall för temperatur skrivs per bild i value_range
+            season_range = None
+            if parameter == 'temperature':
+                season = get_season_from_iso_timestamp(timestamp)
+                season_range = list(SEASONAL_TEMPERATURE_RANGES.get(season, (7.0, 25.0)))
+
             image_info = {
                 'timestamp': timestamp,
                 'filename': webp_file.name,
                 'data_points': 2692,  # Standard
-                'value_range': [0.0, 1.0],  # Normaliserat
+                'value_range': season_range if season_range else [0.0, 1.0],
                 'mercator_coordinates': [
                     [mercator_bbox[0], mercator_bbox[3]],  # top-left
                     [mercator_bbox[1], mercator_bbox[3]],  # top-right
@@ -1284,6 +1311,15 @@ def generate_parameter_images_mercator(
                 ]
             }
             metadata['images'].append(image_info)
+
+    # Lägg till root color_range för temperatur (för frontenden att läsa)
+    if parameter == 'temperature':
+        # Lås rotens color_range till build-runens säsong (inte per-bild)
+        try:
+            build_season = get_season_from_iso_timestamp(metadata['generated_at'])
+            metadata['color_range'] = list(SEASONAL_TEMPERATURE_RANGES.get(build_season, (7.0, 25.0)))
+        except Exception:
+            metadata['color_range'] = [7.0, 25.0]
     
     # Sortera efter timestamp
     metadata['images'].sort(key=lambda x: x['timestamp'])
@@ -1318,6 +1354,44 @@ def clear_directory(directory):
     print(f"🗑️ Rensade {directory}")
 
 
+def purge_obsolete_images(output_dir, expected_filenames):
+    """Ta bort WebP-bilder som inte längre finns i nya timestamp-setet"""
+    removed_count = 0
+    for file in Path(output_dir).glob('*.webp'):
+        if file.name not in expected_filenames:
+            try:
+                file.unlink()
+                removed_count += 1
+            except Exception as e:
+                print(f"   ⚠️ Kunde inte radera {file.name}: {e}")
+    if removed_count > 0:
+        print(f"🧹 Tog bort {removed_count} föråldrade WebP-bilder som inte ingår i nya prognosen")
+
+
+def archive_obsolete_images(output_dir, expected_filenames, parameter_output_dir):
+    """Flytta WebP-bilder som inte finns i nya timestamp-setet till ett arkiv"""
+    archive_base = Path('public/data/archive') / parameter_output_dir
+    moved_count = 0
+    for file in Path(output_dir).glob('*.webp'):
+        if file.name in expected_filenames:
+            continue
+        # Hämta datum från filnamn
+        try:
+            m = re.search(r'(\d{4}-\d{2}-\d{2})T\d{2}-\d{2}-\d{2}\.000Z', file.name)
+            date_folder = m.group(1) if m else 'unknown-date'
+        except Exception:
+            date_folder = 'unknown-date'
+        dest_dir = archive_base / date_folder
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / file.name
+        try:
+            file.rename(dest_path)
+            moved_count += 1
+        except Exception as e:
+            print(f"   ⚠️ Kunde inte flytta {file.name} till arkiv: {e}")
+    if moved_count > 0:
+        print(f"📦 Arkiverade {moved_count} föråldrade bilder till {archive_base}")
+
 
 
 
@@ -1346,12 +1420,6 @@ def main():
                        help='Skriv över befintliga bilder')
     parser.add_argument('--skip-values', action='store_true',
                        help='Hoppa över makrill-värden JSON-filer för snabbare testning')
-    parser.add_argument('--water-mask-cache-dir', default='public/data/water-mask-cache',
-                       help='Katalog för cache av vattenmask-grid (.npz)')
-    parser.add_argument('--water-mask-grid', default=None,
-                       help='Sökväg till förberäknad vattenmask-grid (.npz). Om satt, används direkt.')
-    parser.add_argument('--disable-water-mask-cache', action='store_true',
-                       help='Inaktivera laddning/sparning av vattenmask-cache')
     
     args = parser.parse_args()
     
@@ -1411,46 +1479,9 @@ def main():
     # Förbered cache-strukturer
     print("\n⚡ Förbereder cache-strukturer...")
     water_point_cache = create_water_point_cache(area_data, water_polygons)
-
-    # Vattenmask-grid: försök ladda från explicit fil, annars cache-dir, annars beräkna och spara
-    water_mask_grid = None
-
-    # 1) Explicit gridfil given
-    if args.water_mask_grid:
-        explicit_path = Path(args.water_mask_grid)
-        if explicit_path.exists():
-            try:
-                print(f"💾 Läser vattenmask från fil: {explicit_path}")
-                data = np.load(explicit_path, allow_pickle=False)
-                water_mask_grid = data['water_mask']
-            except Exception as e:
-                print(f"⚠️ Kunde inte läsa given vattenmask-grid ({explicit_path}): {e}")
-        else:
-            print(f"⚠️ Angiven vattenmask-grid finns inte: {explicit_path}")
-
-    # 2) Cache-dir
-    if water_mask_grid is None and not args.disable_water_mask_cache:
-        cache_dir = Path(args.water_mask_cache_dir)
-        geojson_hash = _hash_file_sha1(Path(args.water_mask))
-        cache_key = _make_water_mask_cache_key(args.resolution, mercator_bbox, geojson_hash)
-        cached = load_water_mask_grid_from_cache(cache_dir, cache_key)
-        if cached is not None:
-            if cached.shape == (args.resolution, args.resolution):
-                water_mask_grid = cached
-            else:
-                print(f"⚠️ Cache hittad men upplösning matchar inte: {cached.shape} != {(args.resolution, args.resolution)}")
-
-    # 3) Beräkna om behövs
-    if water_mask_grid is None:
-        water_mask_grid = create_water_mask_grid_mercator(
-            water_polygons, mercator_bbox, args.resolution, mercator_to_wgs84
-        )
-        # Spara till cache om aktiverat
-        if not args.disable_water_mask_cache:
-            cache_dir = Path(args.water_mask_cache_dir)
-            geojson_hash = _hash_file_sha1(Path(args.water_mask))
-            cache_key = _make_water_mask_cache_key(args.resolution, mercator_bbox, geojson_hash)
-            save_water_mask_grid_to_cache(cache_dir, cache_key, water_mask_grid)
+    water_mask_grid = create_water_mask_grid_mercator(
+        water_polygons, mercator_bbox, args.resolution, mercator_to_wgs84
+    )
     
     # Frigör minne från water_polygons nu när vi har water_mask_grid
     # (Frigörs efter bildgenerering)

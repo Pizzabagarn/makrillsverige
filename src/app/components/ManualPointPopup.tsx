@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Popup } from 'react-map-gl/maplibre';
 import { Target, X, Plus, Thermometer, Droplets, Waves } from 'lucide-react';
 import { useAreaParameters } from '../context/AreaParametersContext';
 import { useTimeSlider } from '../context/TimeSliderContext';
 import PopupPreloadManager from '../../lib/popupPreloadManager';
+import { getTemperatureColorForValue } from '../../lib/colormap-utils';
 
 interface ManualPointPopupProps {
   longitude: number;
@@ -119,6 +120,32 @@ const ManualPointPopup: React.FC<ManualPointPopupProps> = ({
   const { selectedHour, baseTime } = useTimeSlider();
   const [parameterData, setParameterData] = useState<ParameterData>({ hasData: false });
   const [isLoading, setIsLoading] = useState(true);
+  const [tempRange, setTempRange] = useState<[number, number] | null>(null);
+
+  // Ladda säsongens färgskala för temperatur från metadata (låst per batch)
+  useEffect(() => {
+    let cancelled = false;
+    const anyWindow = typeof window !== 'undefined' ? (window as any) : {};
+    const cached = anyWindow.__TEMP_COLOR_RANGE as [number, number] | undefined;
+    if (cached && Array.isArray(cached) && cached.length === 2) {
+      setTempRange([cached[0], cached[1]]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch('/data/temperature-images-mercator/metadata.json');
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          if (data?.color_range && Array.isArray(data.color_range) && data.color_range.length === 2) {
+            const range: [number, number] = [data.color_range[0], data.color_range[1]];
+            setTempRange(range);
+            if (anyWindow) anyWindow.__TEMP_COLOR_RANGE = range;
+          }
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const checkParameters = async () => {
@@ -202,6 +229,12 @@ const ManualPointPopup: React.FC<ManualPointPopupProps> = ({
     checkParameters();
   }, [areaData, latitude, longitude, selectedHour, baseTime]);
 
+  const tempColor = useMemo(() => {
+    const t = parameterData.temperature;
+    if (t == null || !tempRange) return undefined;
+    return getTemperatureColorForValue(t, tempRange[0], tempRange[1]);
+  }, [parameterData.temperature, tempRange]);
+
   const handleConfirm = () => {
     try {
       if (typeof latitude !== 'number' || typeof longitude !== 'number' || isNaN(latitude) || isNaN(longitude)) {
@@ -283,7 +316,15 @@ const ManualPointPopup: React.FC<ManualPointPopupProps> = ({
                 <span className="text-orange-200">Temperatur:</span>
                 <span className="text-orange-100">
                   {parameterData.temperature != null 
-                    ? `${parameterData.temperature.toFixed(1)}°C` 
+                    ? (<>
+                        {tempColor && (
+                          <span
+                            className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle"
+                            style={{ backgroundColor: tempColor }}
+                          />
+                        )}
+                        {parameterData.temperature.toFixed(1)}°C
+                      </>) 
                     : 'Ingen data'}
                 </span>
               </div>
