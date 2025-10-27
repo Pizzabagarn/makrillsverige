@@ -41,12 +41,13 @@ interface WaterBodyInfoPanelProps {
   // Navigation integration
   route?: Route | null;
   routeLoading?: boolean;
+  navigationStatus?: string;
   onTransportChange?: (mode: TransportMode) => void;
   currentMode?: TransportMode;
   onBackFromNavigation?: () => void;
 }
 
-function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate, layoutType, route, routeLoading, onTransportChange, currentMode, onBackFromNavigation }: WaterBodyInfoPanelProps) {
+function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate, layoutType, route, routeLoading, navigationStatus, onTransportChange, currentMode, onBackFromNavigation }: WaterBodyInfoPanelProps) {
   if (!waterBody) return null;
 
   const countryNames = {
@@ -126,7 +127,7 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
               {routeLoading && (
                 <div className="flex items-center justify-center py-2">
                   <div className="animate-spin rounded-full h-3 w-3 border border-cyan-400 border-t-transparent"></div>
-                  <span className="ml-2 text-xs text-slate-300">Beräknar rutt...</span>
+                  <span className="ml-2 text-xs text-slate-300">{navigationStatus || 'Beräknar rutt...'}</span>
                 </div>
               )}
               {route && !routeLoading && (
@@ -334,12 +335,12 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
         {/* Navigation mode (desktop) */}
         {navActive ? (
           <div className="space-y-3">
-            {routeLoading && (
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-                <span className="ml-3 text-sm text-slate-300">Beräknar rutt...</span>
-              </div>
-            )}
+          {routeLoading && (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+              <span className="ml-3 text-sm text-slate-300">{navigationStatus || 'Beräknar rutt...'}</span>
+            </div>
+          )}
               {route && !routeLoading && (
                 <>
                   <div className="text-sm text-slate-300">
@@ -548,6 +549,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const [currentRoute, setCurrentRoute] = useState<Route | null>(null);
   const [navigationMode, setNavigationMode] = useState<TransportMode>('driving-car');
   const [routeLoading, setRouteLoading] = useState(false);
+  const [navigationStatus, setNavigationStatus] = useState<string>('');
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
 
   // Layout detection effect - use prop if provided
@@ -1341,20 +1343,48 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
   const handleNavigate = async () => {
     if (!selectedWaterBody || !userPosition || !mapRef.current) {
       console.error('Saknar användarposition eller destination');
+      alert('Din position kunde inte hittas. Tillåt platsdelning för att använda navigation.');
       return;
     }
 
     setRouteLoading(true);
     setCurrentRoute(null);
     
+    // Professionella meddelanden som roterar under beräkningen
+    const statusMessages = navigationMode === 'foot-walking' 
+      ? [
+          'Söker efter gångvägar...',
+          'Analyserar stigar och vägar...',
+          'Beräknar höjdprofil...',
+          'Optimerar ruttval...'
+        ]
+      : [
+          'Söker efter tillgängliga vägar...',
+          'Planerar körväg...',
+          'Kontrollerar gångsträcka till vattnet...',
+          'Optimerar total restid...',
+          'Beräknar höjdskillnader...'
+        ];
+    
+    let statusIndex = 0;
+    setNavigationStatus(statusMessages[0]);
+    
+    // Rotera meddelanden var 2:e sekund
+    const statusInterval = setInterval(() => {
+      statusIndex = (statusIndex + 1) % statusMessages.length;
+      setNavigationStatus(statusMessages[statusIndex]);
+    }, 2000);
+    
     try {
       // Hitta närmaste strandpunkt (inte centrum)
       const shorePoint = findNearestShorePoint(selectedWaterBody, userPosition);
-      // Silenced noisy log
 
       const route = await getRoute(userPosition, shorePoint, navigationMode);
       
+      clearInterval(statusInterval);
+      
       if (route) {
+        setNavigationStatus('Rutt beräknad!');
         setCurrentRoute(route);
         
         // Rita rutten på kartan
@@ -1375,11 +1405,25 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
             } catch {}
           }
         }
+      } else {
+        // Ingen rutt hittades
+        setNavigationStatus('');
+        alert('Ingen väg hittades till ' + selectedWaterBody.name + '. Området kan vara oåtkomligt eller för avlägset från vägnätet.');
       }
-    } catch (error) {
+    } catch (error: any) {
+      clearInterval(statusInterval);
       console.error('Fel vid routing:', error);
+      const errorMessage = error?.message || 'Ett oväntat fel uppstod';
+      setNavigationStatus('');
+      if (errorMessage.includes('404')) {
+        alert('Ingen väg hittades till ' + selectedWaterBody.name + '. Området kan vara oåtkomligt eller för avlägset från vägnätet.');
+      } else {
+        alert('Kunde inte beräkna rutt: ' + errorMessage);
+      }
     } finally {
+      clearInterval(statusInterval);
       setRouteLoading(false);
+      setTimeout(() => setNavigationStatus(''), 2000); // Rensa meddelande efter 2s
     }
   };
 
@@ -1704,12 +1748,42 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
     if (selectedWaterBody && userPosition) {
       setRouteLoading(true);
       
+      // Professionella meddelanden för omberäkning
+      const statusMessages = mode === 'foot-walking' 
+        ? [
+            'Beräknar gångrutt...',
+            'Analyserar stigar...',
+            'Beräknar höjdprofil...'
+          ]
+        : mode === 'cycling-regular'
+        ? [
+            'Planerar cykelrutt...',
+            'Söker cykelvägar...',
+            'Optimerar ruttval...'
+          ]
+        : [
+            'Planerar bilrutt...',
+            'Söker körvägar...',
+            'Kontrollerar tillgänglighet...'
+          ];
+      
+      let statusIndex = 0;
+      setNavigationStatus(statusMessages[0]);
+      
+      const statusInterval = setInterval(() => {
+        statusIndex = (statusIndex + 1) % statusMessages.length;
+        setNavigationStatus(statusMessages[statusIndex]);
+      }, 2000);
+      
       try {
         // Hitta närmaste strandpunkt
         const shorePoint = findNearestShorePoint(selectedWaterBody, userPosition);
         const route = await getRoute(userPosition, shorePoint, mode);
         
+        clearInterval(statusInterval);
+        
         if (route) {
+          setNavigationStatus('Rutt uppdaterad!');
           setCurrentRoute(route);
           drawRouteOnMap(route);
           
@@ -1730,9 +1804,13 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           }
         }
       } catch (error) {
+        clearInterval(statusInterval);
         console.error('Fel vid byte av transporttyp:', error);
+        setNavigationStatus('');
       } finally {
+        clearInterval(statusInterval);
         setRouteLoading(false);
+        setTimeout(() => setNavigationStatus(''), 2000);
       }
     }
   };
@@ -1842,6 +1920,7 @@ const ScandinavianWaterMapGL = forwardRef<MapRef, Props>(({ searchTerm, onWaterB
           layoutType={layoutType}
           route={currentRoute}
           routeLoading={routeLoading}
+          navigationStatus={navigationStatus}
           onTransportChange={handleTransportChange}
           currentMode={navigationMode}
           onBackFromNavigation={handleBackFromNavigation}

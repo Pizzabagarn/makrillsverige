@@ -81,7 +81,8 @@ export async function getRoute(
     if (!response.ok) {
       let errorDetails;
       try {
-        errorDetails = await response.json();
+        const errorJson = await response.json();
+        errorDetails = errorJson.error || errorJson;
       } catch {
         errorDetails = await response.text();
       }
@@ -90,20 +91,26 @@ export async function getRoute(
         statusText: response.statusText,
         details: errorDetails
       });
-      return null;
+      
+      // Kasta fel med användarvänligt meddelande
+      if (response.status === 404) {
+        throw new Error('Ingen väg hittades. Området kan vara oåtkomligt.');
+      }
+      throw new Error(typeof errorDetails === 'string' ? errorDetails : 'Kunde inte beräkna rutt');
     }
 
     const data: RouteResponse = await response.json();
     
     if (!data.routes || data.routes.length === 0) {
       console.error('Ingen rutt hittades');
-      return null;
+      throw new Error('Ingen rutt hittades');
     }
 
     return data.routes[0];
   } catch (error) {
     console.error('Fel vid hämtning av rutt:', error);
-    return null;
+    // Re-throw så att frontend kan fånga det
+    throw error;
   }
 }
 
