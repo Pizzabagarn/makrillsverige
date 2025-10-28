@@ -55,7 +55,12 @@
     "investigate-db": "tsx scripts/investigate_database_limits.ts",
     "cursor-all-waterways": "tsx scripts/cursor_all_waterways_processor.ts",
     "fast-cached-waterways": "tsx scripts/fast_cached_waterways_processor.ts",
-    "sql-unified-waterways": "echo 'Kör SQL-scriptet manuellt i Supabase SQL Editor: sql/populate_unified_waterways_fast.sql'"
+    "sql-unified-waterways": "echo 'Kör SQL-scriptet manuellt i Supabase SQL Editor: sql/populate_unified_waterways_fast.sql'",
+    "svar:download": "ts-node scripts/svar/download_svar_maps.ts --input scripts/svar/water_svar_ids.sample.json --allow-rest",
+    "svar:download:extract": "ts-node scripts/svar/download_svar_maps.ts --input scripts/svar/water_svar_ids.sample.json --allow-rest --extract",
+    "svar:index": "ts-node scripts/svar/build_svar_index.ts",
+    "svar:collect": "ts-node scripts/svar/collect_svar_ids.ts --out scripts/svar/all_svar_ids.json --max 200000",
+    "svar:pipeline": "npm run svar:collect && ts-node scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract && npm run svar:index"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
@@ -103,6 +108,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
+    "playwright": "^1.56.1",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
