@@ -4,10 +4,11 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 're
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
-import { X, ExternalLink, Thermometer, Navigation, Car, Bike, User, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ExternalLink, Thermometer, Navigation, Car, Bike, User, ChevronLeft, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { WaterBodyData } from '@/lib/waterBodyDataFetcher';
 import { getLayoutType, type LayoutType } from '@/lib/layoutUtils';
 import { getSwedishWaterTypeName, formatWaterType } from '@/lib/waterTypeTranslation';
+import WaterDetailModal from './WaterDetailModal';
 import {
   SMHIWaterBody,
   SMHIWaterBodySearchResult,
@@ -48,6 +49,10 @@ interface WaterBodyInfoPanelProps {
 }
 
 function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate, layoutType, route, routeLoading, navigationStatus, onTransportChange, currentMode, onBackFromNavigation }: WaterBodyInfoPanelProps) {
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  // FIX: Hooks must not be conditional. Declare mobile steps state unconditionally.
+  const [showMobileSteps, setShowMobileSteps] = useState(false);
+  
   if (!waterBody) return null;
 
   const countryNames = {
@@ -69,7 +74,6 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
   const allSteps = route?.segments?.flatMap(seg => seg.steps || []) || [];
   
   if (isMobile) {
-  const [showMobileSteps, setShowMobileSteps] = useState(false);
   return (
       <div 
         className={`absolute ${layoutType === 'mobileLandscape' ? 'top-16 right-1' : 'top-20 right-1'} w-48 sm:w-56 bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl rounded-lg border border-slate-600/50 shadow-2xl z-[1000] flex flex-col`}
@@ -93,14 +97,6 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
                 title="Tillbaka"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-            ) : onNavigate ? (
-              <button
-                onClick={onNavigate}
-                className="p-1 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 transition-all duration-200"
-                title="Navigera"
-              >
-                <Navigation className="w-3.5 h-3.5" />
               </button>
             ) : null}
             <button
@@ -191,94 +187,36 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             </div>
           )}
 
-          {/* Water Quality Data (VISS) - Mobile optimized but same structure */}
-          {waterBody.country === 'SE' && waterData?.waterQuality && (() => {
-            const hasOxygenData = waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-';
-            const hasNutrientsData = waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-';
-            const hasTransparencyData = waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-';
-            const hasAcidityData = waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-';
-            const hasEcologicalData = waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && waterData.waterQuality.ecological_status !== '-';
-            
-            const hasAnyData = hasOxygenData || hasNutrientsData || hasTransparencyData || hasAcidityData || hasEcologicalData;
-            
-            return hasAnyData;
-          })() && (
-            <div>
-              {/* Ta bort titel på mobil för att spara plats och visa exakt 2 kort */}
-              <div className="grid grid-cols-1 gap-1">
-                {/* Oxygen */}
-                {waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-' && (
-                  <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded p-1 sm:p-1.5">
-                    <div className="text-cyan-300 text-xs font-medium mb-0.5">Syrgas</div>
-                    <div className="text-white font-bold text-xs">
-                      {waterData.waterQuality.oxygen.status}
-                    </div>
-                  </div>
-                )}
+          {/* Primary actions */}
+          <div className="flex space-x-1">
+            <button
+              onClick={() => setShowDetailModal(true)}
+              className="flex-1 py-1.5 px-2 rounded bg-slate-700/70 text-white text-xs font-medium hover:bg-slate-600 transition-all flex items-center justify-center"
+            >
+              Mer info
+            </button>
+            {onNavigate && (
+              <button
+                onClick={onNavigate}
+                className="flex-1 py-1.5 px-2 rounded bg-slate-700/70 text-white text-xs font-medium hover:bg-slate-600 transition-all flex items-center justify-center"
+              >
+                <Navigation className="w-3.5 h-3.5 mr-1" /> Navigera
+              </button>
+            )}
+          </div>
 
-                {/* Nutrients */}
-                {waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-' && (
-                  <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded p-1 sm:p-1.5">
-                    <div className="text-green-300 text-xs font-medium mb-0.5">Övergödning</div>
-                    <div className="text-white font-bold text-xs">
-                      {waterData.waterQuality.nutrients.status}
-                    </div>
-                    {waterData.waterQuality.nutrients.chlorophyll && waterData.waterQuality.nutrients.chlorophyll !== 'Okänt' && (
-                      <div className="text-green-400 text-xs mt-0.5">Alger: {waterData.waterQuality.nutrients.chlorophyll}</div>
-                    )}
-                  </div>
-                )}
-
-                {/* Transparency */}
-                {waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-' && (
-                  <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded p-1 sm:p-1.5">
-                    <div className="text-blue-300 text-xs font-medium mb-0.5">Ljus</div>
-                    <div className="text-white font-bold text-xs">
-                      {waterData.waterQuality.transparency.light_conditions}
-                    </div>
-                    {waterData.waterQuality.transparency.visibility && waterData.waterQuality.transparency.visibility !== 'Okänt' && (
-                      <div className="text-blue-400 text-xs mt-0.5">Sikt: {waterData.waterQuality.transparency.visibility}</div>
-                    )}
-                  </div>
-                )}
-
-                {/* Acidity */}
-                {waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-' && (
-                  <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/30 rounded p-1 sm:p-1.5">
-                    <div className="text-yellow-300 text-xs font-medium mb-0.5">pH</div>
-                    <div className="text-white font-bold text-xs">
-                      {waterData.waterQuality.acidity.ph_status}
-                    </div>
-                  </div>
-                )}
-
-                {/* Ecological Status */}
-                {waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && (
-                  <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700/30 rounded p-1 sm:p-1.5">
-                    <div className="text-purple-300 text-xs font-medium mb-0.5">Ekologi</div>
-                    <div className="text-white font-bold text-xs">
-                      {waterData.waterQuality.ecological_status}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Non-Swedish waters message */}
-          {waterBody.country !== 'SE' && (
-            <div className="bg-blue-900/20 border border-blue-800/50 p-1 sm:p-1.5 rounded">
-              <p className="text-blue-300 text-xs leading-tight">
-                {waterBody.country === 'NO' && '🇳🇴 Norge.'}
-                {waterBody.country === 'DK' && '🇩🇰 Danmark.'}
-                {waterBody.country === 'FI' && '🇫🇮 Finland.'}
-                {' '}VISS endast för Sverige.
-              </p>
-            </div>
-          )}
+          
             </>
           )}
         </div>
+        {/* Detail Modal (mobile) */}
+        {showDetailModal && (
+          <WaterDetailModal 
+            waterBody={waterBody} 
+            waterData={waterData}
+            onClose={() => setShowDetailModal(false)} 
+          />
+        )}
       </div>
     );
   }
@@ -303,15 +241,6 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="text-sm font-medium">Tillbaka</span>
-            </button>
-          ) : onNavigate ? (
-            <button
-              onClick={onNavigate}
-              className="px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-all duration-200 flex items-center space-x-2 border border-slate-600/30 hover:border-slate-500/50"
-              title="Navigera"
-            >
-              <Navigation className="w-4 h-4" />
-              <span className="text-sm font-medium">Navigera</span>
             </button>
           ) : null}
           <button
@@ -398,117 +327,49 @@ function WaterBodyInfoPanel({ waterBody, waterData, loading, onClose, onNavigate
             )}
           </div>
         ) : (
-          <>
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-            <span className="ml-3 text-sm text-slate-300">Hämtar vattendata...</span>
-          </div>
-        )}
-
-        {/* Water Quality Data (VISS) - Only show if actual data exists */}
-        {waterBody.country === 'SE' && waterData?.waterQuality && (() => {
-          // Check if there's any real data (not just "Okänt" or "-")
-          const hasOxygenData = waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-';
-          const hasNutrientsData = waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-';
-          const hasTransparencyData = waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-';
-          const hasAcidityData = waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-';
-          const hasEcologicalData = waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && waterData.waterQuality.ecological_status !== '-';
-          
-          const hasAnyData = hasOxygenData || hasNutrientsData || hasTransparencyData || hasAcidityData || hasEcologicalData;
-          
-          return hasAnyData;
-        })() && (
-          <div>
-            <h4 className="font-semibold text-white mb-4 flex items-center text-lg">
-              🧪 Vattenkvalitet (VISS)
-              <span className="ml-2 text-xs text-slate-400 font-normal">2017-2021</span>
-            </h4>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-              {/* Oxygen - only if real data */}
-              {waterData.waterQuality.oxygen?.status && waterData.waterQuality.oxygen.status !== 'Okänt' && waterData.waterQuality.oxygen.status !== '-' && (
-                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/20 border border-cyan-700/30 rounded-xl p-3 lg:p-4">
-                  <div className="text-cyan-300 text-sm font-medium mb-1">Syrgasförhållanden</div>
-                  <div className="text-white font-bold text-lg">
-                    {waterData.waterQuality.oxygen.status}
-                  </div>
-
-                </div>
-              )}
-
-              {/* Nutrients - only if real data */}
-              {waterData.waterQuality.nutrients?.status && waterData.waterQuality.nutrients.status !== 'Okänt' && waterData.waterQuality.nutrients.status !== '-' && (
-                <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700/30 rounded-xl p-3 lg:p-4">
-                  <div className="text-green-300 text-sm font-medium mb-1">Övergödning</div>
-                  <div className="text-white font-bold text-lg">
-                    {waterData.waterQuality.nutrients.status}
-                  </div>
-                  {waterData.waterQuality.nutrients.chlorophyll && waterData.waterQuality.nutrients.chlorophyll !== 'Okänt' && (
-                    <div className="text-green-400 text-xs">Algblomning: {waterData.waterQuality.nutrients.chlorophyll}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Transparency - only if real data */}
-              {waterData.waterQuality.transparency?.light_conditions && waterData.waterQuality.transparency.light_conditions !== 'Okänt' && waterData.waterQuality.transparency.light_conditions !== '-' && (
-                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700/30 rounded-xl p-3 lg:p-4">
-                  <div className="text-blue-300 text-sm font-medium mb-1">Ljusförhållanden</div>
-                  <div className="text-white font-bold text-lg">
-                    {waterData.waterQuality.transparency.light_conditions}
-                  </div>
-                  {waterData.waterQuality.transparency.visibility && waterData.waterQuality.transparency.visibility !== 'Okänt' && (
-                    <div className="text-blue-400 text-xs">Sikt: {waterData.waterQuality.transparency.visibility}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Acidity - only if real data */}
-              {waterData.waterQuality.acidity?.ph_status && waterData.waterQuality.acidity.ph_status !== 'Okänt' && waterData.waterQuality.acidity.ph_status !== '-' && (
-                <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/30 rounded-xl p-3 lg:p-4">
-                  <div className="text-yellow-300 text-sm font-medium mb-1">pH-nivå</div>
-                  <div className="text-white font-bold text-lg">
-                    {waterData.waterQuality.acidity.ph_status}
-                  </div>
-
-                </div>
-              )}
-
-              {/* Ecological Status - only if real data */}
-              {waterData.waterQuality.ecological_status && waterData.waterQuality.ecological_status !== 'Okänt' && (
-                <div className="col-span-1 sm:col-span-2 bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700/30 rounded-xl p-3 lg:p-4">
-                  <div className="text-purple-300 text-sm font-medium mb-1">Ekologisk status</div>
-                  <div className="text-white font-bold text-lg">
-                    {waterData.waterQuality.ecological_status}
-                  </div>
-                </div>
+          <div className="py-4">
+            <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setShowDetailModal(true)}
+              className="py-2 px-3 rounded-lg bg-slate-700/60 hover:bg-slate-600 text-white font-medium flex items-center justify-center"
+              title="Mer information"
+            >
+              Mer information
+            </button>
+              {onNavigate && (
+                <button
+                  onClick={onNavigate}
+                  className="py-2 px-3 rounded-lg bg-slate-700/60 hover:bg-slate-600 text-white font-medium flex items-center justify-center"
+                  title="Navigera"
+                >
+                  <Navigation className="w-4 h-4 mr-2" />
+                  Navigera
+                </button>
               )}
             </div>
           </div>
         )}
 
+        
 
 
 
 
 
 
-        {/* Non-Swedish waters message */}
-        {waterBody.country !== 'SE' && (
-          <div className="bg-blue-900/20 border border-blue-800/50 p-3 rounded-lg">
-            <p className="text-blue-300 text-sm">
-              {waterBody.country === 'NO' && '🇳🇴 Norska vattendrag.'}
-              {waterBody.country === 'DK' && '🇩🇰 Danska vattendrag.'}
-              {waterBody.country === 'FI' && '🇫🇮 Finska vattendrag.'}
-              {' '}VISS-data finns endast för svenska vatten.
-            </p>
-          </div>
-        )}
-        </>
-        )}
+
+        
 
       </div>
+      
+      {/* Detail Modal */}
+      {showDetailModal && (
+        <WaterDetailModal 
+          waterBody={waterBody} 
+          waterData={waterData}
+          onClose={() => setShowDetailModal(false)} 
+        />
+      )}
     </div>
   );
 }

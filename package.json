@@ -56,11 +56,13 @@
     "cursor-all-waterways": "tsx scripts/cursor_all_waterways_processor.ts",
     "fast-cached-waterways": "tsx scripts/fast_cached_waterways_processor.ts",
     "sql-unified-waterways": "echo 'Kör SQL-scriptet manuellt i Supabase SQL Editor: sql/populate_unified_waterways_fast.sql'",
-    "svar:download": "ts-node scripts/svar/download_svar_maps.ts --input scripts/svar/water_svar_ids.sample.json --allow-rest",
-    "svar:download:extract": "ts-node scripts/svar/download_svar_maps.ts --input scripts/svar/water_svar_ids.sample.json --allow-rest --extract",
-    "svar:index": "ts-node scripts/svar/build_svar_index.ts",
-    "svar:collect": "ts-node scripts/svar/collect_svar_ids.ts --out scripts/svar/all_svar_ids.json --max 200000",
-    "svar:pipeline": "npm run svar:collect && ts-node scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract && npm run svar:index"
+    "svar:download": "tsx scripts/svar/download_svar_maps.ts --input scripts/svar/water_svar_ids.sample.json --allow-rest",
+    "svar:download:extract": "tsx scripts/svar/download_svar_maps.ts --input scripts/svar/water_svar_ids.sample.json --allow-rest --extract",
+    "svar:index": "tsx scripts/svar/build_svar_index.ts",
+    "svar:collect": "tsx scripts/svar/collect_svar_ids.ts --out scripts/svar/all_svar_ids.json --max 200000",
+    "svar:collect:wfs": "tsx scripts/svar/collect_svar_ids_wfs.ts --out scripts/svar/all_svar_ids.json",
+    "svar:pipeline": "npm run svar:collect:wfs && tsx scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract && npm run svar:index",
+    "svar:pipeline:fast": "npm run svar:collect:wfs && tsx scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract --concurrency 4 && npm run svar:index"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
@@ -96,7 +98,8 @@
     "react-apexcharts": "^1.7.0",
     "react-circular-input": "^0.2.4",
     "react-dom": "^19.0.0",
-    "react-map-gl": "^8.0.4"
+    "react-map-gl": "^8.0.4",
+    "zip-lib": "^1.1.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

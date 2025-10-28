@@ -65,3 +65,4 @@ public/data/svar/zips/
 - Cite the source in your UI: "Källa: SMHI/Havs- och vattenmyndigheten (SVAR)".
 
 
+

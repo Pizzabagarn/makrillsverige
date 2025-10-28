@@ -104,9 +104,10 @@ async function readInputList(filePath: string): Promise<WaterItem[]> {
     if (typeof x === 'string') {
       return { waterId: String(x), svarId: String(x) };
     }
-    const svarId = x.svarId ?? x.id ?? x.SVAR_ID ?? x.svarid;
+    // Support both old format and WFS format
+    const svarId = x.svarId ?? x.sjoid ?? x.id ?? x.SVAR_ID ?? x.SJOID ?? x.svarid;
     const waterId = x.waterId ?? x.name ?? x.WATER_ID ?? svarId;
-    if (!svarId) throw new Error('Each item must include svarId or be a string svarId');
+    if (!svarId) throw new Error('Each item must include svarId or sjoid');
     return { waterId: String(waterId), svarId: String(svarId) };
   });
 }
