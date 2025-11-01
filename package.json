@@ -62,7 +62,11 @@
     "svar:collect": "tsx scripts/svar/collect_svar_ids.ts --out scripts/svar/all_svar_ids.json --max 200000",
     "svar:collect:wfs": "tsx scripts/svar/collect_svar_ids_wfs.ts --out scripts/svar/all_svar_ids.json",
     "svar:pipeline": "npm run svar:collect:wfs && tsx scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract && npm run svar:index",
-    "svar:pipeline:fast": "npm run svar:collect:wfs && tsx scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract --concurrency 4 && npm run svar:index"
+    "svar:pipeline:fast": "npm run svar:collect:wfs && tsx scripts/svar/download_svar_maps.ts --input scripts/svar/all_svar_ids.json --allow-rest --extract --concurrency 4 && npm run svar:index",
+    "svar:normalize": "tsx scripts/svar/normalize_maps.ts",
+    "svar:upload-tiles": "tsx scripts/svar/upload_tiles_to_supabase.ts",
+    "svar:move-tiles-out": "tsx scripts/svar/move_tiles_out.ts",
+    "svar:repair-remote-dzi": "tsx scripts/svar/repair_remote_dzi.ts --bucket=Charts --prefix=svar"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
@@ -83,9 +87,11 @@
     "cheerio": "^1.1.2",
     "chroma-js": "^3.1.2",
     "dotenv": "^16.6.1",
+    "geotiff": "^2.1.4-beta.0",
     "grib2-simple": "^1.1.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.525.0",
+    "lzw-tiff-decoder": "^0.1.1",
     "maplibre-gl": "^5.6.1",
     "netcdfjs": "^3.0.0",
     "next": "15.3.3",
@@ -93,12 +99,14 @@
     "p-limit": "^6.2.0",
     "pako": "^2.1.0",
     "proj4": "^2.19.10",
+    "sharp": "^0.33.5",
     "rbush": "^4.0.1",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
     "react-circular-input": "^0.2.4",
     "react-dom": "^19.0.0",
     "react-map-gl": "^8.0.4",
+    "openseadragon": "^4.1.1",
     "zip-lib": "^1.1.2"
   },
   "devDependencies": {
@@ -115,6 +123,7 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@types/openseadragon": "^4.0.9"
   }
 }

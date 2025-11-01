@@ -1,0 +1,6 @@
+Found 4303 .dzi manifests
+[1/4303] svar/zips/Abborrag_l/638325-138979-kartor/web/tiles-3-5482_Aborragöl_638325-138979.dzi ... {
+  statusCode: '400',
+  error: 'InvalidKey',
+  message: 'Invalid key: svar/zips/Abborrag_l/638325-138979-kartor/web/tiles-3-5482_Aborragöl_638325-138979.dzi'
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { X, MapPin, Droplets, Wind, Thermometer, Loader2, ChevronDown, ChevronUp, Download, ExternalLink, Calendar, Navigation as NavIcon, Eye, Compass, Sunrise, Sunset, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import maplibregl from 'maplibre-gl';
@@ -20,9 +20,16 @@ interface WeatherData {
 
 interface SvarMap {
   name: string;
-  path: string;
+  path: string; // best display path (preview if available)
   area?: string;
   type: 'tif' | 'jpg' | 'png' | 'pdf';
+  originalPath?: string; // original file for download
+  previewPath?: string;  // normalized preview if available
+  tilesUrl?: string;     // future: xyz template if tiles are published
+  // deep zoom (DZI) for lossless zoom
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  dziUrl?: string;
 }
 
 interface SvarMapResponse {
@@ -116,7 +123,8 @@ export default function WaterDetailModal({ waterBody, onClose, waterData }: Wate
             if (mapsResponse.ok) {
               const mapsData: SvarMapResponse = await mapsResponse.json();
               if (mapsData.maps && mapsData.maps.length > 0) {
-                setMaps(mapsData.maps);
+                setMaps(mapsData.maps as any);
+                setSelectedMapIndex(0); // API returns newest first
               } else {
                 setMaps([]);
               }
@@ -648,6 +656,360 @@ export default function WaterDetailModal({ waterBody, onClose, waterData }: Wate
 
   if (!mounted) return null;
 
+  // Inline, zoomable map viewer (supports JPG/PNG/PDF/TIFF)
+  const SvarInlineViewer = ({ map }: { map: SvarMap }) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const imgRef = useRef<HTMLImageElement | null>(null);
+    const [scale, setScale] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const contentSize = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+    const dragging = useRef(false as boolean);
+    const last = useRef({ x: 0, y: 0 });
+    const pinch = useRef<{ active: boolean; dist: number; mid: { x: number; y: number } }>({ active: false, dist: 0, mid: { x: 0, y: 0 } });
+    const [tiffFailed, setTiffFailed] = useState(false);
+    const osdRef = useRef<any>(null);
+
+    const slugifySegment = (seg: string) => seg
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Å/g, 'A').replace(/Ä/g, 'A').replace(/Ö/g, 'O')
+      .replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o')
+      .replace(/Æ/g, 'AE').replace(/æ/g, 'ae').replace(/Ø/g, 'O').replace(/ø/g, 'o')
+      .replace(/ß/g, 'ss')
+      .replace(/\s+/g, '_')
+      .replace(/[^A-Za-z0-9._-]/g, '_')
+      .replace(/_+/g, '_');
+    const storageSafePath = (relPath: string) => relPath
+      .replace(/^\/+/, '')
+      .replace(/^data\//, '')
+      .split('/')
+      .map((seg) => seg ? slugifySegment(seg) : seg)
+      .join('/');
+
+    const computedDziUrl = useMemo(() => {
+      if (map.dziUrl) return map.dziUrl as string;
+      // Prefer explicit tiles base; otherwise derive from Supabase env + public bucket
+      const explicitBase = process.env.NEXT_PUBLIC_SVAR_TILES_BASE_URL;
+      const fallbackBase = (process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/${process.env.NEXT_PUBLIC_SVAR_TILES_BUCKET || 'Charts'}` : undefined);
+      const base = explicitBase || fallbackBase;
+      if (!base || !map.originalPath) return undefined;
+      const relOrig = map.originalPath.startsWith('/') ? map.originalPath.slice(1) : map.originalPath;
+      const dirRel = relOrig.split('/').slice(0, -1).join('/');
+      const baseNoExt = (map.name || '').replace(/\.[^.]+$/, '');
+      const remoteRel = `${dirRel}/web/tiles-${baseNoExt}.dzi`;
+      const safeRel = storageSafePath(remoteRel);
+      return base.replace(/\/$/, '') + '/' + safeRel;
+    }, [map.dziUrl, map.originalPath, map.name]);
+
+    const [listedDziUrl, setListedDziUrl] = useState<string | undefined>(undefined);
+
+    // If we couldn't deterministically build a DZI URL, try listing the folder in Supabase Storage
+    useEffect(() => {
+      (async () => {
+        if (map.dziUrl) { setListedDziUrl(undefined); return; }
+        if (!map.originalPath) { setListedDziUrl(undefined); return; }
+        const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supaAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        const bucket = process.env.NEXT_PUBLIC_SVAR_TILES_BUCKET || 'Charts';
+        if (!supaUrl || !supaAnon) { setListedDziUrl(undefined); return; }
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(supaUrl, supaAnon);
+          const relOrig = map.originalPath.replace(/^\/+/, '');
+          const dirRel = relOrig.split('/').slice(0, -1).join('/');
+          const folder = storageSafePath(dirRel.replace(/^data\//, '') + '/web');
+          const { data, error } = await supabase.storage.from(bucket).list(folder, { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
+          if (error) { setListedDziUrl(undefined); return; }
+          const dzi = (data || []).find((d: any) => d.name && /^tiles-.*\.dzi$/i.test(d.name));
+          if (dzi) {
+            const base = `${supaUrl.replace(/\/$/, '')}/storage/v1/object/public/${bucket}`;
+            setListedDziUrl(`${base}/${folder}/${encodeURIComponent(dzi.name)}`);
+          } else {
+            setListedDziUrl(undefined);
+          }
+        } catch {
+          setListedDziUrl(undefined);
+        }
+      })();
+    }, [map.originalPath, map.dziUrl]);
+
+    const fitToContainer = () => {
+      const el = containerRef.current; if (!el) return;
+      const { width: cw, height: ch } = el.getBoundingClientRect();
+      const { w, h } = contentSize.current;
+      if (w <= 0 || h <= 0) return;
+      const s = Math.max(0.1, Math.min(cw / w, ch / h));
+      const ox = (cw - w * s) / 2;
+      const oy = (ch - h * s) / 2;
+      setScale(s);
+      setOffset({ x: ox, y: oy });
+    };
+
+    // Zoom by wheel using a non-passive native listener (prevents page scroll)
+    useEffect(() => {
+      const el = containerRef.current; if (!el) return;
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const cx = e.clientX - rect.left; const cy = e.clientY - rect.top;
+        const delta = -e.deltaY; const factor = delta > 0 ? 1.1 : 0.9;
+        setScale((prev) => {
+          const newScale = Math.min(8, Math.max(0.2, prev * factor));
+          const preX = (cx - offset.x) / prev; const preY = (cy - offset.y) / prev;
+          const nx = cx - preX * newScale; const ny = cy - preY * newScale;
+          setOffset({ x: nx, y: ny });
+          return newScale;
+        });
+      };
+      el.addEventListener('wheel', handleWheel, { passive: false });
+      return () => { el.removeEventListener('wheel', handleWheel as any); };
+    }, [offset.x, offset.y]);
+
+    const onMouseDown = (e: React.MouseEvent) => { dragging.current = true; last.current = { x: e.clientX, y: e.clientY }; };
+    const onMouseUp = () => { dragging.current = false; };
+    const onMouseLeave = () => { dragging.current = false; };
+    const onMouseMove = (e: React.MouseEvent) => {
+      if (!dragging.current) return;
+      e.preventDefault();
+      const dx = e.clientX - last.current.x; const dy = e.clientY - last.current.y;
+      last.current = { x: e.clientX, y: e.clientY };
+      setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+    };
+
+    // Touch: pan and pinch
+    const onTouchStart = (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        const dx = t2.clientX - t1.clientX; const dy = t2.clientY - t1.clientY;
+        pinch.current = {
+          active: true,
+          dist: Math.hypot(dx, dy),
+          mid: { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 },
+        };
+      } else if (e.touches.length === 1) {
+        last.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+    const onTouchMove = (e: React.TouchEvent) => {
+      if (e.touches.length === 2 && pinch.current.active) {
+        e.preventDefault(); e.stopPropagation();
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        const dx = t2.clientX - t1.clientX; const dy = t2.clientY - t1.clientY;
+        const dist = Math.hypot(dx, dy);
+        const rect = containerRef.current!.getBoundingClientRect();
+        const mid = { x: (t1.clientX + t2.clientX) / 2 - rect.left, y: (t1.clientY + t2.clientY) / 2 - rect.top };
+        const factor = dist / (pinch.current.dist || dist);
+        setScale((prev) => {
+          const newScale = Math.min(8, Math.max(0.2, prev * factor));
+          const preX = (mid.x - offset.x) / prev; const preY = (mid.y - offset.y) / prev;
+          const nx = mid.x - preX * newScale; const ny = mid.y - preY * newScale;
+          setOffset({ x: nx, y: ny });
+          return newScale;
+        });
+        pinch.current.dist = dist;
+      } else if (e.touches.length === 1) {
+        e.preventDefault(); e.stopPropagation();
+        const dx = e.touches[0].clientX - last.current.x; const dy = e.touches[0].clientY - last.current.y;
+        last.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+      }
+    };
+    const onTouchEnd = () => { pinch.current.active = false; };
+
+    // Initialize OpenSeadragon if deep zoom available
+    useEffect(() => {
+      const deepUrl = listedDziUrl || computedDziUrl;
+      if (!deepUrl) return;
+      const el = containerRef.current; if (!el) return;
+      let disposed = false;
+      (async () => {
+        try {
+          const OpenSeadragon = (await import('openseadragon')).default as any;
+          if (disposed) return;
+          osdRef.current = OpenSeadragon({
+            element: el,
+            tileSources: deepUrl,
+            showNavigator: false,
+            showFullPageControl: false,
+            showHomeControl: false,
+            showRotationControl: false,
+            showZoomControl: false,
+            maxZoomPixelRatio: 2.0,
+            blendTime: 0.1,
+            animationTime: 0.2,
+            prefixUrl: '/openseadragon/images/',
+          });
+        } catch (e) {
+          console.warn('OpenSeadragon init failed', e);
+        }
+      })();
+      return () => {
+        disposed = true;
+        try { osdRef.current?.destroy?.(); } catch {}
+        osdRef.current = null;
+      };
+    }, [computedDziUrl, listedDziUrl]);
+
+    // TIFF rendering: try UTIF (supports CCITT G3/G4) first; fall back to GeoTIFF
+    useEffect(() => {
+      if (map.type !== 'tif') return;
+      if (map.previewPath || map.dziUrl || computedDziUrl || listedDziUrl) return; // no client decoding if we have preview or DZI
+      // If we have a preview, do not attempt heavy client-side decoding
+      let aborted = false;
+      (async () => {
+        try {
+          // 1) Try UTIF
+          async function ensureUTIF() {
+            const g = (window as any);
+            if (g.UTIF && (g.UTIF.decode || g.UTIF.decodeImages || g.UTIF.decodeImage)) return g.UTIF;
+            await new Promise<void>((resolve, reject) => {
+              const s = document.createElement('script');
+              s.src = 'https://unpkg.com/utif@2.1.1/dist/UTIF.min.js';
+              s.async = true;
+              s.onload = () => resolve();
+              s.onerror = () => reject(new Error('UTIF load failed'));
+              document.head.appendChild(s);
+            });
+            return (window as any).UTIF;
+          }
+
+          let rendered = false;
+          try {
+            const UTIF: any = await ensureUTIF();
+            const res = await fetch(map.path);
+            const buf = await res.arrayBuffer();
+            const ifds = UTIF.decode(buf);
+            if (ifds && ifds[0]) {
+              if (typeof UTIF.decodeImage === 'function') UTIF.decodeImage(buf, ifds[0]);
+              else if (typeof UTIF.decodeImages === 'function') UTIF.decodeImages(buf, ifds);
+              const rgba: Uint8Array = UTIF.toRGBA8(ifds[0]);
+              if (aborted) return;
+              const cnv = canvasRef.current; if (!cnv) return;
+              const w = ifds[0].width; const h = ifds[0].height;
+              cnv.width = w; cnv.height = h;
+              const ctx = cnv.getContext('2d'); if (!ctx) return;
+              const imgData = new ImageData(new Uint8ClampedArray(rgba), w, h);
+              ctx.putImageData(imgData, 0, 0);
+              contentSize.current = { w, h };
+              fitToContainer();
+              rendered = true;
+            }
+          } catch {}
+
+          if (!rendered) {
+            // 2) Fallback: GeoTIFF (works for many LZW/DEFLATE cases)
+            if (!(window as any).GeoTIFF) {
+              await new Promise<void>((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.min.js';
+                s.async = true;
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('GeoTIFF load failed'));
+                document.head.appendChild(s);
+              });
+            }
+            const GeoTIFF = (window as any).GeoTIFF;
+            const tiff = await GeoTIFF.fromUrl(map.path);
+            const image = await tiff.getImage();
+            const width = image.getWidth();
+            const height = image.getHeight();
+            const sampleCount = image.getSamplesPerPixel();
+            const data = await image.readRasters({ interleave: true });
+            if (aborted) return;
+            const cnv = canvasRef.current; if (!cnv) return;
+            cnv.width = width; cnv.height = height;
+            const ctx = cnv.getContext('2d'); if (!ctx) return;
+            const out = ctx.createImageData(width, height);
+            const src = data as Uint8Array | Uint16Array | Float32Array;
+            if (sampleCount === 4) {
+              for (let i = 0; i < width * height * 4; i++) out.data[i] = (src as any)[i] & 0xff;
+            } else if (sampleCount === 3) {
+              for (let i = 0, j = 0; i < width * height; i++, j += 3) {
+                out.data[i * 4 + 0] = (src as any)[j + 0] & 0xff;
+                out.data[i * 4 + 1] = (src as any)[j + 1] & 0xff;
+                out.data[i * 4 + 2] = (src as any)[j + 2] & 0xff;
+                out.data[i * 4 + 3] = 255;
+              }
+            } else {
+              for (let i = 0; i < width * height; i++) {
+                const v = (src as any)[i] & 0xff;
+                out.data[i * 4 + 0] = v; out.data[i * 4 + 1] = v; out.data[i * 4 + 2] = v; out.data[i * 4 + 3] = 255;
+              }
+            }
+            ctx.putImageData(out, 0, 0);
+            contentSize.current = { w: width, h: height };
+            fitToContainer();
+          }
+        } catch (err) {
+          console.warn('TIFF render failed', err);
+          setTiffFailed(true);
+        }
+      })();
+      return () => { aborted = true; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [map, computedDziUrl, listedDziUrl]);
+
+    // Fit image once it loads (jpg/png)
+    const onImageLoad = () => {
+      const img = imgRef.current; if (!img) return;
+      contentSize.current = { w: img.naturalWidth, h: img.naturalHeight };
+      fitToContainer();
+    };
+
+    useEffect(() => { fitToContainer(); }, []);
+
+    return (
+      <div ref={containerRef}
+           className="relative w-full h-[420px] bg-slate-900/60 rounded-xl overflow-hidden border border-white/10"
+           style={{ touchAction: 'none', overscrollBehavior: 'none' as any }}
+           onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave} onMouseMove={onMouseMove}
+           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        {!computedDziUrl && !listedDziUrl ? (
+        <div className="absolute inset-0 will-change-transform" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }}>
+          {(() => {
+            const displaySrc = map.previewPath || map.path;
+            if (map.type === 'pdf') {
+              return map.previewPath ? (
+                <img ref={imgRef} src={displaySrc} onLoad={onImageLoad} alt={map.name} className="block select-none" draggable={false}
+                     onError={(e) => { (e.currentTarget as HTMLImageElement).src = map.path; }} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <a href={map.path} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20">Öppna PDF</a>
+                </div>
+              );
+            }
+            if (map.type === 'tif') {
+              if (map.previewPath) {
+                return (
+                  <img ref={imgRef} src={displaySrc} onLoad={onImageLoad} alt={map.name} className="block select-none" draggable={false}
+                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = map.path; }} />
+                );
+              }
+              return (
+                <>
+                  <canvas ref={canvasRef} className="block" />
+                  {tiffFailed && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-sm">
+                      Kartan kunde inte renderas i webbläsaren. Använd nedladdning eller förhandsbild.
+                    </div>
+                  )}
+                </>
+              );
+            }
+            return (
+              <img ref={imgRef} src={displaySrc} onLoad={onImageLoad} alt={map.name} className="block select-none" draggable={false}
+                   onError={(e) => { (e.currentTarget as HTMLImageElement).src = map.path; }} />
+            );
+          })()}
+        </div>
+        ) : null}
+        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md">Zoom: {(scale*100).toFixed(0)}%</div>
+      </div>
+    );
+  };
+
   return createPortal(
     <div 
       className="fixed inset-0 z-[2000] flex items-center justify-center p-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
@@ -893,79 +1255,37 @@ export default function WaterDetailModal({ waterBody, onClose, waterData }: Wate
                 </div>
               ) : maps && maps.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="text-sm text-slate-300">
-                    {maps.length} {maps.length === 1 ? 'karta tillgänglig' : 'kartor tillgängliga'}
-                  </div>
-
+                  {/* Selector if multiple */}
                   {maps.length > 1 && (
-                    <button
-                      onClick={() => setShowMapSelector(!showMapSelector)}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg transition-all duration-200"
-                    >
-                      <span className="text-white font-medium">
-                        {maps[selectedMapIndex].area || `Karta ${selectedMapIndex + 1}`}
-                      </span>
-                      {showMapSelector ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                    </button>
-                  )}
-
-                  {showMapSelector && maps.length > 1 && (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {maps.map((map, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setSelectedMapIndex(index);
-                            setShowMapSelector(false);
-                          }}
-                          className={`w-full px-4 py-3 rounded-lg text-left transition-all duration-200 ${
-                            index === selectedMapIndex
-                              ? 'bg-cyan-600/20 border border-cyan-500/50 text-white'
-                              : 'bg-slate-700/20 hover:bg-slate-700/40 text-slate-300'
-                          }`}
-                        >
-                          <div className="font-medium">{map.area || `Karta ${index + 1}`}</div>
-                          <div className="text-xs text-slate-400 mt-1">{map.type.toUpperCase()}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Single map: preview inline; Multiple: choose then preview button */}
-                  {maps.length === 1 ? (
-                    <div className="space-y-3">
-                      {['jpg','jpeg','png','webp'].includes(maps[0].type.toLowerCase()) && (
-                        <div className="bg-slate-700/20 rounded-xl p-3">
-                          <img
-                            src={maps[0].path}
-                            alt={`Sjökort för ${waterBody.name}`}
-                            className="w-full h-auto rounded-lg object-contain"
-                          />
-                        </div>
-                      )}
-                      <a
-                        href={maps[0].path}
-                        download
-                        className="inline-flex items-center px-5 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/20"
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={selectedMapIndex}
+                        onChange={(e) => setSelectedMapIndex(Number(e.target.value))}
+                        className="bg-slate-700/40 border border-white/10 text-white rounded-lg px-3 py-2"
                       >
-                        <Download className="w-5 h-5 mr-2" />
-                        Ladda ner karta
-                      </a>
+                        {maps.map((m, i) => (
+                          <option key={i} value={i}>{m.area || m.name || `Karta ${i + 1}`}</option>
+                        ))}
+                      </select>
+                      <span className="text-slate-300 text-sm">{maps.length} kartor</span>
                     </div>
-                  ) : (
-                  <button
-                    onClick={() => setViewingMap(true)}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg shadow-cyan-500/20"
-                  >
-                    <MapPin className="w-5 h-5" />
-                      <span>Välj och ladda ner karta</span>
-                  </button>
                   )}
+
+                  {/* Inline, zoomable viewer always visible */}
+                  <SvarInlineViewer map={maps[selectedMapIndex]} />
+
+                  {/* Download current */}
+                  <a
+                    href={maps[selectedMapIndex].originalPath || maps[selectedMapIndex].path}
+                    download
+                    className="inline-flex items-center px-5 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/20"
+                  >
+                    <Download className="w-5 h-5 mr-2" />
+                    Ladda ner vald karta
+                  </a>
 
                   {sjoid && (
-                    <div className="text-xs text-slate-400 text-center">
-                      SJOID: {sjoid}
-                    </div>
+                    <div className="text-xs text-slate-400">SJOID: {sjoid}</div>
                   )}
                 </div>
               ) : (

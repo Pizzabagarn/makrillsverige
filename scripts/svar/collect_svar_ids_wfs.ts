@@ -1,8 +1,8 @@
 /*
-  SVAR ID collector via WFS (Web Feature Service)
+  SVAR ID collector - Lakes with downloadable maps
   
-  Fetches all Swedish lakes with SVAR IDs from SMHI's WFS endpoint.
-  Much faster and more reliable than Playwright scraping!
+  Fetches ONLY Swedish lakes that have downloadable maps from SMHI's REST API.
+  This is much more efficient than fetching all ~40k lakes when only ~4k have maps!
   
   Usage:
     npm run svar:collect:wfs
@@ -14,14 +14,16 @@
     [
       {
         "sjoid": "647666-129906",
-        "name": "Vänern", 
-        "vyid": "655167-132360",
+        "name": "", 
+        "vyid": "",
         "lat": 58.95,
         "lon": 13.50,
-        "area_km2": 5510.78731
+        "area_km2": 0
       },
       ...
     ]
+    
+  Note: The REST API only provides sjoid and coordinates. Name, vyid, and area are not available.
 */
 
 import fs from 'node:fs/promises';
@@ -38,14 +40,18 @@ type SvarLake = {
   area_km2: number;
 };
 
+type LakemapsResponse = {
+  sjoid: string;
+  east: string;
+  north: string;
+};
+
 type CliFlags = {
   out: string;
-  maxFeatures: number;
 };
 
 const DEFAULTS: CliFlags = {
   out: 'scripts/svar/all_svar_ids.json',
-  maxFeatures: 999999, // Get all lakes
 };
 
 function parseFlags(argv: string[]): CliFlags {
@@ -54,22 +60,22 @@ function parseFlags(argv: string[]): CliFlags {
     const a = argv[i];
     const next = argv[i + 1];
     if (a === '--out' && next) { flags.out = next; i++; continue; }
-    if (a === '--max' && next) { flags.maxFeatures = Math.max(1, Number(next)); i++; continue; }
   }
   return { ...DEFAULTS, ...flags };
 }
 
-function fetchWFS(maxFeatures: number): Promise<string> {
+function fetchLakemaps(): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Fetch WFS data (coordinates will be in EPSG:3786 SWEREF99 TM, we'll convert them)
-    const url = `https://vattenwebb.smhi.se/svarwebb/svar.map?service=WFS&version=1.0.0&request=GetFeature&typeName=lakes&maxFeatures=${maxFeatures}`;
+    // Fetch lakes with downloadable maps from REST API
+    const url = 'https://vattenwebb.smhi.se/svarwebb/rest/search/lakemaps';
     
-    console.log(`📡 Fetching WFS data (max ${maxFeatures} features)...`);
+    console.log(`📡 Fetching lakes with downloadable maps...`);
     console.log(`   URL: ${url}`);
     
     https.get(url, {
       headers: {
         'User-Agent': 'MakrillSverige/1.0 (https://makrillsverige.se; alexander.westman3@gmail.com)',
+        'Accept': 'application/json',
       }
     }, (res) => {
       if (res.statusCode !== 200) {
@@ -77,13 +83,10 @@ function fetchWFS(maxFeatures: number): Promise<string> {
         return;
       }
       
-      // Don't set encoding - collect raw buffers and decode properly
       const buffers: Buffer[] = [];
       res.on('data', chunk => buffers.push(chunk));
       res.on('end', () => {
         const buffer = Buffer.concat(buffers);
-        // Server claims UTF-8 but actually sends ISO-8859-1 (Latin1)
-        // Decode as latin1 to preserve byte values, which are actually UTF-8 mis-encoded
         const data = buffer.toString('utf8');
         resolve(data);
       });
@@ -92,90 +95,71 @@ function fetchWFS(maxFeatures: number): Promise<string> {
   });
 }
 
-function parseWFSXML(xml: string): SvarLake[] {
+function parseLakemapsJSON(json: string): SvarLake[] {
   const lakes: SvarLake[] = [];
   
-  // Define EPSG:3786 (SWEREF99 TM) projection
-  proj4.defs('EPSG:3786', '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-  const sweref99 = 'EPSG:3786';
+  // Define EPSG:3006 (SWEREF99 TM) projection
+  // The coordinates from the API appear to be in SWEREF99 TM (EPSG:3006)
+  proj4.defs('EPSG:3006', '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs');
+  const sweref99 = 'EPSG:3006';
   const wgs84 = 'EPSG:4326';
   
-  // Parse XML using simple regex (good enough for structured WFS responses)
-  // Match each <ms:lakes> feature
-  const featureRegex = /<ms:lakes[^>]*>([\s\S]*?)<\/ms:lakes>/g;
-  const features = xml.match(featureRegex) || [];
+  console.log(`📊 Parsing JSON response...`);
   
-  console.log(`📊 Parsing ${features.length} features...`);
+  let data: LakemapsResponse[];
+  try {
+    data = JSON.parse(json);
+  } catch (err) {
+    console.error('Failed to parse JSON:', err);
+    return lakes;
+  }
   
-  for (const feature of features) {
+  if (!Array.isArray(data)) {
+    console.error('Response is not an array');
+    return lakes;
+  }
+  
+  console.log(`   Found ${data.length} lakes with maps`);
+  
+  for (const item of data) {
     try {
-      // Extract fields using regex
-      const sjoid = feature.match(/<ms:SJOID>([^<]+)<\/ms:SJOID>/)?.[1];
-      const vyid = feature.match(/<ms:VYID>([^<]+)<\/ms:VYID>/)?.[1];
-      let vynamn = feature.match(/<ms:VYNAMN>([^<]*)<\/ms:VYNAMN>/)?.[1];
-      const area = feature.match(/<ms:AREA>([^<]+)<\/ms:AREA>/)?.[1];
+      const { sjoid, east, north } = item;
       
-      // Fix double-encoded UTF-8: convert from corrupt "Ã¤" back to "ä"
-      if (vynamn) {
-        try {
-          // If string contains double-encoded UTF-8, fix it
-          // by converting UTF-8 → Latin1 bytes → UTF-8 again
-          vynamn = Buffer.from(vynamn, 'latin1').toString('utf8');
-        } catch (e) {
-          // If conversion fails, keep original
-        }
-      }
-      
-      // Extract coordinates from geometry
-      const coordsMatch = feature.match(/<gml:coordinates>([^<]+)<\/gml:coordinates>/);
-      const coords = coordsMatch?.[1];
-      
-      if (!sjoid || !vyid || !coords) {
+      if (!sjoid || !east || !north) {
         continue; // Skip incomplete records
       }
       
-      // Parse coordinates (format: "lon,lat lon,lat lon,lat..." in WGS84)
-      const coordPairs = coords.trim().split(/\s+/);
-      if (coordPairs.length === 0) continue;
+      // Parse coordinates (they come as strings)
+      const eastNum = parseFloat(east);
+      const northNum = parseFloat(north);
       
-      // Calculate centroid (average of all coordinates)
-      let sumLon = 0, sumLat = 0, count = 0;
-      for (const pair of coordPairs) {
-        const [lon, lat] = pair.split(',').map(Number);
-        if (!isNaN(lon) && !isNaN(lat)) {
-          sumLon += lon;
-          sumLat += lat;
-          count++;
-        }
+      if (isNaN(eastNum) || isNaN(northNum)) {
+        continue;
       }
       
-      if (count === 0) continue;
-      
-      const eastingSweref = sumLon / count;
-      const northingSweref = sumLat / count;
-      
-      // Convert from EPSG:3786 (SWEREF99 TM) to WGS84
+      // Convert from SWEREF99 TM to WGS84
       // SWEREF99 format: [easting, northing] in meters
       // WGS84 format: [longitude, latitude] in degrees
-      const [lon, lat] = proj4(sweref99, wgs84, [eastingSweref, northingSweref]);
+      const [lon, lat] = proj4(sweref99, wgs84, [eastNum, northNum]);
       
       // Validate coordinates are in reasonable range for Sweden
       // Sweden is roughly: lat 55-70, lon 10-25
       if (isNaN(lat) || isNaN(lon) || lat < 54 || lat > 71 || lon < 9 || lon > 26) {
+        console.warn(`Skipping ${sjoid}: coordinates out of range (${lat}, ${lon})`);
         continue;
       }
       
       lakes.push({
         sjoid,
-        vyid,
-        name: vynamn || '',
+        vyid: '', // Not provided by this API
+        name: '', // Not provided by this API
         lat: lat,
         lon: lon,
-        area_km2: area ? parseFloat(area) : 0,
+        area_km2: 0, // Not provided by this API
       });
       
     } catch (err) {
-      console.warn('Failed to parse feature:', err);
+      console.warn('Failed to parse lake:', err);
       continue;
     }
   }
@@ -187,20 +171,20 @@ async function main() {
   const flags = parseFlags(process.argv);
   const startTime = Date.now();
   
-  console.log('🌊 SVAR ID Collection via WFS');
-  console.log('================================\n');
+  console.log('🌊 SVAR ID Collection - Lakes with Maps Only');
+  console.log('==============================================\n');
   
   try {
-    // Fetch WFS data
-    const xml = await fetchWFS(flags.maxFeatures);
-    console.log(`   ✅ Received ${(xml.length / 1024 / 1024).toFixed(2)} MB of data\n`);
+    // Fetch lakemaps data
+    const json = await fetchLakemaps();
+    console.log(`   ✅ Received ${(json.length / 1024).toFixed(2)} KB of data\n`);
     
-    // Parse XML
-    const lakes = parseWFSXML(xml);
-    console.log(`   ✅ Parsed ${lakes.length} lakes\n`);
+    // Parse JSON
+    const lakes = parseLakemapsJSON(json);
+    console.log(`   ✅ Parsed ${lakes.length} lakes with downloadable maps\n`);
     
     if (lakes.length === 0) {
-      console.error('❌ No lakes found in WFS response!');
+      console.error('❌ No lakes found in API response!');
       process.exitCode = 1;
       return;
     }
