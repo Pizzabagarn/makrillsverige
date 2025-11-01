@@ -49,3 +49,6 @@ temp/*.log
 # Ignore heavy SVAR data folders
 public/data/svar/dzi/
 public/data/svar/zips/
+
+temp/
+supabase/.temp/
